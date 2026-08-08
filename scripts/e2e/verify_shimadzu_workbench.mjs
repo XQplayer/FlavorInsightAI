@@ -30,7 +30,7 @@ try {
   page.on('pageerror', error => errors.push(error.message))
 
   await page.goto(`${baseUrl}/shimadzu-analysis/`, { waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: '岛津气质数据一站式分析' }).waitFor()
+  await page.getByRole('heading', { name: '岛津 GC–MS 风味数据分析工作台' }).waitFor()
   if (process.env.SHIMADZU_E2E_EMAIL) {
     await page.getByLabel('邮箱').fill(process.env.SHIMADZU_E2E_EMAIL)
     await page.getByLabel('密码').fill(process.env.SHIMADZU_E2E_PASSWORD)
@@ -42,7 +42,7 @@ try {
     await page.locator('.shimadzu-approval.state-approved').waitFor({ timeout: 30_000 })
   }
   const workbench = page.locator('.shimadzu-page')
-  assert.equal(await workbench.getAttribute('data-ui-revision'), 'instrument-console-v2')
+  assert.equal(await workbench.getAttribute('data-ui-revision'), 'hybrid-research-workbench-v3')
   assert.equal(await workbench.getAttribute('data-motion'), 'full')
   await page.getByText('浏览器分析引擎已就绪').waitFor()
   await page.locator('.shimadzu-settings').scrollIntoViewIfNeeded()
@@ -52,17 +52,18 @@ try {
   assert.equal(await page.locator('[data-testid="workflow-node"]').count(), 7)
   await page.getByRole('link', { name: '下载原始工作簿示例' }).waitFor()
   await page.getByRole('link', { name: '下载样品信息模板' }).waitFor()
-  await page.locator('.shimadzu-monitor').scrollIntoViewIfNeeded()
-  await page.getByRole('heading', { name: '实时分析监控' }).waitFor()
+  assert.equal(await page.locator('.shimadzu-monitor').count(), 0)
+  await page.locator('.shimadzu-readiness-strip').scrollIntoViewIfNeeded()
+  await page.getByRole('heading', { name: '分析就绪状态' }).waitFor()
   assert.equal((await page.getByText('OAV', { exact: false }).count()) > 0, true)
-  assert.equal(await page.getByRole('button', { name: '开始一站式分析' }).isDisabled(), true)
+  assert.equal(await page.locator('.shimadzu-run-button').isDisabled(), true)
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true)
 
   const fixtureRoot = process.env.SHIMADZU_FIXTURE_ROOT || 'E:/codex/Projects/Aroma analysis/岛津/shimadzu-flavor-data-processing'
   const fileInputs = page.locator('input[type="file"]')
   await fileInputs.nth(0).setInputFiles(path.join(fixtureRoot, 'CT&JX1-3.xlsx'))
   await fileInputs.nth(1).setInputFiles(path.join(fixtureRoot, 'CT&JX1-3样品与内标信息.xlsx'))
-  await page.getByRole('button', { name: '开始一站式分析' }).click()
+  await page.getByRole('button', { name: '开始分析' }).click()
   await page.locator('.shimadzu-job-bar .shimadzu-job-badge.complete').waitFor({ timeout: 90_000 })
   const resultLink = page.getByRole('link', { name: '下载结果包' })
   await resultLink.waitFor()
@@ -71,13 +72,17 @@ try {
   assert.equal(await page.locator('.shimadzu-stage-detail li.state-PASS, .shimadzu-stage-detail li.state-WARN, .shimadzu-stage-detail li.state-REVIEW').count(), 7)
   await page.getByRole('button', { name: '新任务' }).click()
   await settleMotion(page)
+  await page.locator('.shimadzu-input-region').waitFor()
+  await page.locator('.shimadzu-settings').waitFor()
+  assert.equal(await page.locator('.shimadzu-input-region').isVisible(), true)
+  assert.equal(await page.locator('.shimadzu-settings').isVisible(), true)
   await page.screenshot({ path: path.join(screenshots, 'shimadzu-workbench-desktop.png'), fullPage: true })
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: '岛津气质数据一站式分析' }).waitFor()
+  await page.getByRole('heading', { name: '岛津 GC–MS 风味数据分析工作台' }).waitFor()
   await page.locator('.shimadzu-settings').scrollIntoViewIfNeeded()
-  await page.locator('.shimadzu-monitor').scrollIntoViewIfNeeded()
+  await page.locator('.shimadzu-readiness-strip').scrollIntoViewIfNeeded()
   await settleMotion(page)
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true)
   await page.screenshot({ path: path.join(screenshots, 'shimadzu-workbench-mobile.png'), fullPage: true })
@@ -85,7 +90,7 @@ try {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.reload({ waitUntil: 'networkidle' })
   assert.equal(await workbench.getAttribute('data-motion'), 'reduced')
-  for (const selector of ['.shimadzu-hero', '.shimadzu-workflow', '.shimadzu-input-region', '.shimadzu-settings', '.shimadzu-monitor']) {
+  for (const selector of ['.shimadzu-hero', '.shimadzu-workflow', '.shimadzu-input-region', '.shimadzu-settings', '.shimadzu-readiness-strip']) {
     await expectVisible(page.locator(selector))
   }
 
@@ -93,7 +98,7 @@ try {
   await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: '岛津气质分析' }).click()
   await page.waitForURL('**/shimadzu-analysis/')
-  await page.getByRole('heading', { name: '岛津气质数据一站式分析' }).waitFor()
+  await page.getByRole('heading', { name: '岛津 GC–MS 风味数据分析工作台' }).waitFor()
   assert.deepEqual(errors, [])
   console.log(JSON.stringify({ status: 'PASS', screenshots: 2, consoleErrors: errors.length, route: page.url() }))
 } finally {
