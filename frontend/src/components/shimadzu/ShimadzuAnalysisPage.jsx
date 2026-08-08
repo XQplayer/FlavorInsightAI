@@ -187,6 +187,10 @@ function WorkspaceTabs() {
   return <nav className="shimadzu-workspace-tabs" aria-label="任务工作区"><a className="active" href="#monitor-overview" aria-current="page">Overview</a><a href="#stage-details">Stages</a><a href="#run-log">Logs</a></nav>
 }
 
+function TaskDeskEntry({ count }) {
+  return <a className="shimadzu-task-desk-entry" href="#task-workbench"><span className="shimadzu-task-desk-icon"><History /></span><span><strong>任务台</strong><small>查看历史任务、下载完成结果或定位失败原因</small></span><b>{count ? `${count} 个任务` : '暂无历史任务'}</b><ChevronRight aria-hidden="true" /></a>
+}
+
 function HistoryPanelLegacy({ jobs, interruptedJobIds, onDownload, onMarkInterrupted }) {
   if (!jobs.length) return null
   return (
@@ -205,16 +209,17 @@ function HistoryPanelLegacy({ jobs, interruptedJobIds, onDownload, onMarkInterru
 }
 
 function HistoryPanel({ jobs, interruptedJobIds, onDownload, onMarkInterrupted, onDownloadInput, onDeleteResult, isAdmin = false }) {
-  if (!jobs.length) return null
+  if (!jobs.length) return <section id="task-workbench" className="shimadzu-history shimadzu-history-empty" aria-labelledby="history-title"><div className="shimadzu-region-heading"><div><h2 id="history-title"><History />任务台</h2><p>当前没有可查看的历史任务。完成登录并运行分析后，任务、结果下载和失败原因会集中显示在这里。</p></div><span>暂无记录</span></div></section>
   return (
-    <section className="shimadzu-history shimadzu-reveal" aria-labelledby="history-title">
+    <section id="task-workbench" className="shimadzu-history shimadzu-reveal" aria-labelledby="history-title">
       <div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{isAdmin ? '管理员任务台' : '最近任务'}</h2><p>{isAdmin ? '可查看所有用户运行状态，并下载原始工作簿与结果证据。' : '任务与 QC 摘要保留 90 天；结果包完成后保留 7 天。'}</p></div><span>{isAdmin ? '管理员可见' : '私有记录'}</span></div>
       <div className="shimadzu-history-table" role="table">
         {jobs.map(item => {
           const downloadable = item.result_path && new Date(item.result_expires_at) > new Date()
           const interrupted = interruptedJobIds.has(item.id)
           const visibleStatus = interrupted ? 'interrupted' : item.status
-          return <div key={item.id} role="row"><div><strong>{item.name}</strong><small>{isAdmin ? `用户 ${item.user_id} · ` : ''}{new Date(item.created_at).toLocaleString('zh-CN', { hour12: false })}</small></div><span className={`shimadzu-job-badge ${visibleStatus}`}>{STATUS_LABELS[visibleStatus] || visibleStatus}</span><span>步骤 {item.current_stage}/7 · {item.progress}%</span><div className="shimadzu-history-actions">{interrupted ? <button type="button" onClick={() => onMarkInterrupted(item)}>确认中断</button> : downloadable ? <button type="button" onClick={() => onDownload(item)}><CloudDownload />重新下载</button> : <small>{item.status === 'complete' || item.status === 'expired' ? '结果已过期' : '暂无结果'}</small>}{isAdmin && item.raw_path && <button type="button" onClick={() => onDownloadInput(item)}><Download />原始文件</button>}{downloadable && onDeleteResult && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>删除结果</button>}</div></div>
+          const issue = Array.isArray(item.stage_summary) ? [...item.stage_summary].reverse().find(entry => entry?.type === 'error' || entry?.type === 'interrupted') : null
+          return <div key={item.id} role="row"><div><strong>{item.name}</strong><small>{isAdmin ? `用户 ${item.user_id} · ` : ''}{new Date(item.created_at).toLocaleString('zh-CN', { hour12: false })}</small>{issue && <small className="shimadzu-history-error"><b>{issue.code || '任务异常'}</b>{issue.message || '请打开任务查看详细日志。'}</small>}</div><span className={`shimadzu-job-badge ${visibleStatus}`}>{STATUS_LABELS[visibleStatus] || visibleStatus}</span><span>步骤 {item.current_stage}/7 · {item.progress}%</span><div className="shimadzu-history-actions">{interrupted ? <button type="button" onClick={() => onMarkInterrupted(item)}>确认中断</button> : downloadable ? <button type="button" onClick={() => onDownload(item)}><CloudDownload />重新下载</button> : <small>{item.status === 'complete' || item.status === 'expired' ? '结果已过期' : '暂无结果'}</small>}{isAdmin && item.raw_path && <button type="button" onClick={() => onDownloadInput(item)}><Download />原始文件</button>}{downloadable && onDeleteResult && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>删除结果</button>}</div></div>
         })}
       </div>
     </section>
@@ -919,6 +924,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
         {cloudError && <div className="shimadzu-alert cloud" role="alert"><AlertCircle /><span><strong>云端服务提示</strong>{cloudError}</span></div>}
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>浏览器任务恢复</strong>{recoveryNotice}</span></div>}
         <AccountPanel cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
+        <TaskDeskEntry count={history.length} />
         <WorkflowMap job={job} />
 
         {!job ? (

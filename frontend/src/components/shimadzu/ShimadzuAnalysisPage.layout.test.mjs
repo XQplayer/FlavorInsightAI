@@ -88,9 +88,24 @@ test('keeps the full workflow description and reserves space below the fixed nav
 
 test('densifies the desktop idle setup without changing the mobile stack', () => {
   assert.match(styles, /@media \(min-width: 1101px\)/)
+  assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: minmax\(0, 1fr\); grid-template-areas: "input" "settings"; \}/)
   assert.match(styles, /\.shimadzu-settings \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(styles, /@media \(max-width: 820px\)/)
   assert.match(styles, /\.shimadzu-settings \{ display: block; \}/)
+})
+
+test('provides a task desk entry and exposes stored failure context', () => {
+  assert.match(source, /TaskDeskEntry/)
+  assert.match(source, /href="#task-workbench"/)
+  assert.match(source, /id="task-workbench"/)
+  assert.match(source, /stage_summary/)
+  assert.match(source, /shimadzu-history-error/)
+})
+
+test('keeps sticky work areas below the fixed navigation', () => {
+  assert.match(styles, /\.shimadzu-workflow-dock \{ position: sticky; top: 74px;/)
+  assert.match(styles, /\.shimadzu-stage-rail \{ position: sticky; top: 150px;/)
+  assert.match(styles, /scroll-margin-top: 82px/)
 })
 
 test('keeps the idle state lightweight and only mounts the monitor for a job', () => {
