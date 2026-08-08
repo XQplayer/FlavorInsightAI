@@ -76,7 +76,7 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: '岛津气质数据一站式分析' }).waitFor()
+  await page.getByRole('heading', { name: '岛津 GC–MS 风味数据分析工作台' }).waitFor()
   await page.locator('.shimadzu-settings').scrollIntoViewIfNeeded()
   await page.locator('.shimadzu-readiness-strip').scrollIntoViewIfNeeded()
   await settleMotion(page)
