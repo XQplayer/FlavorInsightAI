@@ -99,3 +99,12 @@ test('expires stale active inputs after seven days', async () => {
   assert.equal(await storeAfterExpiry.load('user-1'), null)
   assert.equal(adapter.values.size, 0)
 })
+
+test('preserves CV screening settings across task recovery', async () => {
+  const adapter = memoryAdapter()
+  const store = createShimadzuTaskStore({ adapter })
+  await store.save(task({ enableCvScreening: true, cvThreshold: 12.5 }))
+  const restored = await store.load('user-1')
+  assert.equal(restored.enableCvScreening, true)
+  assert.equal(restored.cvThreshold, 12.5)
+})
