@@ -52,10 +52,11 @@ function configuredStandards(stage4Data) {
   return output;
 }
 
-export function processV2Statistics({ stage4Data, cvThreshold = 30 }) {
+export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScreening = true }) {
   const source = structuredClone(stage4Data);
   if (source.stage !== "04_跨样品合并与半定量") throw fail("WRONG_STAGE4_INPUT");
   if (!(typeof cvThreshold === "number" && Number.isFinite(cvThreshold) && cvThreshold >= 0)) throw fail("INVALID_CV_THRESHOLD");
+  if (typeof enableCvScreening !== "boolean") throw fail("INVALID_CV_SCREENING_FLAG");
   if (!Array.isArray(source.sampleOrder) || !Array.isArray(source.groupOrder) || !Array.isArray(source.sampleConfigs)) throw fail("INVALID_STAGE4_STRUCTURE");
   const samplesByGroup = groupSamples(source);
   const expectedColumns = ["CAS #", "Name"];
@@ -97,9 +98,11 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30 }) {
         mean = valid.reduce((sum, value) => sum + value, 0) / 3;
         sd = sampleSd(valid, mean);
         cv = mean === 0 ? "NA" : sd / Math.abs(mean) * 100;
-        status = numeric(cv) && aboveThreshold(cv, cvThreshold)
-          ? "Filtered_CV_Above_30"
-          : numeric(cv) ? "Retained_CV_At_Or_Below_30" : "Retained_CV_Undefined_Zero_Mean";
+        status = !enableCvScreening
+          ? "CV_Screening_Not_Executed"
+          : numeric(cv) && aboveThreshold(cv, cvThreshold)
+            ? "Filtered_CV_Above_Threshold"
+            : numeric(cv) ? "Retained_CV_At_Or_Below_Threshold" : "Retained_CV_Undefined_Zero_Mean";
       } else if (valid.length !== 0) {
         throw fail("INCONSISTENT_TRIPLICATE_CONCENTRATION_STATE", { cas, sampleGroup, values });
       }
@@ -108,7 +111,7 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30 }) {
       groupStatistics.push(stats);
       meanPre[`${sampleGroup} Mean（μg/mL）`] = mean;
       meanPre[`${sampleGroup} SD（μg/mL）`] = sd;
-      if (status === "Filtered_CV_Above_30") {
+      if (enableCvScreening && status === "Filtered_CV_Above_Threshold") {
         for (const name of names) post[`${name}（μg/mL）`] = "NA";
         meanPost[`${sampleGroup} Mean（μg/mL）`] = "NA";
         meanPost[`${sampleGroup} SD（μg/mL）`] = "NA";
@@ -151,6 +154,7 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30 }) {
   if (counts.groupStatistics !== counts.casRows * counts.groups) throw fail("STATISTICS_COUNT_RECONCILIATION_FAILED");
 
   return {
+    cvScreeningExecuted: enableCvScreening,
     cvThreshold,
     sampleOrder: [...source.sampleOrder],
     groupOrder: [...source.groupOrder],

@@ -557,6 +557,23 @@
 .shimadzu-mode-field strong { color: var(--sz-ink); font-size: 14px; }
 .shimadzu-mode-field small { color: var(--sz-muted); font-size: 12px; }
 
+.shimadzu-cv-field {
+  margin: 18px 0 0;
+  padding: 14px;
+  border: 1px solid var(--sz-line);
+  border-radius: 12px;
+  background: var(--sz-surface-strong);
+}
+.shimadzu-cv-field legend { padding: 0 4px; color: var(--sz-ink-2); font-size: 12px; font-weight: 680; }
+.shimadzu-cv-toggle { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.shimadzu-cv-toggle input { margin-top: 3px; accent-color: var(--sz-accent); }
+.shimadzu-cv-toggle span { display: grid; gap: 3px; }
+.shimadzu-cv-toggle strong { color: var(--sz-ink); font-size: 14px; }
+.shimadzu-cv-toggle small { color: var(--sz-muted); font-size: 12px; line-height: 1.45; }
+.shimadzu-cv-threshold { margin-top: 12px; }
+.shimadzu-cv-threshold input:disabled { color: var(--sz-muted); background: var(--sz-surface); cursor: not-allowed; }
+.shimadzu-cv-help { margin: 8px 0 0; color: var(--sz-muted); font-size: 12px; line-height: 1.45; }
+
 .shimadzu-parameter-list {
   margin: 18px 0 0;
   border-top: 1px solid var(--sz-line);

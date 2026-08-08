@@ -61,3 +61,13 @@ test('does not present legacy cloud-only jobs as still computing', () => {
   assert.match(source, /已中断，需重新运行/)
   assert.match(source, /markInterrupted/)
 })
+
+test('exposes opt-in CV screening controls with a bounded decimal threshold', () => {
+  assert.match(source, /enableCvScreening/)
+  assert.match(source, /cvThreshold/)
+  assert.match(source, /min="0"/)
+  assert.match(source, /max="1000"/)
+  assert.match(source, /step="1"/)
+  assert.match(source, /enableCvScreening: taskEnableCvScreening/)
+  assert.match(source, /cvThreshold: taskCvThreshold/)
+})

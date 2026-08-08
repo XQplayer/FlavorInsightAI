@@ -46,7 +46,7 @@ const WORKFLOW = [
   { index: 2, short: '筛查', label: '化合物筛查', description: '清除无效 CAS、Si/F/Cl，并按 RI 规则处理重复峰。', work: ['执行元素与 CAS 有效性筛查', '计算单峰 RI 偏差', '合并相邻重复峰或保留最优记录'] },
   { index: 3, short: '平行处理', label: '平行峰面积处理', description: '定位内标，补建缺失内标，并按 2/3 与 1/3 规则处理。', work: ['定位配置内标与替代内标', '补建缺失内标峰面积', '执行三平行检出与缺失处理'] },
   { index: 4, short: '半定量', label: '跨样品合并与半定量', description: '跨样品按 CAS 合并，保留峰面积并计算浓度。', work: ['构建全样品 CAS 并集', '按样品内标计算半定量浓度', '记录 NA、响应因子和计算异常'] },
-  { index: 5, short: '统计与 QC', label: '统计、CV、CAS 与 QC', description: '计算 Mean、样本 SD、CV30，并完成质量检查。', work: ['计算 Mean、SD 和 CV', '生成 CV30 前后四种结果', '检查 NA、重复 CAS、公式与内标回算'] },
+  { index: 5, short: '统计与 QC', label: '统计、CV、CAS 与 QC', description: '计算 Mean、样本 SD、CV，并按设置执行质量检查。', work: ['计算 Mean、SD 和 CV', '按需生成 CV 筛查结果', '检查 NA、重复 CAS、公式与内标回算'] },
   { index: 6, short: '矩阵拆分', label: '按矩阵拆分', description: '输出作图准备矩阵与完整项目 CAS 清单。', work: ['按矩阵名称拆分结果', '输出三个平行与 Mean 加 SD 版本', '执行完整性验证并封装结果'] },
 ]
 
@@ -358,6 +358,8 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   const [samplesFile, setSamplesFile] = useState(null)
   const [name, setName] = useState('岛津气质分析')
   const [mode, setMode] = useState('continuous')
+  const [enableCvScreening, setEnableCvScreening] = useState(false)
+  const [cvThreshold, setCvThreshold] = useState('30')
   const [job, setJob] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -466,13 +468,24 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
 
     return { ready: true, buttonLabel: '开始分析', message: '文件已准备，可以开始分析' }
   }, [rawFile, samplesFile])
+  const cvReadiness = useMemo(() => {
+    if (!enableCvScreening) {
+      return { valid: true, threshold: 30, message: 'CV 筛查未启用；仍会计算 Mean、SD 和 CV，但不会筛查结果。' }
+    }
+    const threshold = Number(cvThreshold)
+    if (cvThreshold === '' || !Number.isFinite(threshold) || threshold < 0 || threshold > 1000) {
+      return { valid: false, buttonLabel: '请修正 CV 阈值', message: 'CV 阈值必须是 0–1000% 范围内的数值。' }
+    }
+    return { valid: true, threshold, message: `将按 CV ${threshold}% 执行筛查。` }
+  }, [cvThreshold, enableCvScreening])
   const startFeedback = useMemo(() => {
     if (submitting) return { buttonLabel: '正在建立任务', message: '正在读取文件并建立分析任务。' }
     if (!fileReadiness.ready) return fileReadiness
     if (!canAnalyze) return { buttonLabel: '等待账号审批后开始', message: '文件已准备，可以开始分析。当前账号还需通过管理员审批。' }
-    return fileReadiness
-  }, [canAnalyze, fileReadiness, submitting])
-  const canStart = fileReadiness.ready && canAnalyze && !submitting
+    if (!cvReadiness.valid) return cvReadiness
+    return { ...fileReadiness, message: `${fileReadiness.message} ${cvReadiness.message}` }
+  }, [canAnalyze, cvReadiness, fileReadiness, submitting])
+  const canStart = fileReadiness.ready && cvReadiness.valid && canAnalyze && !submitting
   const interruptedJobIds = useMemo(() => {
     if (!recoveryChecked) return new Set()
     return new Set(history
@@ -520,6 +533,8 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   }
 
   const runTask = async (task, { restored = false } = {}) => {
+    const taskEnableCvScreening = typeof task.enableCvScreening === 'boolean' ? task.enableCvScreening : true
+    const taskCvThreshold = Number.isFinite(Number(task.cvThreshold)) ? Number(task.cvThreshold) : 30
     setSubmitting(true)
     setError('')
     activeJobIdRef.current = task.id
@@ -531,6 +546,8 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
     setActiveTaskId(task.id)
     setName(task.name)
     setMode(task.mode)
+    setEnableCvScreening(taskEnableCvScreening)
+    setCvThreshold(String(taskCvThreshold))
     setJob(jobFromStoredTask(task, 'running'))
     if (restored) setRecoveryNotice('已从当前浏览器恢复任务，正在重新验证已完成步骤。')
     try {
@@ -541,6 +558,8 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
         sampleName: task.sampleName,
         name: task.name,
         mode: task.mode,
+        enableCvScreening: taskEnableCvScreening,
+        cvThreshold: taskCvThreshold,
         resumeFromStage: resumeFromStageRef.current,
         onEvent: handleWorkerEvent,
       })
@@ -633,15 +652,22 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
       assertWorkbookFile(samplesFile)
       if (cloud.configured && (!session?.user || profile?.approval_status !== 'approved')) throw Object.assign(new Error('当前账号尚未通过管理员审批。'), { code: 'ACCOUNT_NOT_APPROVED' })
       const [rawBytes, sampleBytes] = await Promise.all([rawFile.arrayBuffer(), samplesFile.arrayBuffer()])
+      const taskEnableCvScreening = enableCvScreening
+      const taskCvThreshold = cvReadiness.threshold ?? 30
       const task = {
         id: crypto.randomUUID(), scope, userId: session?.user?.id || '', name: name.trim() || '岛津气质分析', mode,
+        enableCvScreening: taskEnableCvScreening, cvThreshold: taskCvThreshold,
         status: 'running', nextStage: 0, stageSummary: [], rawName: rawFile.name, sampleName: samplesFile.name,
         rawSize: rawFile.size, sampleSize: samplesFile.size, rawBytes, sampleBytes,
       }
       if (cloud.configured) {
         await cloud.createJob({
           id: task.id, userId: task.userId, name: task.name, mode,
-          sourceNames: { raw: { name: rawFile.name, size: rawFile.size }, sample_info: { name: samplesFile.name, size: samplesFile.size } },
+          sourceNames: {
+            raw: { name: rawFile.name, size: rawFile.size },
+            sample_info: { name: samplesFile.name, size: samplesFile.size },
+            cv: { enableCvScreening: taskEnableCvScreening, threshold: taskCvThreshold },
+          },
         })
         cloudJobId = task.id
         try {
@@ -675,6 +701,10 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
       setActiveTaskId(task.id)
       setName(task.name)
       setMode(task.mode)
+      const taskEnableCvScreening = typeof task.enableCvScreening === 'boolean' ? task.enableCvScreening : true
+      const taskCvThreshold = Number.isFinite(Number(task.cvThreshold)) ? Number(task.cvThreshold) : 30
+      setEnableCvScreening(taskEnableCvScreening)
+      setCvThreshold(String(taskCvThreshold))
       if (task.status === 'failed') {
         const restoredJob = jobFromStoredTask(task, 'failed')
         if (task.partialArchiveBytes) {
@@ -861,9 +891,18 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
                   <label className={mode === 'continuous' ? 'selected' : ''}><input type="radio" name="mode" checked={mode === 'continuous'} onChange={() => setMode('continuous')} /><span><strong>连续执行</strong><small>自动完成全部七步。</small></span></label>
                   <label className={mode === 'step' ? 'selected' : ''}><input type="radio" name="mode" checked={mode === 'step'} onChange={() => setMode('step')} /><span><strong>逐步复核</strong><small>每完成一步暂停确认。</small></span></label>
                 </fieldset>
-                <dl className="shimadzu-parameter-list"><div><dt>CV 阈值</dt><dd>30%</dd></div><div><dt>响应因子</dt><dd>1</dd></div><div><dt>内标参数</dt><dd>按样品表</dd></div><div><dt>OAV</dt><dd>关闭</dd></div></dl>
+                <fieldset className="shimadzu-cv-field" aria-describedby="cv-screening-help">
+                  <legend>CV 筛查</legend>
+                  <label className="shimadzu-cv-toggle">
+                    <input type="checkbox" checked={enableCvScreening} onChange={event => setEnableCvScreening(event.target.checked)} />
+                    <span><strong>启用 CV 筛查</strong><small>未启用时仍计算 Mean、SD 和 CV，但不筛查结果。</small></span>
+                  </label>
+                  <label className="shimadzu-field shimadzu-cv-threshold"><span>CV 阈值 (%)</span><input type="number" min="0" max="1000" step="1" inputMode="decimal" value={cvThreshold} disabled={!enableCvScreening} onChange={event => setCvThreshold(event.target.value)} aria-describedby="cv-screening-help" /></label>
+                  <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>
+                </fieldset>
+                <dl className="shimadzu-parameter-list"><div><dt>CV 筛查</dt><dd>{enableCvScreening ? `启用（${cvReadiness.threshold ?? '—'}%）` : '未启用'}</dd></div><div><dt>响应因子</dt><dd>1</dd></div><div><dt>内标参数</dt><dd>按样品表</dd></div><div><dt>OAV</dt><dd>关闭</dd></div></dl>
                 <button className="shimadzu-run-button" type="submit" disabled={!canStart}>{submitting ? <Loader2 className="spin" /> : <Play />}{startFeedback.buttonLabel}</button>
-                <p className={`shimadzu-run-readiness${fileReadiness.ready && canAnalyze ? ' ready' : ''}`} role="status" aria-live="polite">{startFeedback.message}</p>
+                <p className={`shimadzu-run-readiness${fileReadiness.ready && cvReadiness.valid && canAnalyze ? ' ready' : ''}`} role="status" aria-live="polite">{startFeedback.message}</p>
                 {cloud.configured && !canAnalyze && <p className="shimadzu-run-gate"><ShieldCheck />登录且通过管理员审批后开放计算。</p>}
               </aside>
             </form>
