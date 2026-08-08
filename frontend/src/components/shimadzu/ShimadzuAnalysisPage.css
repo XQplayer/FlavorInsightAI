@@ -869,6 +869,7 @@
 }
 
 /* Hybrid Research Workbench */
+.shimadzu-header { padding-top: 64px; }
 .shimadzu-main,
 .shimadzu-hero { width: min(1560px, calc(100% - 40px)); }
 .shimadzu-main { padding-top: 20px; }
@@ -883,16 +884,29 @@
 .shimadzu-workflow-dock { position: sticky; top: 10px; z-index: 8; margin: 0 0 18px; padding: 14px 18px 16px; border-radius: 16px; background: rgb(249 251 254 / .94); backdrop-filter: blur(12px); }
 .shimadzu-workflow-dock .shimadzu-section-intro { align-items: center; gap: 14px; }
 .shimadzu-workflow-dock .shimadzu-section-intro h2 { font-size: 15px; }
-.shimadzu-workflow-dock .shimadzu-section-intro p { display: none; }
+.shimadzu-workflow-dock .shimadzu-section-intro p { display: block; max-width: 700px; margin-top: 6px; font-size: 13px; line-height: 1.55; }
 .shimadzu-workflow-dock .shimadzu-method-principles { gap: 9px; }
 .shimadzu-workflow-dock .shimadzu-method-principles span { padding: 5px 8px; font-size: 11px; }
 .shimadzu-workflow-dock .shimadzu-flow-track { margin-top: 13px; }
 .shimadzu-workflow-dock .shimadzu-flow-node { padding: 0 8px; }
-.shimadzu-workflow-dock .shimadzu-flow-node > small { display: none; }
+.shimadzu-workflow-dock .shimadzu-flow-node > small { display: block; min-height: 54px; margin-top: 6px; font-size: 12px; line-height: 1.45; }
 .shimadzu-workflow-dock .shimadzu-flow-node-head { margin-bottom: 8px; }
 .shimadzu-workflow-dock .shimadzu-flow-marker { width: 28px; height: 28px; }
 .shimadzu-workflow-dock .shimadzu-flow-index { font-size: 11px; }
 .shimadzu-workflow-dock .shimadzu-flow-node > strong { font-size: 12px; white-space: nowrap; }
+
+@media (min-width: 1101px) {
+  .shimadzu-setup { grid-template-columns: minmax(0, 1.28fr) minmax(400px, .92fr); }
+  .shimadzu-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; align-content: start; }
+  .shimadzu-settings > .shimadzu-region-heading,
+  .shimadzu-settings > .shimadzu-cv-field,
+  .shimadzu-settings > .shimadzu-parameter-list,
+  .shimadzu-settings > .shimadzu-run-button,
+  .shimadzu-settings > .shimadzu-run-readiness,
+  .shimadzu-settings > .shimadzu-run-gate { grid-column: 1 / -1; }
+  .shimadzu-settings > .shimadzu-field { grid-column: 1; }
+  .shimadzu-settings > .shimadzu-mode-field { grid-column: 2; }
+}
 
 .shimadzu-readiness-strip { margin-top: 18px; padding: 15px 18px; border: 1px solid var(--sz-line); border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: var(--sz-surface); box-shadow: var(--sz-shadow); }
 .shimadzu-readiness-heading { min-width: 0; display: flex; align-items: center; gap: 11px; }

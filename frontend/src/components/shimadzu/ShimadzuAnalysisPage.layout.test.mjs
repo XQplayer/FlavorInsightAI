@@ -80,6 +80,19 @@ test('uses the hybrid research workbench presentation contract', () => {
   assert.match(source, /shimadzu-workspace-tabs/)
 })
 
+test('keeps the full workflow description and reserves space below the fixed navigation', () => {
+  assert.match(styles, /\.shimadzu-header \{ padding-top: 64px; \}/)
+  assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-section-intro p \{ display: block;/)
+  assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-flow-node > small \{ display: block;/)
+})
+
+test('densifies the desktop idle setup without changing the mobile stack', () => {
+  assert.match(styles, /@media \(min-width: 1101px\)/)
+  assert.match(styles, /\.shimadzu-settings \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(styles, /@media \(max-width: 820px\)/)
+  assert.match(styles, /\.shimadzu-settings \{ display: block; \}/)
+})
+
 test('keeps the idle state lightweight and only mounts the monitor for a job', () => {
   assert.match(source, /\{!job \? \(/)
   assert.match(source, /<AnalysisReadinessStrip/)
