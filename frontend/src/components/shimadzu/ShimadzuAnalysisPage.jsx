@@ -154,6 +154,39 @@ function AccountPanel({ cloud, session, profile, loading, error, onRefresh }) {
   )
 }
 
+function AnalysisReadinessStrip({ fileReadiness, cvReadiness, engine }) {
+  const checks = [
+    { label: '.xlsx 已检查', ready: fileReadiness.ready },
+    { label: '单文件 ≤ 50 MB', ready: fileReadiness.ready },
+    { label: '浏览器 Worker 就绪', ready: engine.state === 'ready' },
+    { label: cvReadiness.valid ? '参数已确认' : '参数需要修正', ready: cvReadiness.valid },
+  ]
+  return (
+    <section className="shimadzu-readiness-strip shimadzu-reveal" aria-labelledby="readiness-title">
+      <div className="shimadzu-readiness-heading"><span className="shimadzu-readiness-mark"><Activity /></span><div><h2 id="readiness-title">分析就绪状态</h2><p>{fileReadiness.ready ? '输入文件已通过基础检查，可以开始建立任务。' : fileReadiness.message}</p></div></div>
+      <div className="shimadzu-readiness-checks" role="list">
+        {checks.map(check => <span key={check.label} className={check.ready ? 'ready' : ''} role="listitem"><span aria-hidden="true">{check.ready ? '✓' : '○'}</span>{check.label}</span>)}
+      </div>
+    </section>
+  )
+}
+
+function AnalysisSummary({ job }) {
+  const metrics = []
+  for (const runtime of job?.stages || []) {
+    for (const [key, value] of Object.entries(runtime.counts || {})) {
+      if (value === null || value === undefined || value === '') continue
+      if (!metrics.some(item => item.key === key)) metrics.push({ key, value })
+    }
+  }
+  if (!metrics.length) return null
+  return <section className="shimadzu-analysis-summary" aria-labelledby="summary-title"><div className="shimadzu-summary-heading"><h2 id="summary-title">分析摘要</h2><span>来自已完成步骤的实际计数</span></div><div className="shimadzu-summary-grid">{metrics.slice(0, 6).map(metric => <div key={metric.key} className="shimadzu-summary-metric"><span>{metric.key}</span><strong>{String(metric.value)}</strong></div>)}</div></section>
+}
+
+function WorkspaceTabs() {
+  return <nav className="shimadzu-workspace-tabs" aria-label="任务工作区"><a className="active" href="#monitor-overview" aria-current="page">Overview</a><a href="#stage-details">Stages</a><a href="#run-log">Logs</a></nav>
+}
+
 function HistoryPanelLegacy({ jobs, interruptedJobIds, onDownload, onMarkInterrupted }) {
   if (!jobs.length) return null
   return (
@@ -245,7 +278,7 @@ const FilePicker = ({ label, hint, file, onChange, inputRef, templateHref, templ
 function WorkflowMap({ job }) {
   const activeIndex = job?.stages?.findIndex(stage => stage.status === 'running') ?? -1
   return (
-    <section className="shimadzu-workflow shimadzu-reveal" aria-labelledby="workflow-title">
+    <section className="shimadzu-workflow shimadzu-workflow-dock shimadzu-reveal" aria-labelledby="workflow-title">
       <div className="shimadzu-section-intro">
         <div>
           <h2 id="workflow-title">分析思路与七步流程</h2>
@@ -278,6 +311,22 @@ function WorkflowMap({ job }) {
   )
 }
 
+function StageRail({ job }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <aside className={'shimadzu-stage-rail' + (expanded ? ' expanded' : '')} aria-label="当前任务步骤导航">
+      <button type="button" className="shimadzu-stage-rail-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}><ChevronRight aria-hidden="true" /><span>{expanded ? '收起步骤' : '展开步骤'}</span></button>
+      <ol>
+        {WORKFLOW.map(stage => {
+          const runtime = job?.stages?.[stage.index] || {}
+          const status = runtime.status || 'pending'
+          return <li key={stage.index} className={'state-' + status} aria-label={stage.label + '：' + (STATUS_LABELS[status] || status)}><span className="shimadzu-stage-rail-marker"><StageMark status={status} /></span><span className="shimadzu-stage-rail-index">{String(stage.index).padStart(2, '0')}</span><span className="shimadzu-stage-rail-label">{stage.short}</span></li>
+        })}
+      </ol>
+    </aside>
+  )
+}
+
 function LiveMonitor({ job, capabilities, engine: engineOverride }) {
   const engine = engineOverride || getEnginePresentation(capabilities)
   const selectedIndex = getMonitorStageIndex(job, WORKFLOW.length)
@@ -297,7 +346,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride }) {
           ? '流程已在异常节点停止'
           : `正在执行：${stage.label}`
   return (
-    <section className={`shimadzu-monitor shimadzu-reveal state-${monitorState}`} aria-labelledby="monitor-title">
+    <section id="monitor-overview" className={'shimadzu-monitor shimadzu-reveal state-' + monitorState} aria-labelledby="monitor-title">
       <div className="shimadzu-monitor-toolbar">
         <div className="shimadzu-monitor-title" role="status" aria-live="polite">
           <span className="shimadzu-live-dot" />
@@ -327,7 +376,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride }) {
             <span>刷新 <strong>1.5 s</strong></span>
           </div>
         </div>
-        <div className="shimadzu-console">
+        <div id="run-log" className="shimadzu-console">
           <div className="shimadzu-console-heading"><TerminalSquare /><span>运行日志</span><small>{job?.updated_at ? new Date(job.updated_at).toLocaleTimeString('zh-CN', { hour12: false }) : '尚未启动'}</small></div>
           <pre aria-live="polite">{log || (job ? '任务已建立，等待分析引擎输出。' : '系统处于待机状态。\n选择两个模板或正式工作簿后开始分析。')}</pre>
         </div>
@@ -837,7 +886,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   }
 
   return (
-    <div ref={pageRef} className="shimadzu-page" data-ui-revision="instrument-console-v2" data-motion={reducedMotion ? 'reduced' : 'full'}>
+    <div ref={pageRef} className="shimadzu-page" data-ui-revision="hybrid-research-workbench-v3" data-motion={reducedMotion ? 'reduced' : 'full'}>
       <header className="shimadzu-header">
         <nav className="science-nav search-science-nav" aria-label="主导航">
           <button type="button" className="science-brand" onClick={onHome} aria-label="HXQLab 首页">
@@ -870,6 +919,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
         {cloudError && <div className="shimadzu-alert cloud" role="alert"><AlertCircle /><span><strong>云端服务提示</strong>{cloudError}</span></div>}
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>浏览器任务恢复</strong>{recoveryNotice}</span></div>}
         <AccountPanel cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
+        <WorkflowMap job={job} />
 
         {!job ? (
           <>
@@ -906,12 +956,12 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
                 {cloud.configured && !canAnalyze && <p className="shimadzu-run-gate"><ShieldCheck />登录且通过管理员审批后开放计算。</p>}
               </aside>
             </form>
-            <WorkflowMap job={job} />
-            <LiveMonitor job={null} capabilities={null} engine={engine} />
+            <AnalysisReadinessStrip fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} />
           </>
         ) : (
           <>
-            <div className="shimadzu-job-workspace">
+            <div className={'shimadzu-job-workspace state-' + job.status}>
+              <StageRail job={job} />
               <section className="shimadzu-job-bar shimadzu-reveal">
                 <div className="shimadzu-job-identity"><span className={`shimadzu-job-badge ${job.status}`}>{STATUS_LABELS[job.status] || job.status}</span><div><h2>{job.name || name}</h2><code>{job.id}</code></div></div>
                 <div className="shimadzu-job-progress"><div><span>总流程</span><strong>{progress.completed} / {progress.total || 7}</strong></div><div className="shimadzu-progress-track"><span style={{ '--progress': progress.completed / (progress.total || 7) }} /></div></div>
@@ -925,8 +975,10 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
                 </div>
               </section>
               {job.error && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code}</strong>{job.error.message}</p>{job.error.details?.stage !== undefined && <small>失败步骤：{Number(job.error.details.stage) + 1} / 7</small>}{job.error.details?.issues?.length > 0 && <ul>{job.error.details.issues.slice(0, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || '质量门禁问题'}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}</li>)}</ul>}{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />下载已完成步骤与错误证据</a>}</div></div>}
+              <WorkspaceTabs />
               <LiveMonitor job={job} capabilities={null} engine={engine} />
-              <section className="shimadzu-stage-detail shimadzu-reveal" aria-labelledby="detail-title">
+              <AnalysisSummary job={job} />
+              <section id="stage-details" className="shimadzu-stage-detail shimadzu-reveal" aria-labelledby="detail-title">
                 <div className="shimadzu-region-heading"><div><h2 id="detail-title">步骤状态与处理计数</h2><p>各步骤的运行状态、警告和待复核项会保留到最终报告。</p></div></div>
                 <ol>
                   {WORKFLOW.map(stage => {
@@ -937,7 +989,6 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
                 </ol>
               </section>
             </div>
-            <WorkflowMap job={job} />
           </>
         )}
         <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />

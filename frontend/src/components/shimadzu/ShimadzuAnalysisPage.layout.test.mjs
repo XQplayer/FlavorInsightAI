@@ -21,13 +21,13 @@ test('uses the approved scientific workbench title', () => {
   assert.match(source, /<h1>岛津 GC–MS 风味数据分析工作台<\/h1>/)
 })
 
-test('puts upload and run settings before the seven-step workflow', () => {
+test('places the workflow dock before the main setup workspace', () => {
   const setupIndex = source.indexOf('className="shimadzu-setup"')
   const workflowRenderIndex = source.lastIndexOf('<WorkflowMap job={job} />')
 
   assert.notEqual(setupIndex, -1)
   assert.notEqual(workflowRenderIndex, -1)
-  assert.ok(setupIndex < workflowRenderIndex)
+  assert.ok(workflowRenderIndex < setupIndex)
 })
 
 test('explains file readiness and disabled start conditions', () => {
@@ -70,4 +70,34 @@ test('exposes opt-in CV screening controls with a bounded decimal threshold', ()
   assert.match(source, /step="1"/)
   assert.match(source, /enableCvScreening: taskEnableCvScreening/)
   assert.match(source, /cvThreshold: taskCvThreshold/)
+})
+
+test('uses the hybrid research workbench presentation contract', () => {
+  assert.match(source, /hybrid-research-workbench-v3/)
+  assert.match(source, /shimadzu-workflow-dock/)
+  assert.match(source, /shimadzu-readiness-strip/)
+  assert.match(source, /shimadzu-stage-rail/)
+  assert.match(source, /shimadzu-workspace-tabs/)
+})
+
+test('keeps the idle state lightweight and only mounts the monitor for a job', () => {
+  assert.match(source, /\{!job \? \(/)
+  assert.match(source, /<AnalysisReadinessStrip/)
+  assert.doesNotMatch(source, /<LiveMonitor job=\{null\}/)
+  assert.match(source, /<LiveMonitor job=\{job\}/)
+})
+
+test('keeps the workflow dock singular and preserves the research utility surfaces', () => {
+  assert.equal((source.match(/<WorkflowMap job=\{job\} \/>/g) || []).length, 1)
+  assert.match(source, /<AnalysisSummary/)
+  assert.match(source, /<WorkspaceTabs/)
+  assert.match(source, /HistoryPanel/)
+  assert.match(source, /AccountPanel/)
+})
+
+test('defines responsive hybrid layout hooks', () => {
+  assert.match(styles, /\.shimadzu-workflow-dock/)
+  assert.match(styles, /\.shimadzu-stage-rail/)
+  assert.match(styles, /overflow-x:\s*auto/)
+  assert.match(styles, /@media \(max-width: 1024px\)/)
 })
