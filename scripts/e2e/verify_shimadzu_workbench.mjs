@@ -72,6 +72,10 @@ try {
   assert.equal(await page.locator('.shimadzu-stage-detail li.state-PASS, .shimadzu-stage-detail li.state-WARN, .shimadzu-stage-detail li.state-REVIEW').count(), 7)
   await page.getByRole('button', { name: '新任务' }).click()
   await settleMotion(page)
+  await page.locator('.shimadzu-input-region').waitFor()
+  await page.locator('.shimadzu-settings').waitFor()
+  assert.equal(await page.locator('.shimadzu-input-region').isVisible(), true)
+  assert.equal(await page.locator('.shimadzu-settings').isVisible(), true)
   await page.screenshot({ path: path.join(screenshots, 'shimadzu-workbench-desktop.png'), fullPage: true })
 
   await page.setViewportSize({ width: 390, height: 844 })

@@ -162,7 +162,7 @@ function AnalysisReadinessStrip({ fileReadiness, cvReadiness, engine }) {
     { label: cvReadiness.valid ? '参数已确认' : '参数需要修正', ready: cvReadiness.valid },
   ]
   return (
-    <section className="shimadzu-readiness-strip shimadzu-reveal" aria-labelledby="readiness-title">
+    <section className="shimadzu-readiness-strip" aria-labelledby="readiness-title">
       <div className="shimadzu-readiness-heading"><span className="shimadzu-readiness-mark"><Activity /></span><div><h2 id="readiness-title">分析就绪状态</h2><p>{fileReadiness.ready ? '输入文件已通过基础检查，可以开始建立任务。' : fileReadiness.message}</p></div></div>
       <div className="shimadzu-readiness-checks" role="list">
         {checks.map(check => <span key={check.label} className={check.ready ? 'ready' : ''} role="listitem"><span aria-hidden="true">{check.ready ? '✓' : '○'}</span>{check.label}</span>)}
@@ -924,7 +924,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
         {!job ? (
           <>
             <form className="shimadzu-setup" onSubmit={submit}>
-              <section className="shimadzu-input-region shimadzu-reveal" aria-labelledby="input-title">
+              <section className="shimadzu-input-region" aria-labelledby="input-title">
                 <div className="shimadzu-region-heading"><div><h2 id="input-title">准备输入文件</h2><p>正式文件和示例模板采用相同的字段结构。建议先下载示例核对内容。</p></div><span>2 个 Excel 文件</span></div>
                 <div className="shimadzu-upload-grid">
                   <FilePicker inputRef={rawInputRef} label="岛津原始工作簿" hint="包含 Peak Table、Similarity Search Results 与 Hit #" file={rawFile} onChange={setRawFile} templateHref={api.templateUrl('raw-example')} templateLabel="下载原始工作簿示例" />
@@ -933,7 +933,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
                 <div className="shimadzu-upload-note"><Upload /><span>仅接受 .xlsx，每个文件不超过 50 MB。原始文件不上传云端；活动任务会临时保存在当前浏览器，刷新或重新打开后自动恢复。页面关闭期间不会继续计算。</span></div>
               </section>
 
-              <aside className="shimadzu-settings shimadzu-reveal" aria-labelledby="settings-title">
+              <aside className="shimadzu-settings" aria-labelledby="settings-title">
                 <div className="shimadzu-region-heading"><div><h2 id="settings-title">运行设置</h2><p>分析参数依据已确认的科研规则执行。</p></div></div>
                 <label className="shimadzu-field"><span>任务名称</span><input value={name} maxLength={120} onChange={event => setName(event.target.value)} /></label>
                 <fieldset className="shimadzu-mode-field">
