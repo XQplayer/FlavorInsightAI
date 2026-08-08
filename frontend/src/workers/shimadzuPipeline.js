@@ -249,12 +249,12 @@ function stage4(stage3Data, sampleConfigs) {
   }
 }
 
-function stage5(stage4Data) {
-  const processed = processV2Statistics({ stage4Data, cvThreshold: 30 })
+function stage5(stage4Data, { enableCvScreening = true, cvThreshold = 30 } = {}) {
+  const processed = processV2Statistics({ stage4Data, cvThreshold, enableCvScreening })
   return {
     schemaVersion: 'shimadzu-v2-stage5-1', stage: V2_STAGE_DIRECTORIES[5], createdAt: new Date().toISOString(),
     ...processed, sampleConfigs: stage4Data.sampleConfigs,
-    qcRows: [['CV阈值', 'PASS', 30], ['样本标准差', 'PASS', 'STDEV.S'], ['OAV', 'PASS', '未执行']], issues: [],
+    qcRows: [['CV筛查', 'PASS', enableCvScreening ? '已执行' : '未执行'], ['CV阈值', 'PASS', cvThreshold], ['样本标准差', 'PASS', 'STDEV.S'], ['OAV', 'PASS', '未执行']], issues: [],
   }
 }
 
@@ -296,27 +296,31 @@ function workbookSpecs(index, data) {
     { file: '04_全样品_峰面积与浓度.xlsx', sheets: [table('峰面积与浓度', data.table)] },
     { file: '04_半定量计算报告.xlsx', sheets: [{ name: '计算说明', columns: ['项目', '内容'], rows: [{ 项目: '响应因子', 内容: 1 }, { 项目: 'OAV', 内容: '未执行' }, { 项目: '样品数', 内容: data.counts.samples }] }, { name: '浓度状态', columns: ['样品', 'CAS', '状态', '浓度'], rows: data.concentrationStatus.map(entry => ({ 样品: entry.sampleName, CAS: entry.cas, 状态: entry.status, 浓度: entry.concentration })) }] },
   ]
-  if (index === 5) return [
+  if (index === 5) {
+    const cvLabel = data.cvScreeningExecuted ? `CV${data.cvThreshold}筛选后` : 'CV筛查未执行'
+    return [
     { file: '05_01_三个平行浓度.xlsx', sheets: [table('三个平行浓度', data.triplicateBefore)] },
     { file: '05_02_Mean浓度与SD.xlsx', sheets: [table('Mean浓度与SD', data.meanSdBefore)] },
-    { file: '05_03_CV30筛选后三个平行浓度.xlsx', sheets: [table('CV30筛选后', data.triplicateAfter)] },
-    { file: '05_04_CV30筛选后Mean浓度与SD.xlsx', sheets: [table('CV30筛选后Mean与SD', data.meanSdAfter)] },
+    { file: `05_03_${cvLabel}三个平行浓度.xlsx`, sheets: [table(cvLabel, data.triplicateAfter)] },
+    { file: `05_04_${cvLabel}Mean浓度与SD.xlsx`, sheets: [table(`${cvLabel}Mean与SD`, data.meanSdAfter)] },
     { file: '05_05_CV筛选报告.xlsx', sheets: [{ name: 'CV筛选报告', columns: ['CAS', '样品组', 'CV', '状态'], rows: data.groupStatistics.map(entry => ({ CAS: entry.cas, 样品组: entry.sampleGroup, CV: entry.cv, 状态: entry.status })) }] },
     { file: '05_06_CAS清单.xlsx', sheets: [table('全部筛查后CAS', data.allScreenedCas), table('最终分析CAS', data.finalAnalysisCas)] },
     { file: '05_07_QC报告.xlsx', sheets: [{ name: 'QC', columns: ['检查项', '状态', '结果'], rows: data.qcRows.map(row => ({ 检查项: row[0], 状态: row[1], 结果: row[2] })) }] },
-  ]
+    ]
+  }
   return data.matrices.flatMap(matrix => {
     const prefix = matrix.matrixName
+    const cvLabel = data.cvScreeningExecuted ? 'CV筛选后' : 'CV筛查未执行'
     return [
       { file: `${prefix}/${prefix}_CV筛选前_三个平行浓度.xlsx`, sheets: [table('浓度', matrix.beforeTriplicate)] },
       { file: `${prefix}/${prefix}_CV筛选前_Mean浓度.xlsx`, sheets: [table('浓度', matrix.beforeMean)] },
-      { file: `${prefix}/${prefix}_CV筛选后_三个平行浓度.xlsx`, sheets: [table('浓度', matrix.afterTriplicate)] },
-      { file: `${prefix}/${prefix}_CV筛选后_Mean浓度.xlsx`, sheets: [table('浓度', matrix.afterMean)] },
+      { file: `${prefix}/${prefix}_${cvLabel}_三个平行浓度.xlsx`, sheets: [table('浓度', matrix.afterTriplicate)] },
+      { file: `${prefix}/${prefix}_${cvLabel}_Mean浓度.xlsx`, sheets: [table('浓度', matrix.afterMean)] },
     ]
   })
 }
 
-export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal }) {
+export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30 }) {
   const raw = rawBytes instanceof Uint8Array ? rawBytes : new Uint8Array(rawBytes)
   const samples = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes)
   const zip = new JSZip()
@@ -327,7 +331,7 @@ export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawNam
     () => stage2(stages[1]),
     () => stage3(stages[2], stages[0].samples),
     () => stage4(stages[3], stages[0].samples),
-    () => stage5(stages[4]),
+    () => stage5(stages[4], { enableCvScreening, cvThreshold }),
     () => stage6(stages[5]),
   ]
   const manifests = []

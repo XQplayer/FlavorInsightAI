@@ -30,6 +30,20 @@ test('transfers workbook buffers and resolves the completed archive', async () =
   assert.equal(FakeWorker.latest.terminated, true)
 })
 
+test('sends CV screening settings with the browser start request', async () => {
+  const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
+  const pending = client.run({
+    rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1),
+    enableCvScreening: false, cvThreshold: 12.5,
+  })
+  const start = FakeWorker.latest.messages[0].message
+  assert.equal(start.enableCvScreening, false)
+  assert.equal(start.cvThreshold, 12.5)
+  FakeWorker.latest.emit({ type: 'complete', fileName: 'result.zip', archiveBytes: new ArrayBuffer(0), archiveSha256: 'abc' })
+  await pending
+  client.dispose()
+})
+
 test('cancel rejects an active browser analysis', async () => {
   const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
   const pending = client.run({ rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1) })

@@ -60,3 +60,21 @@ test('runs the public example through browser stages 0-6 without OAV', async () 
   assert.ok(paths.includes('完整性验证/v2-completeness-verification.json'))
   assert.equal(paths.some(path => /OAV/i.test(path)), false)
 })
+
+test('records disabled CV screening without filtering the Stage 5 results', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, rawName: 'raw.xlsx', sampleName: 'samples.xlsx',
+    name: 'CV optional', enableCvScreening: false, cvThreshold: 12.5,
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const stage5Path = Object.keys(zip.files).find(path => path.startsWith('05_') && path.endsWith('/data.json'))
+  const stage5 = JSON.parse(await zip.file(stage5Path).async('string'))
+  assert.equal(stage5.cvScreeningExecuted, false)
+  assert.equal(stage5.cvThreshold, 12.5)
+  assert.equal(stage5.counts.filteredGroups, 0)
+  assert.equal(stage5.qcRows.some(row => row[0] === 'CV筛查' && row[2] === '未执行'), true)
+})

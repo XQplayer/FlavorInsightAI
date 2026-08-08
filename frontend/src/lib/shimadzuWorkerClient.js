@@ -51,12 +51,12 @@ export function createShimadzuWorkerClient({
   }
 
   return {
-    run({ rawBytes, sampleBytes, rawName, sampleName, name, mode = 'continuous', resumeFromStage = 0, onEvent = () => {} }) {
+    run({ rawBytes, sampleBytes, rawName, sampleName, name, mode = 'continuous', resumeFromStage = 0, enableCvScreening = true, cvThreshold = 30, onEvent = () => {} }) {
       if (active) return Promise.reject(new Error('ANALYSIS_ALREADY_RUNNING'))
       const instance = ensureWorker()
       return new Promise((resolve, reject) => {
         active = { resolve, reject, onEvent }
-        instance.postMessage({ type: 'start', rawBytes, sampleBytes, rawName, sampleName, name, mode, resumeFromStage }, [rawBytes, sampleBytes])
+        instance.postMessage({ type: 'start', rawBytes, sampleBytes, rawName, sampleName, name, mode, resumeFromStage, enableCvScreening, cvThreshold }, [rawBytes, sampleBytes])
       })
     },
     cancel() {
