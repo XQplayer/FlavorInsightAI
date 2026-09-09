@@ -44,6 +44,15 @@ test('sends CV screening settings with the browser start request', async () => {
   client.dispose()
 })
 
+test('sends the opt-in classification setting with the browser start request', async () => {
+  const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
+  const pending = client.run({ rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1), enableClassification: true })
+  assert.equal(FakeWorker.latest.messages[0].message.enableClassification, true)
+  FakeWorker.latest.emit({ type: 'complete', fileName: 'result.zip', archiveBytes: new ArrayBuffer(0), archiveSha256: 'abc' })
+  await pending
+  client.dispose()
+})
+
 test('cancel rejects an active browser analysis', async () => {
   const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
   const pending = client.run({ rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1) })

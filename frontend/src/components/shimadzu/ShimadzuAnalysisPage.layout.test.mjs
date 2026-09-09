@@ -17,17 +17,54 @@ test('keeps the live browser engine status in the hero', () => {
   assert.match(source, /engine\.detail/)
 })
 
-test('uses the approved scientific workbench title', () => {
-  assert.match(source, /<h1>岛津 GC–MS 风味数据分析工作台<\/h1>/)
+test('uses the approved Shimadzu data control deck shell', () => {
+  assert.match(source, /data-ui-revision="data-control-deck-v4"/)
+  assert.match(source, /className="shimadzu-deck-topbar"/)
+  assert.match(source, /className="shimadzu-home-link"/)
+  assert.match(source, />返回首页</)
+  assert.match(source, /<h1>岛津风味数据分析控制舱<\/h1>/)
+  assert.doesNotMatch(source, /className="science-nav search-science-nav"/)
+  assert.doesNotMatch(source, /className="science-nav-links"/)
+  assert.doesNotMatch(source, /className="science-language"/)
 })
 
-test('places the workflow dock before the main setup workspace', () => {
+test('places the setup workspace before the workflow dock', () => {
   const setupIndex = source.indexOf('className="shimadzu-setup"')
   const workflowRenderIndex = source.lastIndexOf('<WorkflowMap job={job} />')
 
   assert.notEqual(setupIndex, -1)
   assert.notEqual(workflowRenderIndex, -1)
-  assert.ok(workflowRenderIndex < setupIndex)
+  assert.ok(setupIndex < workflowRenderIndex)
+})
+
+test('moves account and task access into the control deck workspace', () => {
+  assert.doesNotMatch(source, /原始峰表 → 化合物筛查 → 平行补建 → 半定量 → 统计与作图矩阵/)
+  assert.match(source, /className="shimadzu-deck-utility(?:\s|")/)
+  assert.match(source, /href="#task-workbench"/)
+  assert.match(source, /href="#account-panel"/)
+  assert.match(source, /<AccountPanel/)
+  assert.match(source, /<HistoryPanel/)
+})
+
+test('provides an accessible persistent light and dark theme switch', () => {
+  assert.match(source, /shimadzu-analysis-theme/)
+  assert.match(source, /localStorage\.getItem\(THEME_STORAGE_KEY\)/)
+  assert.match(source, /localStorage\.setItem\(THEME_STORAGE_KEY, theme\)/)
+  assert.match(source, /data-theme=\{theme\}/)
+  assert.match(source, /className="shimadzu-theme-toggle"/)
+  assert.match(source, /aria-pressed=\{theme === 'light'\}/)
+  assert.match(source, /切换到浅色主题/)
+  assert.match(source, /切换到深色主题/)
+})
+
+test('composes an explicit light control deck instead of mechanically inverting dark mode', () => {
+  assert.match(styles, /\.shimadzu-page\[data-theme='light'\]/)
+  assert.match(styles, /--sz-deck-bg:\s*#f3f6fb/)
+  assert.match(styles, /--sz-deck-panel:\s*#ffffff/)
+  assert.match(styles, /--sz-deck-text:\s*#162238/)
+  assert.match(styles, /color-scheme:\s*light/)
+  assert.match(styles, /\.shimadzu-page\[data-theme='light'\] \.shimadzu-monitor/)
+  assert.match(styles, /\.shimadzu-theme-toggle:focus-visible/)
 })
 
 test('explains file readiness and disabled start conditions', () => {
@@ -72,26 +109,35 @@ test('exposes opt-in CV screening controls with a bounded decimal threshold', ()
   assert.match(source, /cvThreshold: taskCvThreshold/)
 })
 
-test('uses the hybrid research workbench presentation contract', () => {
-  assert.match(source, /hybrid-research-workbench-v3/)
+test('keeps the scientific workflow features inside the control deck presentation', () => {
+  assert.match(source, /data-control-deck-v4/)
   assert.match(source, /shimadzu-workflow-dock/)
   assert.match(source, /shimadzu-readiness-strip/)
   assert.match(source, /shimadzu-stage-rail/)
   assert.match(source, /shimadzu-workspace-tabs/)
 })
 
-test('keeps the full workflow description and reserves space below the fixed navigation', () => {
-  assert.match(styles, /\.shimadzu-header \{ padding-top: 64px; \}/)
+test('exposes an opt-in PubChem SMARTS classification control', () => {
+  assert.match(source, /enableClassification/)
+  assert.match(source, /启用 CAS 结构分类/)
+  assert.match(source, /PubChem SMILES/)
+  assert.match(source, /enableClassification: taskEnableClassification/)
+})
+
+test('keeps the full workflow description below the compact control deck header', () => {
+  assert.doesNotMatch(styles, /\.shimadzu-header \{ padding-top: 64px; \}/)
   assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-section-intro p \{ display: block;/)
   assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-flow-node > small \{ display: block;/)
 })
 
-test('densifies the desktop idle setup without changing the mobile stack', () => {
+test('uses a compact desktop split setup while preserving the mobile stack', () => {
   assert.match(styles, /@media \(min-width: 1101px\)/)
-  assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: minmax\(0, 1fr\); grid-template-areas: "input" "settings"; \}/)
-  assert.match(styles, /\.shimadzu-settings \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
-  assert.match(styles, /@media \(max-width: 820px\)/)
+  assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: minmax\(0, 1\.42fr\) minmax\(330px, \.78fr\); grid-template-areas: "input settings"; gap: 16px; \}/)
   assert.match(styles, /\.shimadzu-settings \{ display: block; \}/)
+  assert.match(styles, /\.shimadzu-settings \.shimadzu-mode-field \{ display: grid; grid-template-columns: 1fr 1fr;/)
+  assert.match(styles, /\.shimadzu-settings \.shimadzu-cv-field \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 112px;/)
+  assert.match(styles, /@media \(max-width: 820px\)/)
+  assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: 1fr; grid-template-areas: "input" "settings"; \}/)
 })
 
 test('provides a task desk entry and exposes stored failure context', () => {
@@ -102,16 +148,16 @@ test('provides a task desk entry and exposes stored failure context', () => {
   assert.match(source, /shimadzu-history-error/)
 })
 
-test('keeps sticky work areas below the fixed navigation', () => {
-  assert.match(styles, /\.shimadzu-workflow-dock \{ position: sticky; top: 74px;/)
-  assert.match(styles, /\.shimadzu-stage-rail \{ position: sticky; top: 150px;/)
-  assert.match(styles, /scroll-margin-top: 82px/)
+test('keeps sticky work areas below the compact control deck top bar', () => {
+  assert.match(styles, /\.shimadzu-workflow-dock \{ position: sticky; top: 12px;/)
+  assert.match(styles, /\.shimadzu-stage-rail \{ position: sticky; top: 18px;/)
+  assert.match(styles, /scroll-margin-top: 24px/)
 })
 
 test('keeps the idle state lightweight and only mounts the monitor for a job', () => {
   assert.match(source, /\{!job \? \(/)
   assert.match(source, /<AnalysisReadinessStrip/)
-  assert.doesNotMatch(source, /<LiveMonitor job=\{null\}/)
+  assert.match(source, /<LiveMonitor job=\{null\}/)
   assert.match(source, /<LiveMonitor job=\{job\}/)
 })
 
@@ -123,9 +169,44 @@ test('keeps the workflow dock singular and preserves the research utility surfac
   assert.match(source, /AccountPanel/)
 })
 
-test('defines responsive hybrid layout hooks', () => {
-  assert.match(styles, /\.shimadzu-workflow-dock/)
-  assert.match(styles, /\.shimadzu-stage-rail/)
-  assert.match(styles, /overflow-x:\s*auto/)
+test('defines the dark control deck visual system and desktop work zones', () => {
+  assert.match(styles, /--sz-deck-bg:\s*#090f1a/)
+  assert.match(styles, /--sz-deck-panel:\s*#111a29/)
+  assert.match(styles, /\.shimadzu-deck-topbar/)
+  assert.match(styles, /\.shimadzu-deck-utility-link/)
+  assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: minmax\(0, 1\.42fr\) minmax\(330px, \.72fr\);/)
+  assert.match(styles, /\.shimadzu-overview-grid \{[\s\S]*grid-template-columns: minmax\(0, 1\.18fr\) minmax\(360px, \.82fr\);/)
+  assert.match(styles, /\.shimadzu-overview-grid \{[\s\S]*align-items: stretch;/)
+})
+
+test('defines explicit control deck treatments for every task terminal state', () => {
+  assert.match(styles, /\.shimadzu-job-workspace\.state-running/)
+  assert.match(styles, /\.shimadzu-job-workspace\.state-waiting_review/)
+  assert.match(styles, /\.shimadzu-job-workspace\.state-failed/)
+  assert.match(styles, /\.shimadzu-job-workspace\.state-complete/)
+  assert.match(styles, /\.shimadzu-inline-error/)
+  assert.match(source, /下载已完成步骤与错误证据/)
+})
+
+test('keeps the minimal deck shell and work zones usable at tablet and mobile widths', () => {
   assert.match(styles, /@media \(max-width: 1024px\)/)
+  assert.match(styles, /@media \(max-width: 768px\)/)
+  assert.match(styles, /@media \(max-width: 420px\)/)
+  assert.match(styles, /\.shimadzu-deck-topbar \{ width: calc\(100% - 24px\);/)
+  assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: 1fr;/)
+  assert.match(styles, /\.shimadzu-flow-track \{ overflow-x: auto;/)
+})
+
+test('keeps the account entry and both example downloads visible in the compact setup', () => {
+  assert.match(source, /href="#account-panel"/)
+  assert.match(source, /账号登录|账号管理/)
+  assert.match(source, /templateHref=\{api\.templateUrl\('raw-example'\)\}/)
+  assert.match(source, /templateHref=\{api\.templateUrl\('sample-info'\)\}/)
+  assert.match(source, /下载原始工作簿示例/)
+  assert.match(source, /下载样品信息模板/)
+})
+
+test('uses compact desktop upload cards without hiding template links', () => {
+  assert.match(styles, /\.shimadzu-file-picker \{[\s\S]*?min-height: 96px;/)
+  assert.match(styles, /\.shimadzu-template-link \{[\s\S]*?display: flex;/)
 })

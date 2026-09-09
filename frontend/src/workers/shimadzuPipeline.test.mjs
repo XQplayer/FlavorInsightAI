@@ -78,3 +78,87 @@ test('records disabled CV screening without filtering the Stage 5 results', asyn
   assert.equal(stage5.counts.filteredGroups, 0)
   assert.equal(stage5.qcRows.some(row => row[0] === 'CV筛查' && row[2] === '未执行'), true)
 })
+
+test('adds CAS-resolved identity fields to the enabled Stage 4 workbook export', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, rawName: 'raw.xlsx', sampleName: 'samples.xlsx', name: 'classification enabled',
+    enableClassification: true,
+    enrichCasValues: async casValues => new Map(casValues.map(cas => [cas, { 中文名: '乙酸乙酯', 常用英文名: 'Ethyl acetate', 主要官能团: 'carboxylic acid ester', 化合物分类: '酯类', FEMA编号: '2414', FEMA风味描述: 'Aromatic', 'FlavorDB2 CID': '8857', 'FlavorDB2风味描述': 'fruity' }])),
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const workbookBytes = await zip.file('04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx').async('uint8array')
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const sheet = readWorkbookSheets(workbookBytes)[0]
+
+  assert.equal(sheet.rows[0].cells.includes('CID'), false)
+  assert.equal(sheet.rows[0].cells.includes('主要官能团'), true)
+  assert.equal(sheet.rows[0].cells.includes('FlavorDB2风味描述'), true)
+  assert.equal(sheet.rows[1].cells.includes('乙酸乙酯'), true)
+})
+
+test('only adds identity fields to the Stage 4 semi-quantification workbook', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, rawName: 'raw.xlsx', sampleName: 'samples.xlsx', name: 'Stage 4 only classification',
+    enableClassification: true,
+    enrichCasValues: async casValues => new Map(casValues.map(cas => [cas, { 中文名: '乙酸乙酯', 常用英文名: 'Ethyl acetate', 主要官能团: 'carboxylic acid ester', 化合物分类: '酯类', FEMA编号: '2414', FEMA风味描述: 'Aromatic', 'FlavorDB2 CID': '8857', 'FlavorDB2风味描述': 'fruity' }])),
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const stage3Path = Object.keys(zip.files).find(path => path.startsWith('03_平行峰面积处理/结果清单/') && path.endsWith('_平行峰面积处理.xlsx'))
+  assert.ok(stage3Path)
+  const stage3Bytes = await zip.file(stage3Path).async('uint8array')
+  const stage4Bytes = await zip.file('04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx').async('uint8array')
+  const stage3Sheet = readWorkbookSheets(stage3Bytes)[0]
+  const stage4Sheet = readWorkbookSheets(stage4Bytes)[0]
+  assert.equal(stage3Sheet.rows[0].cells.includes('FlavorDB2 CID'), false)
+  assert.equal(stage4Sheet.rows[0].cells.includes('FlavorDB2 CID'), true)
+})
+
+test('enriches Stage 4 identities and preserves them through Stage 5 and Stage 6', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const expectedColumns = ['中文名', '常用英文名', '主要官能团', '化合物分类', 'FEMA编号', 'FEMA风味描述', 'FlavorDB2 CID', 'FlavorDB2风味描述']
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, rawName: 'raw.xlsx', sampleName: 'samples.xlsx', name: 'identity enrichment',
+    enableClassification: true,
+    enrichCasValues: async casValues => new Map(casValues.map(cas => [cas, {
+      中文名: '乙酸乙酯', 常用英文名: 'Ethyl acetate', 主要官能团: 'carboxylic acid ester', 化合物分类: '酯类',
+      FEMA编号: '2414', FEMA风味描述: 'Aromatic', 'FlavorDB2 CID': '8857', 'FlavorDB2风味描述': 'fruity',
+    }])),
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const paths = [
+    '04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx',
+    '05_统计_CV_CAS与QC/05_02_Mean浓度与SD.xlsx',
+    Object.keys(zip.files).find(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('_CV筛选前_Mean浓度.xlsx')),
+  ]
+  for (const path of paths) {
+    assert.ok(path)
+    const bytes = await zip.file(path).async('uint8array')
+    const header = readWorkbookSheets(bytes)[0].rows[0].cells
+    assert.deepEqual(expectedColumns.map(column => header.includes(column)), expectedColumns.map(() => true))
+  }
+})
+
+test('does not add identity columns to later stages when classification is disabled', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({ rawBytes, sampleBytes, enableClassification: false })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const bytes = await zip.file('05_统计_CV_CAS与QC/05_02_Mean浓度与SD.xlsx').async('uint8array')
+  assert.equal(readWorkbookSheets(bytes)[0].rows[0].cells.includes('FlavorDB2 CID'), false)
+})

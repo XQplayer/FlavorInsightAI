@@ -45,6 +45,7 @@ export function splitV2Matrices({ stage5Data }) {
   const afterTriplicate = requireTable(stage5Data, "triplicateAfter");
   const afterMean = requireTable(stage5Data, "meanSdAfter");
   assertSameCasOrder([beforeTriplicate, beforeMean, afterTriplicate, afterMean]);
+  const identityColumns = V2_COMPOUND_IDENTITY_COLUMNS.filter(column => beforeTriplicate.columns.includes(column));
 
   const matrixOrder = [];
   for (const sample of sampleOrder) {
@@ -56,8 +57,8 @@ export function splitV2Matrices({ stage5Data }) {
     const sampleNames = sampleOrder.filter((sample) => configBySample.get(sample).matrixName === matrixName);
     const groupNames = groupOrder.filter((group) => sampleNames.some((sample) => configBySample.get(sample).sampleGroup === group));
     if (sampleNames.length === 0 || groupNames.length === 0) throw fail("EMPTY_MATRIX", { matrixName });
-    const triplicateColumns = ["CAS #", "Name", ...sampleNames.map((sample) => `${sample}（μg/mL）`)];
-    const meanColumns = ["CAS #", "Name", ...groupNames.map((group) => `${group} Mean（μg/mL）`)];
+    const triplicateColumns = ["CAS #", "Name", ...identityColumns, ...sampleNames.map((sample) => `${sample}（μg/mL）`)];
+    const meanColumns = ["CAS #", "Name", ...identityColumns, ...groupNames.map((group) => `${group} Mean（μg/mL）`)];
     return {
       matrixName,
       sampleNames,
@@ -82,3 +83,4 @@ export function splitV2Matrices({ stage5Data }) {
     },
   };
 }
+import { V2_COMPOUND_IDENTITY_COLUMNS } from './v2-identity-columns.mjs';

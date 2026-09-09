@@ -9,6 +9,8 @@ import { processV2ReplicateGroup } from '../shimadzu-core/v2-replicate-area-stag
 import { processV2SemiquantBatch } from '../shimadzu-core/v2-semiquant-stage.mjs'
 import { processV2Statistics } from '../shimadzu-core/v2-statistics-stage.mjs'
 import { splitV2Matrices } from '../shimadzu-core/v2-matrix-split-stage.mjs'
+import { shimadzuCompoundEnrichmentService } from '../lib/shimadzuCompoundEnrichment.js'
+import { V2_COMPOUND_IDENTITY_COLUMNS } from '../shimadzu-core/v2-identity-columns.mjs'
 import { readSampleConfiguration, readWorkbookSheets, writeTableWorkbook } from './shimadzuWorkbook.js'
 
 export const V2_STAGE_DIRECTORIES = Object.freeze([
@@ -39,6 +41,17 @@ function table(name, source) {
 
 function recordTable(name, records, columns = HIT1_OUTPUT_COLUMNS) {
   return { name, columns: [...columns], rows: clone(records ?? []) }
+}
+
+async function enrichStage4Data(data, enrichCasValues) {
+  const enrichments = await enrichCasValues(data.table.rows.map(row => row['CAS #']))
+  return {
+    ...data,
+    table: {
+      columns: ['CAS #', ...V2_COMPOUND_IDENTITY_COLUMNS, ...data.table.columns.filter(column => column !== 'CAS #')],
+      rows: data.table.rows.map(row => ({ ...row, ...(enrichments.get(String(row['CAS #'] || '').trim()) || Object.fromEntries(V2_COMPOUND_IDENTITY_COLUMNS.map(column => [column, 'NA']))) })),
+    },
+  }
 }
 
 async function addWorkbook(zip, path, sheets, outputs) {
@@ -320,7 +333,7 @@ function workbookSpecs(index, data) {
   })
 }
 
-export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30 }) {
+export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues }) {
   const raw = rawBytes instanceof Uint8Array ? rawBytes : new Uint8Array(rawBytes)
   const samples = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes)
   const zip = new JSZip()
@@ -339,7 +352,8 @@ export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawNam
     try {
       assertNotCancelled(signal)
     onEvent({ type: 'stage-start', stage: index, progress: Math.round(index / 7 * 100), message: V2_STAGE_DIRECTORIES[index] })
-    const data = builders[index]()
+    const builtData = builders[index]()
+    const data = enableClassification && index === 4 ? await enrichStage4Data(builtData, enrichCasValues) : builtData
     const manifest = await addStage(zip, index, data, workbookSpecs(index, data))
     if (!manifest.canAdvance) {
       throw await createPartialFailureArchive({

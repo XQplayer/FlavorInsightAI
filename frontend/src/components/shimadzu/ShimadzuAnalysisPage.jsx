@@ -17,16 +17,17 @@ import {
   Gauge,
   Layers3,
   Loader2,
-  Network,
   Play,
   RotateCcw,
   ShieldCheck,
+  Sun,
   TerminalSquare,
   Upload,
   UserCheck,
   UserRound,
   LogOut,
   History,
+  Moon,
 } from 'lucide-react'
 import { createShimadzuApi, getEnginePresentation, getMonitorStageIndex, getStageProgress } from '../../lib/shimadzuApi'
 import { assertWorkbookFile, browserEnginePresentation } from '../../lib/shimadzuBrowserContract'
@@ -39,6 +40,7 @@ import './ShimadzuAnalysisPage.css'
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 const API_BASE = (import.meta.env.VITE_FEMA_API_URL || 'http://127.0.0.1:8787').replace(/\/$/, '')
+const THEME_STORAGE_KEY = 'shimadzu-analysis-theme'
 
 const WORKFLOW = [
   { index: 0, short: '输入配置', label: '输入配置与清单', description: '核对工作表、样品分组、内标参数与名称映射。', work: ['读取原始工作簿与样品信息表', '匹配样品名称和三平行分组', '复算内标终浓度并建立输入清单'] },
@@ -122,13 +124,13 @@ function AccountPanel({ cloud, session, profile, loading, error, onRefresh }) {
   }
 
   if (!cloud.configured) {
-    return <section className="shimadzu-account local"><ShieldCheck /><div><strong>本地隐私模式</strong><p>当前构建未连接云端账号；活动任务可在同一浏览器恢复，完成后请立即下载结果。</p></div></section>
+    return <section id="account-panel" className="shimadzu-account local"><ShieldCheck /><div><strong>本地隐私模式</strong><p>当前构建未连接云端账号；活动任务可在同一浏览器恢复，完成后请立即下载结果。</p></div></section>
   }
 
-  if (loading) return <section className="shimadzu-account"><Loader2 className="spin" /><div><strong>正在核验账号</strong><p>读取登录会话与审批状态。</p></div></section>
+  if (loading) return <section id="account-panel" className="shimadzu-account"><Loader2 className="spin" /><div><strong>正在核验账号</strong><p>读取登录会话与审批状态。</p></div></section>
 
   if (!session) return (
-    <section className="shimadzu-account shimadzu-reveal" aria-labelledby="account-title">
+    <section id="account-panel" className="shimadzu-account shimadzu-reveal" aria-labelledby="account-title">
       <div className="shimadzu-account-copy"><UserRound /><div><h2 id="account-title">小组账号</h2><p>原始工作簿不会上传。登录并通过管理员审批后，可计算并保留结果 ZIP 7 天、任务记录 90 天。</p></div></div>
       <form onSubmit={authenticate} className="shimadzu-auth-form">
         {registering && <input aria-label="姓名" placeholder="姓名或小组内称呼" value={displayName} onChange={event => setDisplayName(event.target.value)} required />}
@@ -143,7 +145,7 @@ function AccountPanel({ cloud, session, profile, loading, error, onRefresh }) {
   )
 
   return (
-    <section className="shimadzu-account signed-in shimadzu-reveal" aria-labelledby="account-title">
+    <section id="account-panel" className="shimadzu-account signed-in shimadzu-reveal" aria-labelledby="account-title">
       <div className="shimadzu-account-copy"><UserRound /><div><h2 id="account-title">{profile?.display_name || session.user.email}</h2><p>{session.user.email} · {APPROVAL_LABELS[profile?.approval_status] || '正在建立审批档案'}</p></div></div>
       <span className={`shimadzu-approval state-${profile?.approval_status || 'pending'}`}>{profile?.is_admin ? '管理员 · ' : ''}{APPROVAL_LABELS[profile?.approval_status] || '待确认'}</span>
       <button className="shimadzu-signout" type="button" onClick={() => cloud.signOut()}><LogOut />退出</button>
@@ -188,7 +190,7 @@ function WorkspaceTabs() {
 }
 
 function TaskDeskEntry({ count }) {
-  return <a className="shimadzu-task-desk-entry" href="#task-workbench"><span className="shimadzu-task-desk-icon"><History /></span><span><strong>任务台</strong><small>查看历史任务、下载完成结果或定位失败原因</small></span><b>{count ? `${count} 个任务` : '暂无历史任务'}</b><ChevronRight aria-hidden="true" /></a>
+  return <a className="shimadzu-deck-utility-link" href="#task-workbench"><History aria-hidden="true" /><span>任务台</span>{count > 0 && <b>{count}</b>}</a>
 }
 
 function HistoryPanelLegacy({ jobs, interruptedJobIds, onDownload, onMarkInterrupted }) {
@@ -351,7 +353,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride }) {
           ? '流程已在异常节点停止'
           : `正在执行：${stage.label}`
   return (
-    <section id="monitor-overview" className={'shimadzu-monitor shimadzu-reveal state-' + monitorState} aria-labelledby="monitor-title">
+    <section id="monitor-overview" className={'shimadzu-monitor' + (job ? ' shimadzu-reveal' : '') + ' state-' + monitorState} aria-labelledby="monitor-title">
       <div className="shimadzu-monitor-toolbar">
         <div className="shimadzu-monitor-title" role="status" aria-live="polite">
           <span className="shimadzu-live-dot" />
@@ -390,7 +392,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride }) {
   )
 }
 
-export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, setInterfaceLanguage }) {
+export default function ShimadzuAnalysisPage({ onHome }) {
   const api = useMemo(() => createShimadzuApi(API_BASE), [])
   const cloud = useMemo(() => createShimadzuCloud(supabase), [])
   const taskStore = useMemo(() => createShimadzuTaskStore(), [])
@@ -408,12 +410,20 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   const resumeFromStageRef = useRef(0)
   const restoreScopeRef = useRef('')
   const [reducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [theme, setTheme] = useState(() => {
+    try {
+      return window.localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'
+    } catch {
+      return 'dark'
+    }
+  })
   const [rawFile, setRawFile] = useState(null)
   const [samplesFile, setSamplesFile] = useState(null)
   const [name, setName] = useState('岛津气质分析')
   const [mode, setMode] = useState('continuous')
   const [enableCvScreening, setEnableCvScreening] = useState(false)
   const [cvThreshold, setCvThreshold] = useState('30')
+  const [enableClassification, setEnableClassification] = useState(false)
   const [job, setJob] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -425,6 +435,14 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   const [activeTaskId, setActiveTaskId] = useState('')
   const [recoveryChecked, setRecoveryChecked] = useState(false)
   const [recoveryNotice, setRecoveryNotice] = useState('')
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch {
+      // Theme switching remains available even when browser storage is blocked.
+    }
+  }, [theme])
 
   const refreshCloud = async (knownSession = undefined) => {
     if (!cloud.configured) return
@@ -589,6 +607,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   const runTask = async (task, { restored = false } = {}) => {
     const taskEnableCvScreening = typeof task.enableCvScreening === 'boolean' ? task.enableCvScreening : true
     const taskCvThreshold = Number.isFinite(Number(task.cvThreshold)) ? Number(task.cvThreshold) : 30
+    const taskEnableClassification = task.enableClassification === true
     setSubmitting(true)
     setError('')
     activeJobIdRef.current = task.id
@@ -602,6 +621,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
     setMode(task.mode)
     setEnableCvScreening(taskEnableCvScreening)
     setCvThreshold(String(taskCvThreshold))
+    setEnableClassification(taskEnableClassification)
     setJob(jobFromStoredTask(task, 'running'))
     if (restored) setRecoveryNotice('已从当前浏览器恢复任务，正在重新验证已完成步骤。')
     try {
@@ -614,6 +634,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
         mode: task.mode,
         enableCvScreening: taskEnableCvScreening,
         cvThreshold: taskCvThreshold,
+        enableClassification: taskEnableClassification,
         resumeFromStage: resumeFromStageRef.current,
         onEvent: handleWorkerEvent,
       })
@@ -708,9 +729,10 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
       const [rawBytes, sampleBytes] = await Promise.all([rawFile.arrayBuffer(), samplesFile.arrayBuffer()])
       const taskEnableCvScreening = enableCvScreening
       const taskCvThreshold = cvReadiness.threshold ?? 30
+      const taskEnableClassification = enableClassification
       const task = {
         id: crypto.randomUUID(), scope, userId: session?.user?.id || '', name: name.trim() || '岛津气质分析', mode,
-        enableCvScreening: taskEnableCvScreening, cvThreshold: taskCvThreshold,
+        enableCvScreening: taskEnableCvScreening, cvThreshold: taskCvThreshold, enableClassification: taskEnableClassification,
         status: 'running', nextStage: 0, stageSummary: [], rawName: rawFile.name, sampleName: samplesFile.name,
         rawSize: rawFile.size, sampleSize: samplesFile.size, rawBytes, sampleBytes,
       }
@@ -721,6 +743,7 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
             raw: { name: rawFile.name, size: rawFile.size },
             sample_info: { name: samplesFile.name, size: samplesFile.size },
             cv: { enableCvScreening: taskEnableCvScreening, threshold: taskCvThreshold },
+            classification: { enabled: taskEnableClassification, source: 'PubChem SMARTS' },
           },
         })
         cloudJobId = task.id
@@ -757,8 +780,10 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
       setMode(task.mode)
       const taskEnableCvScreening = typeof task.enableCvScreening === 'boolean' ? task.enableCvScreening : true
       const taskCvThreshold = Number.isFinite(Number(task.cvThreshold)) ? Number(task.cvThreshold) : 30
+      const taskEnableClassification = task.enableClassification === true
       setEnableCvScreening(taskEnableCvScreening)
       setCvThreshold(String(taskCvThreshold))
+      setEnableClassification(taskEnableClassification)
       if (task.status === 'failed') {
         const restoredJob = jobFromStoredTask(task, 'failed')
         if (task.partialArchiveBytes) {
@@ -891,30 +916,49 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
   }
 
   return (
-    <div ref={pageRef} className="shimadzu-page" data-ui-revision="hybrid-research-workbench-v3" data-motion={reducedMotion ? 'reduced' : 'full'}>
+    <div ref={pageRef} className="shimadzu-page" data-ui-revision="data-control-deck-v4" data-design-seed="888a79f2" data-theme={theme} data-motion={reducedMotion ? 'reduced' : 'full'}>
+      {/*
+        THESIS: 科研分析控制舱，以任务、状态和证据为首屏主角，拒绝全站导航挤占工作区。
+        OWN-WORLD: 深海军蓝操作面、冷蓝动作、青绿通过、红色失败，边框承担层级。
+        STORY: 用户准备文件、确认口径、运行七步流程、观察证据并下载可复核结果。
+        FIRST VIEWPORT: 最小顶栏，输入与设置并列，流程带连接监控与任务台。
+        FORM: 用户锁定 C 数据控制舱；Operate 模式；seed 888a79f2。
+        FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+      */}
       <header className="shimadzu-header">
-        <nav className="science-nav search-science-nav" aria-label="主导航">
-          <button type="button" className="science-brand" onClick={onHome} aria-label="HXQLab 首页">
-            <span className="science-brand-mark"><Network className="w-6 h-6" /></span><span className="science-brand-copy"><strong>HXQLab</strong></span>
-          </button>
-          <div className="science-nav-links">
-            <button type="button" onClick={onHome}>{isEnglish ? 'Home' : '首页'}</button>
-            <button type="button" onClick={onThresholds}>FlavorThresholdDB</button>
-            <button type="button" className="active">{isEnglish ? 'Shimadzu GC-MS' : '岛津气质分析'}</button>
+        <div className="shimadzu-deck-topbar">
+          <div className="shimadzu-deck-brand" aria-label="HXQLab 岛津分析">
+            <span><FlaskConical aria-hidden="true" /></span>
+            <strong>HXQLab · SHIMADZU</strong>
           </div>
-          <div className="science-language" aria-label="界面语言">
-            <button type="button" onClick={() => setInterfaceLanguage('zh')} aria-pressed={!isEnglish} className={!isEnglish ? 'active' : ''}>中</button>
-            <button type="button" onClick={() => setInterfaceLanguage('en')} aria-pressed={isEnglish} className={isEnglish ? 'active' : ''}>EN</button>
+          <div className="shimadzu-topbar-actions">
+            <button
+              type="button"
+              className="shimadzu-theme-toggle"
+              aria-pressed={theme === 'light'}
+              aria-label={theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}
+              onClick={() => setTheme(value => value === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+              <span>{theme === 'dark' ? '浅色' : '深色'}</span>
+            </button>
+            <button type="button" className="shimadzu-home-link" onClick={onHome}><ChevronRight aria-hidden="true" />返回首页</button>
           </div>
-        </nav>
+        </div>
         <div className="shimadzu-hero">
           <div className="shimadzu-hero-copy shimadzu-hero-animate">
-            <span className="shimadzu-product-kicker"><FlaskConical aria-hidden="true" /> GC–MS FLAVOR WORKFLOW</span>
-            <h1>岛津 GC–MS 风味数据分析工作台</h1>
+            <span className="shimadzu-product-kicker">GC–MS FLAVOR ANALYSIS / BROWSER WORKER</span>
+            <h1>岛津风味数据分析控制舱</h1>
           </div>
-          <div className="shimadzu-hero-status shimadzu-hero-animate">
-            <span className={engine.state}>{engine.state === 'ready' ? <ShieldCheck /> : engine.state === 'checking' ? <Loader2 className="spin" /> : <AlertCircle />}</span>
-            <div><small>BROWSER ENGINE</small><strong>{engine.title}</strong><p>{engine.detail}</p></div>
+          <div className="shimadzu-deck-utility shimadzu-hero-animate">
+            <div className="shimadzu-hero-status">
+              <span className={engine.state}>{engine.state === 'ready' ? <ShieldCheck /> : engine.state === 'checking' ? <Loader2 className="spin" /> : <AlertCircle />}</span>
+              <div><small>ANALYSIS ENGINE</small><strong>{engine.title}</strong><p>{engine.detail}</p></div>
+            </div>
+            <div className="shimadzu-deck-links">
+              <TaskDeskEntry count={history.length} />
+              <a className="shimadzu-deck-utility-link" href="#account-panel"><UserRound aria-hidden="true" /><span>{!cloud.configured ? '本地模式' : session ? '已登录' : '账号登录'}</span></a>
+            </div>
           </div>
         </div>
       </header>
@@ -923,10 +967,6 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
         {error && <div className="shimadzu-alert" role="alert"><AlertCircle /><span><strong>当前操作未完成</strong>{error}</span></div>}
         {cloudError && <div className="shimadzu-alert cloud" role="alert"><AlertCircle /><span><strong>云端服务提示</strong>{cloudError}</span></div>}
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>浏览器任务恢复</strong>{recoveryNotice}</span></div>}
-        <AccountPanel cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
-        <TaskDeskEntry count={history.length} />
-        <WorkflowMap job={job} />
-
         {!job ? (
           <>
             <form className="shimadzu-setup" onSubmit={submit}>
@@ -956,13 +996,20 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
                   <label className="shimadzu-field shimadzu-cv-threshold"><span>CV 阈值 (%)</span><input type="number" min="0" max="1000" step="1" inputMode="decimal" value={cvThreshold} disabled={!enableCvScreening} onChange={event => setCvThreshold(event.target.value)} aria-describedby="cv-screening-help" /></label>
                   <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>
                 </fieldset>
-                <dl className="shimadzu-parameter-list"><div><dt>CV 筛查</dt><dd>{enableCvScreening ? `启用（${cvReadiness.threshold ?? '—'}%）` : '未启用'}</dd></div><div><dt>响应因子</dt><dd>1</dd></div><div><dt>内标参数</dt><dd>按样品表</dd></div><div><dt>OAV</dt><dd>关闭</dd></div></dl>
+                <fieldset className="shimadzu-cv-field" aria-describedby="classification-help">
+                  <legend>结构分类</legend>
+                  <label className="shimadzu-cv-toggle">
+                    <input type="checkbox" checked={enableClassification} onChange={event => setEnableClassification(event.target.checked)} />
+                    <span><strong>启用 CAS 结构分类</strong><small>分析前按 CAS 查询 PubChem SMILES，并以 SMARTS 规则写入官能团名称和主要化合物类别。</small></span>
+                  </label>
+                  <p id="classification-help" className="shimadzu-cv-help">{enableClassification ? '将联网查询 PubChem；无可用结构或无 SMARTS 匹配时写入 NA。' : '未启用；不会执行联网结构分类。'}</p>
+                </fieldset>
+                <dl className="shimadzu-parameter-list"><div><dt>CV 筛查</dt><dd>{enableCvScreening ? `启用（${cvReadiness.threshold ?? '—'}%）` : '未启用'}</dd></div><div><dt>结构分类</dt><dd>{enableClassification ? '启用（PubChem + SMARTS）' : '未启用'}</dd></div><div><dt>响应因子</dt><dd>1</dd></div><div><dt>内标参数</dt><dd>按样品表</dd></div><div><dt>OAV</dt><dd>关闭</dd></div></dl>
                 <button className="shimadzu-run-button" type="submit" disabled={!canStart}>{submitting ? <Loader2 className="spin" /> : <Play />}{startFeedback.buttonLabel}</button>
                 <p className={`shimadzu-run-readiness${fileReadiness.ready && cvReadiness.valid && canAnalyze ? ' ready' : ''}`} role="status" aria-live="polite">{startFeedback.message}</p>
                 {cloud.configured && !canAnalyze && <p className="shimadzu-run-gate"><ShieldCheck />登录且通过管理员审批后开放计算。</p>}
               </aside>
             </form>
-            <AnalysisReadinessStrip fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} />
           </>
         ) : (
           <>
@@ -997,7 +1044,16 @@ export default function ShimadzuAnalysisPage({ onHome, onThresholds, isEnglish, 
             </div>
           </>
         )}
-        <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
+        <WorkflowMap job={job} />
+        {!job && <AnalysisReadinessStrip fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} />}
+        {!job && (
+          <div className="shimadzu-overview-grid">
+            <LiveMonitor job={null} capabilities={null} engine={engine} />
+            <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
+          </div>
+        )}
+        {job && <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />}
+        <AccountPanel cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
       </main>
     </div>
   )

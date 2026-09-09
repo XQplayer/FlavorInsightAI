@@ -59,9 +59,10 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
   if (typeof enableCvScreening !== "boolean") throw fail("INVALID_CV_SCREENING_FLAG");
   if (!Array.isArray(source.sampleOrder) || !Array.isArray(source.groupOrder) || !Array.isArray(source.sampleConfigs)) throw fail("INVALID_STAGE4_STRUCTURE");
   const samplesByGroup = groupSamples(source);
-  const expectedColumns = ["CAS #", "Name"];
+  const identityColumns = V2_COMPOUND_IDENTITY_COLUMNS.filter(column => source.table.columns.includes(column));
+  const expectedColumns = ["CAS #", "Name", ...identityColumns];
   for (const sampleName of source.sampleOrder) expectedColumns.push(`${sampleName}（μg/mL）`);
-  const meanColumns = ["CAS #", "Name"];
+  const meanColumns = ["CAS #", "Name", ...identityColumns];
   for (const sampleGroup of source.groupOrder) meanColumns.push(`${sampleGroup} Mean（μg/mL）`, `${sampleGroup} SD（μg/mL）`);
 
   const triplicateBeforeRows = [];
@@ -76,10 +77,11 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
     const cas = sourceRow["CAS #"];
     if (seenCas.has(cas)) throw fail("DUPLICATE_CAS_IN_STAGE4_TABLE", { cas });
     seenCas.add(cas);
-    const pre = { "CAS #": cas, Name: sourceRow.Name };
-    const post = { "CAS #": cas, Name: sourceRow.Name };
-    const meanPre = { "CAS #": cas, Name: sourceRow.Name };
-    const meanPost = { "CAS #": cas, Name: sourceRow.Name };
+    const identity = Object.fromEntries(identityColumns.map(column => [column, sourceRow[column] ?? "NA"]));
+    const pre = { "CAS #": cas, Name: sourceRow.Name, ...identity };
+    const post = { "CAS #": cas, Name: sourceRow.Name, ...identity };
+    const meanPre = { "CAS #": cas, Name: sourceRow.Name, ...identity };
+    const meanPost = { "CAS #": cas, Name: sourceRow.Name, ...identity };
     for (const sampleName of source.sampleOrder) {
       const value = sourceRow[`${sampleName}（μg/mL）`] ?? "NA";
       if (!(value === "NA" || numeric(value))) throw fail("INVALID_STAGE4_CONCENTRATION", { cas, sampleName, value });
@@ -131,10 +133,10 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
     meanSdAfterRows.push(meanPost);
   }
 
-  const allScreenedRows = source.table.rows.map((row) => ({ "CAS #": row["CAS #"], Name: row.Name }));
+  const allScreenedRows = source.table.rows.map((row) => ({ "CAS #": row["CAS #"], Name: row.Name, ...Object.fromEntries(identityColumns.map(column => [column, row[column] ?? "NA"])) }));
   const finalRowsInSourceOrder = triplicateAfterRows
     .filter((row) => source.sampleOrder.some((name) => numeric(row[`${name}（μg/mL）`])))
-    .map((row) => ({ "CAS #": row["CAS #"], Name: row.Name }));
+    .map((row) => ({ "CAS #": row["CAS #"], Name: row.Name, ...Object.fromEntries(identityColumns.map(column => [column, row[column] ?? "NA"])) }));
   const standards = configuredStandards(source);
   const finalAnalysisRows = [
     ...standards.flatMap((cas) => finalRowsInSourceOrder.filter((row) => row["CAS #"] === cas)),
@@ -165,8 +167,9 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
     meanSdAfter: table(meanColumns, meanSdAfterRows),
     groupStatistics,
     cvReport,
-    allScreenedCas: table(["CAS #", "Name"], allScreenedRows),
-    finalAnalysisCas: table(["CAS #", "Name"], finalAnalysisRows),
+    allScreenedCas: table(["CAS #", "Name", ...identityColumns], allScreenedRows),
+    finalAnalysisCas: table(["CAS #", "Name", ...identityColumns], finalAnalysisRows),
     counts,
   };
 }
+import { V2_COMPOUND_IDENTITY_COLUMNS } from './v2-identity-columns.mjs';
