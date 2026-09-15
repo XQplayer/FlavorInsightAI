@@ -162,3 +162,27 @@ test('does not add identity columns to later stages when classification is disab
   const bytes = await zip.file('05_统计_CV_CAS与QC/05_02_Mean浓度与SD.xlsx').async('uint8array')
   assert.equal(readWorkbookSheets(bytes)[0].rows[0].cells.includes('FlavorDB2 CID'), false)
 })
+
+test('exports CAS recovery audit rows without adding unresolved records to CAS analysis', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  let invoked = false
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes,
+    recoverCasRecord: async record => {
+      if (!invoked) {
+        invoked = true
+        return { record, review: { 'CAS 原始值': '0-00-0', 'CAS 来源': '待人工确认', 'PubChem CID': '527299', 'CAS 补全状态': '待人工确认' } }
+      }
+      return { record, audit: { 'CAS 原始值': record['CAS #'], 'CAS 来源': '岛津原始值', 'PubChem CID': 'NA', 'CAS 补全状态': '无需补全' } }
+    },
+  })
+  assert.equal(result.stages[1].identityReviews.length, 1)
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const reviewBytes = await zip.file('01_Hit1整理/01_CAS恢复与审核.xlsx').async('uint8array')
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const sheets = readWorkbookSheets(reviewBytes)
+  assert.equal(sheets.find(sheet => sheet.name === '待人工确认').rows[1].cells.includes('527299'), true)
+})
