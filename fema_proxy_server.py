@@ -469,6 +469,30 @@ def query_pubchem(cas_or_query: str) -> dict:
     }
 
 
+def _cas_checksum_valid(value: str) -> bool:
+    match = re.fullmatch(r"(\d{2,7})-(\d{2})-(\d)", str(value or "").strip())
+    if not match:
+        return False
+    digits = f"{match.group(1)}{match.group(2)}"
+    return sum(int(digit) * (index + 1) for index, digit in enumerate(reversed(digits))) % 10 == int(match.group(3))
+
+
+def query_pubchem_cas_candidates(cid: str) -> dict:
+    normalized_cid = str(cid or "").strip()
+    if not normalized_cid.isdigit():
+        return {"found": False, "cid": normalized_cid, "candidates": [], "source": "PubChem"}
+    url = f"{PUBCHEM_BASE_URL}/rest/pug/compound/cid/{normalized_cid}/synonyms/JSON"
+    try:
+        payload = json.loads(fetch_text(url))
+    except HTTPError as exc:
+        if exc.code == 404:
+            return {"found": False, "cid": normalized_cid, "candidates": [], "source": "PubChem"}
+        raise
+    synonyms = payload.get("InformationList", {}).get("Information", [{}])[0].get("Synonym", [])
+    candidates = sorted({value.strip() for value in synonyms if _cas_checksum_valid(value)})
+    return {"found": bool(candidates), "cid": normalized_cid, "candidates": candidates, "source": "PubChem"}
+
+
 PUBCHEM_VOLATILE_PROPERTY_HEADINGS = {
     "Boiling Point": "boiling_point",
     "Vapor Pressure": "vapor_pressure",
@@ -1365,6 +1389,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path not in {
             "/fema",
             "/pubchem",
+            "/pubchem-cas-candidates",
             "/pubchem-volatile",
             "/flavordb",
             "/compound",
@@ -1378,6 +1403,20 @@ class Handler(BaseHTTPRequestHandler):
         params = parse_qs(parsed.query)
         query = (params.get("cas") or params.get("q") or [""])[0].strip()
         cid = (params.get("cid") or [""])[0].strip()
+
+        if parsed.path == "/pubchem-cas-candidates":
+            if not cid.isdigit():
+                self.send_json(400, {"found": False, "cid": cid, "candidates": [], "error": "Missing or invalid cid"})
+                return
+            cache_key = f"pubchem-cas-candidates:{cid}"
+            try:
+                if cache_key not in self.cache:
+                    self.cache[cache_key] = query_pubchem_cas_candidates(cid)
+                    save_cache(self.cache)
+                self.send_json(200, {**self.cache[cache_key], "cached": cache_key in self.cache})
+            except Exception as exc:
+                self.send_json(502, {"found": False, "cid": cid, "candidates": [], "error": str(exc)})
+            return
 
         if parsed.path == "/pubchem-volatile":
             try:

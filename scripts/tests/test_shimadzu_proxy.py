@@ -7,6 +7,7 @@ import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
+from unittest.mock import patch
 
 import fema_proxy_server
 from shimadzu_analysis_service import ShimadzuAnalysisError
@@ -71,6 +72,23 @@ def multipart_body(fields, files):
 
 
 class ShimadzuProxyTests(unittest.TestCase):
+
+    @patch("fema_proxy_server.fetch_text")
+    def test_pubchem_candidate_query_returns_only_checksum_valid_cas(self, fetch_text):
+        fetch_text.return_value = json.dumps({"InformationList": {"Information": [{"Synonym": ["914926-20-8", "50-09-1", "invalid"]}]}})
+
+        result = fema_proxy_server.query_pubchem_cas_candidates("45934107")
+
+        self.assertEqual(result, {"found": True, "cid": "45934107", "candidates": ["914926-20-8"], "source": "PubChem"})
+
+    @patch("fema_proxy_server.query_pubchem_cas_candidates")
+    def test_pubchem_candidate_route_uses_cid(self, query_candidates):
+        query_candidates.return_value = {"found": True, "cid": "45934107", "candidates": ["914926-20-8"], "source": "PubChem"}
+
+        status, payload = self.request_json("/pubchem-cas-candidates?cid=45934107")
+
+        self.assertEqual((status, payload["candidates"]), (200, ["914926-20-8"]))
+        query_candidates.assert_called_once_with("45934107")
     @classmethod
     def setUpClass(cls):
         cls.original_service = getattr(fema_proxy_server, "SHIMADZU_SERVICE", None)
