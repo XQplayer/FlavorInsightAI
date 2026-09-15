@@ -21,6 +21,29 @@ test('reads Shimadzu sheets in source order with source row lineage', async () =
   assert.equal(sheets[0].rows[0].cells[0], '[Header]')
 })
 
+test('recovers Excel date cells only under an MS-search CAS header and retains an audit event', () => {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['[MS Similarity Search Results for Spectrum Process Table]'],
+    ['Spectrum#', 'Hit #', 'CAS #', 'Name', 'Mol.Form', 'Mol.Weight', 'Retention Index'],
+    [1, 1, 22258, '2-Phenylethanol', 'C8H10O', 122, 1920],
+  ])
+  sheet.C3.z = 'mm-dd-yy'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'SampleA-1')
+  const bytes = XLSX.write(workbook, { type: 'array', bookType: 'xlsx', cellStyles: true })
+
+  const [result] = readWorkbookSheets(bytes)
+
+  assert.equal(result.rows[2].cells[2], '60-12-8')
+  assert.deepEqual(result.casRecoveryEvents, [{
+    sourceRow: 3,
+    originalValue: 22258,
+    recoveredCas: '60-12-8',
+    source: 'Excel 日期恢复',
+    status: '已恢复',
+  }])
+})
+
 test('maps the approved sample template to V2 configuration fields', async () => {
   const bytes = await readFile(template('Shimadzu_Sample_Internal_Standard_Template.xlsx'))
   const result = readSampleConfiguration(bytes)

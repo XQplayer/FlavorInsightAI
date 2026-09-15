@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx'
 
+import { recoverExcelDateCas } from '../shimadzu-core/cas-identity-recovery.mjs'
+
 const clean = value => String(value ?? '').trim()
 const valueOf = (row, headers, ...names) => {
   for (const name of names) if (headers.has(name)) return row[headers.get(name)]
@@ -15,12 +17,77 @@ export function safeSheetName(value) {
 }
 
 export function readWorkbookSheets(bytes) {
-  const workbook = XLSX.read(bytes, { type: 'array', raw: true, cellDates: false })
-  return workbook.SheetNames.map(name => ({
-    name,
-    rows: XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, raw: true, defval: null })
+  const workbook = XLSX.read(bytes, { type: 'array', raw: true, cellDates: false, cellNF: true })
+  return workbook.SheetNames.map(name => {
+    const sheet = workbook.Sheets[name]
+    const casRecoveryEvents = recoverExcelDateCasCells(sheet)
+    return {
+      name,
+      casRecoveryEvents,
+      rows: XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null })
       .map((cells, index) => ({ sourceRow: index + 1, cells })),
-  }))
+    }
+  })
+}
+
+const SEARCH_SECTION = '[ms similarity search results for spectrum process table]'
+const sectionLabel = value => clean(value).toLowerCase()
+const sheetCell = (sheet, row, column) => sheet[XLSX.utils.encode_cell({ r: row, c: column })]
+const isDateNumberFormat = format => /[ymd]/i.test(String(format || '').replace(/\[[^\]]*\]/g, ''))
+
+function excelDateParts(serial) {
+  if (!Number.isFinite(serial)) return null
+  const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86_400_000)
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() }
+}
+
+function rowStartsSection(sheet, row, range) {
+  for (let column = range.s.c; column <= range.e.c; column += 1) {
+    if (/^\[[^\]]+\]$/.test(clean(sheetCell(sheet, row, column)?.v))) return true
+  }
+  return false
+}
+
+function recoverExcelDateCasCells(sheet) {
+  if (!sheet?.['!ref']) return []
+  const range = XLSX.utils.decode_range(sheet['!ref'])
+  const events = []
+  for (let row = range.s.r; row <= range.e.r; row += 1) {
+    const isSearchSection = Array.from({ length: range.e.c - range.s.c + 1 }, (_, offset) => (
+      sectionLabel(sheetCell(sheet, row, range.s.c + offset)?.v) === SEARCH_SECTION
+    )).some(Boolean)
+    if (!isSearchSection) continue
+    let headerRow = null
+    let casColumn = null
+    for (let candidateRow = row + 1; candidateRow <= range.e.r && !rowStartsSection(sheet, candidateRow, range); candidateRow += 1) {
+      for (let column = range.s.c; column <= range.e.c; column += 1) {
+        if (sectionLabel(sheetCell(sheet, candidateRow, column)?.v) === 'cas #') {
+          headerRow = candidateRow
+          casColumn = column
+          break
+        }
+      }
+      if (headerRow !== null) break
+    }
+    if (headerRow === null) continue
+    for (let dataRow = headerRow + 1; dataRow <= range.e.r && !rowStartsSection(sheet, dataRow, range); dataRow += 1) {
+      const cell = sheetCell(sheet, dataRow, casColumn)
+      if (cell?.t !== 'n' || !isDateNumberFormat(cell.z)) continue
+      const originalValue = cell.v
+      const date = excelDateParts(originalValue)
+      if (!date) continue
+      const recovered = recoverExcelDateCas(date)
+      if (recovered.status !== 'recovered') {
+        events.push({ sourceRow: dataRow + 1, originalValue, recoveredCas: null, source: '待人工确认', status: '未恢复' })
+        continue
+      }
+      cell.v = recovered.cas
+      cell.t = 's'
+      cell.w = recovered.cas
+      events.push({ sourceRow: dataRow + 1, originalValue, recoveredCas: recovered.cas, source: 'Excel 日期恢复', status: '已恢复' })
+    }
+  }
+  return events
 }
 
 export function readSampleConfiguration(bytes) {
