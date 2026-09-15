@@ -121,7 +121,7 @@ Expected: FAIL because the recovery service does not exist.
 
 - [ ] **Step 3: Implement the injected resolver**
 
-The service calls `/pubchem?cas=<Name>` and then `/pubchem-cas-candidates?cid=<CID>`. It requires an exact normalized formula match and `abs(sourceMw - pubchemMw) <= 0.5`. It writes a CAS only for one candidate; otherwise it returns the original record plus a review object carrying CID and reason.
+The service calls `/pubchem?cas=<Name>` and then `/pubchem-cas-candidates?cid=<CID>`. It requires an exact normalized formula match and `abs(sourceMw - pubchemMw) <= 1`, which accommodates integer nominal masses in the Shimadzu library. It writes a CAS only for one candidate; otherwise it returns the original record plus a review object carrying CID and reason.
 
 - [ ] **Step 4: Make Stage 1 await recovery and retain audits**
 
