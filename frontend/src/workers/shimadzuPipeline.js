@@ -10,6 +10,7 @@ import { processV2SemiquantBatch } from '../shimadzu-core/v2-semiquant-stage.mjs
 import { processV2Statistics } from '../shimadzu-core/v2-statistics-stage.mjs'
 import { splitV2Matrices } from '../shimadzu-core/v2-matrix-split-stage.mjs'
 import { shimadzuCompoundEnrichmentService } from '../lib/shimadzuCompoundEnrichment.js'
+import { shimadzuCasRecoveryService } from '../lib/shimadzuCasRecovery.js'
 import { V2_COMPOUND_IDENTITY_COLUMNS } from '../shimadzu-core/v2-identity-columns.mjs'
 import { readSampleConfiguration, readWorkbookSheets, writeTableWorkbook } from './shimadzuWorkbook.js'
 
@@ -141,7 +142,7 @@ function stage0(rawBytes, sampleBytes, rawName, sampleName) {
   }
 }
 
-function stage1(stage0Data, rawName) {
+async function stage1(stage0Data, rawName, recoverCasRecord) {
   const sheetMap = new Map()
   for (const sheet of stage0Data.rawSheets) {
     const key = matchingName(sheet.name)
@@ -150,6 +151,8 @@ function stage1(stage0Data, rawName) {
   }
   const samples = {}
   const issues = []
+  const identityAudits = []
+  const identityReviews = []
   const configured = stage0Data.samples
   for (const sample of configured) {
     const sheet = sheetMap.get(matchingName(sample.sampleName))
@@ -157,10 +160,21 @@ function stage1(stage0Data, rawName) {
     const extracted = extractHit1(sheet.rows)
     const localIssues = extracted.issues.map(issue => ({ ...clone(issue), sampleName: sample.sampleName, sampleGroup: sample.sampleGroup, sourceSheet: sheet.name }))
     const lineage = extracted.lineage.map(entry => ({ sourceWorkbook: rawName, sourceSheet: sheet.name, ...clone(entry) }))
+    const auditBySourceRow = new Map((sheet.casRecoveryEvents || []).map(event => [event.sourceRow, event]))
+    const records = []
+    for (const [index, record] of extracted.records.entries()) {
+      const recovery = await recoverCasRecord(record)
+      records.push(clone(recovery.record))
+      const sourceRow = extracted.lineage[index]?.searchSourceRow
+      const dateAudit = auditBySourceRow.get(sourceRow)
+      if (dateAudit) identityAudits.push({ ...clone(dateAudit), sampleName: sample.sampleName, sourceSheet: sheet.name })
+      if (recovery.audit?.['CAS 来源'] !== '岛津原始值') identityAudits.push({ ...clone(recovery.audit), sampleName: sample.sampleName, sourceSheet: sheet.name, sourceRow })
+      if (recovery.review) identityReviews.push({ ...clone(recovery.review), sampleName: sample.sampleName, sourceSheet: sheet.name, sourceRow, Name: record.Name, 'Mol.Form': record['Mol.Form'], 'Mol.Weight': record['Mol.Weight'] })
+    }
     samples[sample.sampleName] = {
       sampleName: sample.sampleName, sampleGroup: sample.sampleGroup, matrixName: sample.matrixName,
       sourceWorkbook: rawName, sourceSheet: sheet.name, columns: [...HIT1_OUTPUT_COLUMNS],
-      records: extracted.records.map(clone), lineage, issues: localIssues,
+      records, lineage, issues: localIssues,
       summary: summarizeHit1Sample(sample, extracted),
     }
     issues.push(...localIssues)
@@ -171,7 +185,7 @@ function stage1(stage0Data, rawName) {
   return {
     schemaVersion: 'shimadzu-v2-stage1-1', stage: V2_STAGE_DIRECTORIES[1], createdAt: new Date().toISOString(),
     source: { name: rawName, sheetOrder: stage0Data.rawSheetNames }, sampleOrder: configured.map(sample => sample.sampleName),
-    groups, samples, issues,
+    groups, samples, issues, identityAudits, identityReviews,
     counts: {
       samples: summaries.length, groups: groups.length, input: sum(summaries, 'input'), retained: sum(summaries, 'retained'),
       removed: sum(summaries, 'removed'), merged: 0, imputed: 0, warn: sum(summaries, 'warn'),
@@ -295,6 +309,13 @@ function workbookSpecs(index, data) {
       ],
     }))
     specs.push({ file: `0${index}_${suffix}报告.xlsx`, sheets: [{ name: '报告', columns: ['代码', '级别', '样品'], rows: data.issues.map(issue => ({ 代码: issue.code, 级别: issue.severity, 样品: issue.sampleName ?? 'NA' })) }] })
+    if (index === 1) specs.push({
+      file: '01_CAS恢复与审核.xlsx',
+      sheets: [
+        { name: '恢复审计', columns: ['样品名称', '源工作表', '源行号', 'CAS 原始值', 'CAS 来源', 'PubChem CID', 'CAS 补全状态'], rows: data.identityAudits },
+        { name: '待人工确认', columns: ['样品名称', '源工作表', '源行号', 'Name', 'Mol.Form', 'Mol.Weight', 'CAS 原始值', 'CAS 来源', 'PubChem CID', 'CAS 补全状态'], rows: data.identityReviews },
+      ],
+    })
     return specs
   }
   if (index === 3) {
@@ -333,14 +354,14 @@ function workbookSpecs(index, data) {
   })
 }
 
-export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues }) {
+export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues, recoverCasRecord = shimadzuCasRecoveryService.recover }) {
   const raw = rawBytes instanceof Uint8Array ? rawBytes : new Uint8Array(rawBytes)
   const samples = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes)
   const zip = new JSZip()
   const stages = []
   const builders = [
     () => stage0(raw, samples, rawName, sampleName),
-    () => stage1(stages[0], rawName),
+    () => stage1(stages[0], rawName, recoverCasRecord),
     () => stage2(stages[1]),
     () => stage3(stages[2], stages[0].samples),
     () => stage4(stages[3], stages[0].samples),
@@ -352,7 +373,7 @@ export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawNam
     try {
       assertNotCancelled(signal)
     onEvent({ type: 'stage-start', stage: index, progress: Math.round(index / 7 * 100), message: V2_STAGE_DIRECTORIES[index] })
-    const builtData = builders[index]()
+    const builtData = await builders[index]()
     const data = enableClassification && index === 4 ? await enrichStage4Data(builtData, enrichCasValues) : builtData
     const manifest = await addStage(zip, index, data, workbookSpecs(index, data))
     if (!manifest.canAdvance) {
