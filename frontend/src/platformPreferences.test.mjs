@@ -19,6 +19,29 @@ const memoryStorage = (initial = {}) => {
   };
 };
 
+const readCustomProperties = css => new Map(
+  [...css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)]
+    .map(([, name, value]) => [name, value.trim()]),
+);
+
+const relativeLuminance = (hex) => {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
+  assert.ok(match, `expected a six-digit hex color, received ${hex}`);
+
+  const channels = match.slice(1).map(channel => {
+    const value = Number.parseInt(channel, 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+
+  return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+};
+
+const contrastRatio = (foreground, background) => {
+  const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background));
+  const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
 test('language preferences normalize to zh or en and default to zh', () => {
   assert.equal(normalizeLanguage('zh'), 'zh');
   assert.equal(normalizeLanguage('en'), 'en');
@@ -66,18 +89,20 @@ test('platform tokens expose the product palette, sizing, radii, and dark mappin
     '--platform-brand: #3385ff;',
     '--platform-ink: #17233d;',
     '--platform-canvas: #f7f9fc;',
+    '--platform-action: #1d4ed8;',
+    '--platform-action-text: #ffffff;',
     '--platform-monitor: #111827;',
-    '--color-primary: #3385ff;',
-    '--color-primary-hover: #1e6fe8;',
-    '--color-heading: #17233d;',
-    '--color-body: #64748b;',
-    '--color-background: #f7f9fc;',
+    '--color-primary: var(--platform-brand);',
+    '--color-primary-hover: var(--platform-brand-hover);',
+    '--color-heading: var(--platform-ink);',
+    '--color-body: var(--platform-text);',
+    '--color-background: var(--platform-canvas);',
     '--color-white: #ffffff;',
-    '--color-border: #e2e8f0;',
-    '--color-success: #07be84;',
-    '--color-warning: #d97706;',
-    '--color-danger: #ed4014;',
-    '--color-dark-background: #111827;',
+    '--color-border: var(--platform-border);',
+    '--color-success: var(--platform-success);',
+    '--color-warning: var(--platform-warning);',
+    '--color-danger: var(--platform-danger);',
+    '--color-dark-background: var(--platform-monitor);',
     '--navbar-height: 70px;',
     '--container-max: 1200px;',
     '--container-gutter: 24px;',
@@ -92,17 +117,51 @@ test('platform tokens expose the product palette, sizing, radii, and dark mappin
     assert.ok(tokens.includes(token), `missing platform token: ${token}`);
   }
 
+  const rootTheme = tokens.match(/:root\s*{([^}]*)}/)?.[1] ?? '';
   const darkTheme = tokens.match(/:root\[data-theme='dark'\]\s*{([^}]*)}/)?.[1] ?? '';
   for (const token of [
     '--platform-canvas:',
     '--platform-surface:',
+    '--platform-ink:',
     '--platform-text:',
     '--platform-border:',
     '--platform-focus:',
+    '--platform-danger:',
     '--platform-monitor:',
   ]) {
     assert.ok(darkTheme.includes(token), `missing dark platform override: ${token}`);
   }
 
+  const rootProperties = readCustomProperties(rootTheme);
+  const darkProperties = new Map([
+    ...rootProperties,
+    ...readCustomProperties(darkTheme),
+  ]);
+  assert.equal(rootProperties.get('--action-primary'), 'var(--platform-action)');
+  assert.equal(rootProperties.get('--text-on-brand'), 'var(--platform-action-text)');
+  assert.ok(
+    contrastRatio(darkProperties.get('--platform-ink'), darkProperties.get('--platform-surface')) >= 4.5,
+    'dark platform ink must remain readable on the dark surface',
+  );
+  assert.ok(
+    contrastRatio(darkProperties.get('--platform-danger'), darkProperties.get('--platform-canvas')) >= 4.5,
+    'dark danger text must remain readable on the dark canvas',
+  );
+  assert.ok(
+    contrastRatio(darkProperties.get('--platform-action-text'), darkProperties.get('--platform-action')) >= 4.5,
+    'primary action text must meet WCAG AA contrast',
+  );
+
   assert.match(tokens, /@media \(max-width: 640px\)[\s\S]*--container-gutter: 16px;/);
+});
+
+test('platform preferences provider persists and applies guarded document preferences', () => {
+  const provider = readFileSync(new URL('./app/PlatformPreferences.jsx', import.meta.url), 'utf8');
+
+  assert.match(provider, /localStorage\.setItem\(LANGUAGE_STORAGE_KEY, language\)/);
+  assert.match(provider, /localStorage\.setItem\(THEME_STORAGE_KEY, theme\)/);
+  assert.match(provider, /document\.documentElement\.lang = language === 'zh' \? 'zh-CN' : 'en'/);
+  assert.match(provider, /root\.dataset\.theme = resolvedTheme/);
+  assert.match(provider, /root\.style\.colorScheme = resolvedTheme/);
+  assert.match(provider, /usePlatformPreferences must be used within PlatformPreferencesProvider/);
 });

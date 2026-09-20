@@ -22,6 +22,9 @@
   /* Platform semantic contract */
   --platform-brand: #3385ff;
   --platform-brand-hover: #1e6fe8;
+  --platform-action: #1d4ed8;
+  --platform-action-hover: #1e40af;
+  --platform-action-text: #ffffff;
   --platform-ink: #17233d;
   --platform-text: #64748b;
   --platform-canvas: #f7f9fc;
@@ -34,16 +37,16 @@
   --platform-monitor: #111827;
 
   /* Compatibility palette */
-  --color-primary: #3385ff;
-  --color-primary-hover: #1e6fe8;
-  --color-heading: #17233d;
-  --color-body: #64748b;
-  --color-background: #f7f9fc;
-  --color-border: #e2e8f0;
-  --color-success: #07be84;
-  --color-warning: #d97706;
-  --color-danger: #ed4014;
-  --color-dark-background: #111827;
+  --color-primary: var(--platform-brand);
+  --color-primary-hover: var(--platform-brand-hover);
+  --color-heading: var(--platform-ink);
+  --color-body: var(--platform-text);
+  --color-background: var(--platform-canvas);
+  --color-border: var(--platform-border);
+  --color-success: var(--platform-success);
+  --color-warning: var(--platform-warning);
+  --color-danger: var(--platform-danger);
+  --color-dark-background: var(--platform-monitor);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -86,13 +89,13 @@
   --surface-primary: var(--platform-surface);
   --surface-subtle: var(--platform-canvas);
   --surface-muted: var(--color-slate-100);
-  --text-on-brand: var(--platform-surface);
+  --text-on-brand: var(--platform-action-text);
   --text-on-brand-muted: #a9b8cf;
   --text-primary: var(--platform-ink);
   --text-secondary: var(--platform-text);
   --text-tertiary: #8290a5;
-  --action-primary: var(--platform-brand);
-  --action-primary-hover: var(--platform-brand-hover);
+  --action-primary: var(--platform-action);
+  --action-primary-hover: var(--platform-action-hover);
   --accent-subtle: rgba(34, 211, 238, 0.12);
   --border-on-brand: rgba(148, 197, 255, 0.16);
   --border-default: var(--platform-border);
@@ -145,9 +148,11 @@
 :root[data-theme='dark'] {
   --platform-canvas: #111827;
   --platform-surface: #17233d;
-  --platform-text: #f7f9fc;
+  --platform-ink: #f8fafc;
+  --platform-text: #cbd5e1;
   --platform-border: #334155;
   --platform-focus: rgba(51, 133, 255, 0.64);
+  --platform-danger: #fca5a5;
   --platform-monitor: #111827;
   --surface-brand: var(--platform-monitor);
   --surface-brand-raised: var(--platform-surface);
@@ -156,10 +161,10 @@
   --surface-primary: var(--platform-surface);
   --surface-subtle: var(--color-slate-800);
   --surface-muted: var(--color-slate-700);
-  --text-on-brand: var(--platform-text);
+  --text-on-brand: var(--platform-action-text);
   --text-on-brand-muted: var(--color-slate-300);
-  --text-primary: var(--platform-text);
-  --text-secondary: var(--color-slate-300);
+  --text-primary: var(--platform-ink);
+  --text-secondary: var(--platform-text);
   --text-tertiary: #94a3b8;
   --border-on-brand: rgba(226, 232, 240, 0.16);
   --border-default: var(--platform-border);
