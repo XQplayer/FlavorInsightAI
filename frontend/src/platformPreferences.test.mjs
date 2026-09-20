@@ -63,6 +63,10 @@ test('system theme resolves safely from matchMedia', () => {
 test('platform tokens expose the product palette, sizing, radii, and dark mappings', () => {
   const tokens = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
   const requiredTokens = [
+    '--platform-brand: #3385ff;',
+    '--platform-ink: #17233d;',
+    '--platform-canvas: #f7f9fc;',
+    '--platform-monitor: #111827;',
     '--color-primary: #3385ff;',
     '--color-primary-hover: #1e6fe8;',
     '--color-heading: #17233d;',
@@ -86,6 +90,18 @@ test('platform tokens expose the product palette, sizing, radii, and dark mappin
 
   for (const token of requiredTokens) {
     assert.ok(tokens.includes(token), `missing platform token: ${token}`);
+  }
+
+  const darkTheme = tokens.match(/:root\[data-theme='dark'\]\s*{([^}]*)}/)?.[1] ?? '';
+  for (const token of [
+    '--platform-canvas:',
+    '--platform-surface:',
+    '--platform-text:',
+    '--platform-border:',
+    '--platform-focus:',
+    '--platform-monitor:',
+  ]) {
+    assert.ok(darkTheme.includes(token), `missing dark platform override: ${token}`);
   }
 
   assert.match(tokens, /@media \(max-width: 640px\)[\s\S]*--container-gutter: 16px;/);
