@@ -34,6 +34,7 @@ import { assertWorkbookFile, browserEnginePresentation } from '../../lib/shimadz
 import { createShimadzuWorkerClient } from '../../lib/shimadzuWorkerClient'
 import { authCallbackMessage, createShimadzuCloud, shimadzuAuthRedirect } from '../../lib/shimadzuCloud'
 import { createShimadzuTaskStore } from '../../lib/shimadzuTaskStore'
+import { prioritizeShimadzuIssues } from '../../lib/shimadzuIssues'
 import { analyticsEnabled, supabase } from '../../lib/supabase'
 import './ShimadzuAnalysisPage.css'
 
@@ -1027,7 +1028,7 @@ export default function ShimadzuAnalysisPage({ onHome }) {
                   {job.status !== 'saving' && <button type="button" onClick={reset}><RotateCcw />新任务</button>}
                 </div>
               </section>
-              {job.error && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code}</strong>{job.error.message}</p>{job.error.details?.stage !== undefined && <small>失败步骤：{Number(job.error.details.stage) + 1} / 7</small>}{job.error.details?.issues?.length > 0 && <ul>{job.error.details.issues.slice(0, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || '质量门禁问题'}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}</li>)}</ul>}{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />下载已完成步骤与错误证据</a>}</div></div>}
+              {job.error && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code}</strong>{job.error.message}</p>{job.error.details?.stage !== undefined && <small>失败步骤：{Number(job.error.details.stage) + 1} / 7</small>}{job.error.details?.issues?.length > 0 && <ul>{prioritizeShimadzuIssues(job.error.details.issues, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || '质量门禁问题'}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}</li>)}</ul>}{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />下载已完成步骤与错误证据</a>}</div></div>}
               <WorkspaceTabs />
               <LiveMonitor job={job} capabilities={null} engine={engine} />
               <AnalysisSummary job={job} />

@@ -210,14 +210,23 @@ export function processV2SemiquantBatch({ stage3Data, sampleConfigs }) {
       let status = areaStatus === "Removed_One_of_Three" ? areaStatus : "Not_Detected";
       let issues = [];
       if (typeof area === "number" && Number.isFinite(area) && area >= 0) {
-        const quantified = semiquantify({
-          analyteArea: area,
-          isArea: sampleCalculations[sampleName].internalStandardArea,
-          isConcentration: sampleCalculations[sampleName].finalIsUgMl,
-        });
-        concentration = quantified.value;
-        status = quantified.status;
-        issues = quantified.issues ?? [];
+        if (!isFinitePositive(sampleCalculations[sampleName].internalStandardArea)) {
+          status = "Internal_Standard_Unavailable";
+          issues = [{
+            severity: "WARN",
+            code: "INTERNAL_STANDARD_UNAVAILABLE",
+            message: "Concentration was not calculated because the internal-standard area is unavailable",
+          }];
+        } else {
+          const quantified = semiquantify({
+            analyteArea: area,
+            isArea: sampleCalculations[sampleName].internalStandardArea,
+            isConcentration: sampleCalculations[sampleName].finalIsUgMl,
+          });
+          concentration = quantified.value;
+          status = quantified.status;
+          issues = quantified.issues ?? [];
+        }
       }
       row[`${sampleName} Area`] = area;
       row[`${sampleName}（μg/mL）`] = concentration;

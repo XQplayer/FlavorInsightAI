@@ -246,7 +246,11 @@ function resolveStandards(group, prepared) {
 /** Process one configured three-replicate group at the peak-area layer. */
 export function processV2ReplicateGroup({ group, sampleResults, sampleConfigs }) {
   if (!group || !Array.isArray(group.sampleNames) || group.sampleNames.length !== 3) throw fail("STAGE3_REQUIRES_THREE_REPLICATES");
-  const inputSnapshot = { group: clone(group), sampleResults: clone(sampleResults), sampleConfigs: clone(sampleConfigs) };
+  const inputSnapshot = {
+    group: clone(group),
+    sampleResults: Object.fromEntries(group.sampleNames.map((sampleName) => [sampleName, clone(sampleResults?.[sampleName])])),
+    sampleConfigs: Object.fromEntries(group.sampleNames.map((sampleName) => [sampleName, clone(sampleConfigs?.[sampleName])])),
+  };
   const prepared = prepareSamples(group, sampleResults, sampleConfigs);
   const standardResolution = resolveStandards(group, prepared);
   const configuredStandardSet = new Set(group.sampleNames.map((sampleName) => normalizedCas(prepared[sampleName].config.internalStandardCas)));

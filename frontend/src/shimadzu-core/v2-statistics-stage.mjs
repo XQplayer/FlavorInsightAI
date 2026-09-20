@@ -106,7 +106,7 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
             ? "Filtered_CV_Above_Threshold"
             : numeric(cv) ? "Retained_CV_At_Or_Below_Threshold" : "Retained_CV_Undefined_Zero_Mean";
       } else if (valid.length !== 0) {
-        throw fail("INCONSISTENT_TRIPLICATE_CONCENTRATION_STATE", { cas, sampleGroup, values });
+        status = "Incomplete_Triplicate";
       }
       const imputationInfo = imputationText(source, sampleGroup, cas);
       const stats = { cas, name: sourceRow.Name, sampleGroup, sampleNames: [...names], concentrations: [...values], mean, sd, cv, cvThreshold, imputationInfo, status };
@@ -149,6 +149,7 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
     groupStatistics: groupStatistics.length,
     numericGroups: groupStatistics.filter((entry) => numeric(entry.mean)).length,
     allNaGroups: groupStatistics.filter((entry) => entry.status === "All_NA").length,
+    incompleteGroups: groupStatistics.filter((entry) => entry.status === "Incomplete_Triplicate").length,
     filteredGroups: cvReport.length,
     allScreenedCas: allScreenedRows.length,
     finalAnalysisCas: finalAnalysisRows.length,

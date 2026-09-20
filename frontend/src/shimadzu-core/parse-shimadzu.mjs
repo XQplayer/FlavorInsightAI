@@ -118,9 +118,9 @@ function frozenResult(records, lineage, issues) {
 
 function emptyMissingSearchResult() {
   return frozenResult([], [], [{
-      severity: "FAIL",
-      code: "FAIL_Missing_Search_Results",
-      message: "MS similarity search results section was not found",
+      severity: "WARN",
+      code: "WARN_Missing_Search_Results",
+      message: "MS similarity search results section was not found; the sample was retained with no identified compounds",
   }]);
 }
 
