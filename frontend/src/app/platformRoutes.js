@@ -18,11 +18,16 @@ const PLATFORM_ROUTE_BY_SEGMENT = Object.freeze({
 
 export function parsePlatformRoute(pathname) {
   const segments = String(pathname ?? '').split('/').filter(Boolean);
-  return PLATFORM_ROUTE_BY_SEGMENT[segments.at(-1)] ?? 'home';
+  const segment = segments.at(-1);
+  return Object.hasOwn(PLATFORM_ROUTE_BY_SEGMENT, segment)
+    ? PLATFORM_ROUTE_BY_SEGMENT[segment]
+    : 'home';
 }
 
 export function routeHref(route, basePath = '') {
   const normalizedBasePath = String(basePath ?? '').replace(/\/+$/, '');
-  const segment = PLATFORM_ROUTE_SEGMENTS[route] ?? '';
+  const segment = Object.hasOwn(PLATFORM_ROUTE_SEGMENTS, route)
+    ? PLATFORM_ROUTE_SEGMENTS[route]
+    : '';
   return `${normalizedBasePath}/${segment ? `${segment}/` : ''}`;
 }
