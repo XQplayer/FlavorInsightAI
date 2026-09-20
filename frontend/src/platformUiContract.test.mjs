@@ -49,11 +49,24 @@ test('labels language, theme, and account controls and uses Lucide icons only', 
 
 test('uses an operable mobile disclosure and dismissible account explanation', () => {
   assert.match(source, /aria-expanded=\{mobileMenuOpen\}/);
-  assert.match(source, /event\.key === 'Escape'/);
-  assert.match(source, /shellRef\.current\?\.contains\(event\.target\)/);
+  assert.match(source, /dismissTopDisclosureOnEscape/);
+  assert.match(source, /isOutsideDisclosure/);
   assert.match(source, /setMobileMenuOpen\(false\)/);
   assert.match(source, /本地模式/);
   assert.match(source, /可选云端留存正在规划中/);
+});
+
+test('places the mobile menu trigger before its controlled navigation and tracks separate boundaries', () => {
+  const menuTriggerIndex = source.indexOf('className="platform-shell__menu-button"');
+  const navigationIndex = source.indexOf('id="platform-navigation"');
+
+  assert.notEqual(menuTriggerIndex, -1);
+  assert.notEqual(navigationIndex, -1);
+  assert.ok(menuTriggerIndex < navigationIndex);
+  assert.match(source, /ref=\{menuButtonRef\}/);
+  assert.match(source, /ref=\{navigationRegionRef\}/);
+  assert.match(source, /ref=\{accountButtonRef\}/);
+  assert.match(source, /ref=\{accountPopoverRef\}/);
 });
 
 test('keeps the fixed shell accessible and responsive', () => {

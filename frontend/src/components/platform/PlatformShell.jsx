@@ -11,6 +11,11 @@ import {
 import { usePlatformPreferences } from '../../app/PlatformPreferences.jsx';
 import { routeHref } from '../../app/platformRoutes.js';
 import './PlatformShell.css';
+import {
+  dismissTopDisclosureOnEscape,
+  isNormalLeftClick,
+  isOutsideDisclosure,
+} from './platformShellBehavior.js';
 
 const NAV_ITEMS = Object.freeze([
   { route: 'home', labels: { zh: '首页', en: 'Home' } },
@@ -63,7 +68,10 @@ export default function PlatformShell({ route, onNavigate, children }) {
   const { language, setLanguage, theme, setTheme } = usePlatformPreferences();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const shellRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const navigationRegionRef = useRef(null);
+  const accountButtonRef = useRef(null);
+  const accountPopoverRef = useRef(null);
   const copy = COPY[language] ?? COPY.zh;
   const activeRoute = route === 'search' ? 'database' : route;
   const darkThemeActive = theme === 'dark';
@@ -74,16 +82,32 @@ export default function PlatformShell({ route, onNavigate, children }) {
     }
 
     const dismissOnOutsidePointer = event => {
-      if (!shellRef.current?.contains(event.target)) {
-        setMobileMenuOpen(false);
+      if (accountOpen && isOutsideDisclosure(event.target, {
+        trigger: accountButtonRef.current,
+        panel: accountPopoverRef.current,
+      })) {
         setAccountOpen(false);
+      }
+      if (mobileMenuOpen && isOutsideDisclosure(event.target, {
+        trigger: menuButtonRef.current,
+        panel: navigationRegionRef.current,
+      })) {
+        setMobileMenuOpen(false);
       }
     };
     const dismissOnEscape = event => {
-      if (event.key === 'Escape') {
-        setMobileMenuOpen(false);
-        setAccountOpen(false);
-      }
+      dismissTopDisclosureOnEscape(event, [
+        {
+          open: accountOpen,
+          close: () => setAccountOpen(false),
+          trigger: accountButtonRef.current,
+        },
+        {
+          open: mobileMenuOpen,
+          close: () => setMobileMenuOpen(false),
+          trigger: menuButtonRef.current,
+        },
+      ]);
     };
 
     document.addEventListener('pointerdown', dismissOnOutsidePointer);
@@ -99,13 +123,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
     setMobileMenuOpen(false);
     setAccountOpen(false);
 
-    const isNormalLeftClick = event.button === 0
-      && !event.altKey
-      && !event.ctrlKey
-      && !event.metaKey
-      && !event.shiftKey;
-
-    if (!isNormalLeftClick || typeof onNavigate !== 'function') {
+    if (!isNormalLeftClick(event) || typeof onNavigate !== 'function') {
       return;
     }
 
@@ -119,7 +137,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
         {copy.skipLink}
       </a>
 
-      <header className="platform-shell__header" ref={shellRef}>
+      <header className="platform-shell__header">
         <div className="platform-shell__header-inner">
           <a
             className="platform-shell__brand"
@@ -130,7 +148,25 @@ export default function PlatformShell({ route, onNavigate, children }) {
             <span>FlavorInsight AI</span>
           </a>
 
+          <button
+            ref={menuButtonRef}
+            className="platform-shell__menu-button"
+            type="button"
+            aria-label={mobileMenuOpen ? copy.closeMenu : copy.openMenu}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="platform-navigation"
+            onClick={() => {
+              setMobileMenuOpen(open => !open);
+              setAccountOpen(false);
+            }}
+          >
+            {mobileMenuOpen
+              ? <X aria-hidden="true" size={22} strokeWidth={1.8} />
+              : <Menu aria-hidden="true" size={22} strokeWidth={1.8} />}
+          </button>
+
           <div
+            ref={navigationRegionRef}
             className={`platform-shell__navigation-region${mobileMenuOpen ? ' is-open' : ''}`}
             id="platform-navigation"
           >
@@ -192,6 +228,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
 
               <div className="platform-shell__account">
                 <button
+                  ref={accountButtonRef}
                   className="platform-shell__account-button"
                   type="button"
                   aria-label={copy.accountControl}
@@ -206,6 +243,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
 
                 {accountOpen ? (
                   <div
+                    ref={accountPopoverRef}
                     className="platform-shell__account-popover"
                     id="platform-account-popover"
                     role="dialog"
@@ -219,22 +257,6 @@ export default function PlatformShell({ route, onNavigate, children }) {
               </div>
             </div>
           </div>
-
-          <button
-            className="platform-shell__menu-button"
-            type="button"
-            aria-label={mobileMenuOpen ? copy.closeMenu : copy.openMenu}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="platform-navigation"
-            onClick={() => {
-              setMobileMenuOpen(open => !open);
-              setAccountOpen(false);
-            }}
-          >
-            {mobileMenuOpen
-              ? <X aria-hidden="true" size={22} strokeWidth={1.8} />
-              : <Menu aria-hidden="true" size={22} strokeWidth={1.8} />}
-          </button>
         </div>
       </header>
 
