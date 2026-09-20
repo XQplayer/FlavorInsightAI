@@ -3,11 +3,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   LANGUAGE_STORAGE_KEY,
   THEME_STORAGE_KEY,
+  applyLanguagePreference,
+  applyThemePreference,
   loadLanguagePreference,
   loadThemePreference,
   normalizeLanguage,
   normalizeTheme,
-  resolveTheme,
+  persistPreference,
+  subscribeToSystemTheme,
 } from './platformPreferences.js';
 
 const PlatformPreferencesContext = createContext(null);
@@ -29,49 +32,15 @@ export function PlatformPreferencesProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    try {
-      globalThis.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-    } catch {
-      // Preferences remain usable when persistence is unavailable.
-    }
-
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
-    }
+    persistPreference(LANGUAGE_STORAGE_KEY, language);
+    applyLanguagePreference(language);
   }, [language]);
 
   useEffect(() => {
-    try {
-      globalThis.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // Preferences remain usable when persistence is unavailable.
-    }
-
-    const root = typeof document === 'undefined' ? null : document.documentElement;
-    let mediaQuery = null;
-
-    if (theme === 'system') {
-      try {
-        mediaQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
-      } catch {
-        mediaQuery = null;
-      }
-    }
-
-    const applyTheme = () => {
-      const resolvedTheme = resolveTheme(theme, mediaQuery ? () => mediaQuery : undefined);
-      if (root) {
-        root.dataset.theme = resolvedTheme;
-        root.style.colorScheme = resolvedTheme;
-      }
-    };
-
+    persistPreference(THEME_STORAGE_KEY, theme);
+    const applyTheme = () => applyThemePreference(theme);
     applyTheme();
-    mediaQuery?.addEventListener?.('change', applyTheme);
-
-    return () => {
-      mediaQuery?.removeEventListener?.('change', applyTheme);
-    };
+    return subscribeToSystemTheme(theme, applyTheme);
   }, [theme]);
 
   const value = useMemo(() => ({

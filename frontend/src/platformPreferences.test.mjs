@@ -5,11 +5,15 @@ import test from 'node:test';
 import {
   LANGUAGE_STORAGE_KEY,
   THEME_STORAGE_KEY,
+  applyLanguagePreference,
+  applyThemePreference,
   loadLanguagePreference,
   loadThemePreference,
   normalizeLanguage,
   normalizeTheme,
+  persistPreference,
   resolveTheme,
+  subscribeToSystemTheme,
 } from './app/platformPreferences.js';
 
 const memoryStorage = (initial = {}) => {
@@ -81,6 +85,86 @@ test('system theme resolves safely from matchMedia', () => {
   assert.equal(resolveTheme('system', () => ({ matches: false })), 'light');
   assert.equal(resolveTheme('system', () => { throw new Error('media unavailable'); }), 'light');
   assert.equal(resolveTheme('invalid', () => ({ matches: true })), 'dark');
+});
+
+test('runtime preference helpers persist and apply language and theme', () => {
+  const writes = [];
+  persistPreference(LANGUAGE_STORAGE_KEY, 'en', {
+    setItem: (key, value) => writes.push([key, value]),
+  });
+  assert.deepEqual(writes, [[LANGUAGE_STORAGE_KEY, 'en']]);
+
+  const documentElement = { dataset: {}, lang: '', style: {} };
+  applyLanguagePreference('zh', documentElement);
+  assert.equal(documentElement.lang, 'zh-CN');
+  applyLanguagePreference('en', documentElement);
+  assert.equal(documentElement.lang, 'en');
+
+  assert.equal(
+    applyThemePreference('system', documentElement, () => ({ matches: true })),
+    'dark',
+  );
+  assert.equal(documentElement.dataset.theme, 'dark');
+  assert.equal(documentElement.style.colorScheme, 'dark');
+});
+
+test('runtime preference helpers contain storage, document, and media failures', () => {
+  const throwingStorage = {
+    setItem() {
+      throw new Error('storage unavailable');
+    },
+  };
+  const throwingDocumentElement = {
+    get dataset() {
+      throw new Error('dataset unavailable');
+    },
+    set lang(_value) {
+      throw new Error('lang unavailable');
+    },
+    get style() {
+      throw new Error('style unavailable');
+    },
+  };
+
+  assert.doesNotThrow(() => persistPreference(THEME_STORAGE_KEY, 'dark', throwingStorage));
+  assert.doesNotThrow(() => applyLanguagePreference('en', throwingDocumentElement));
+  assert.doesNotThrow(() => applyThemePreference(
+    'system',
+    throwingDocumentElement,
+    () => { throw new Error('media unavailable'); },
+  ));
+});
+
+test('system theme subscriptions deliver live changes and clean up safely', () => {
+  let changeListener;
+  let removedListener;
+  const mediaQuery = {
+    addEventListener(type, listener) {
+      assert.equal(type, 'change');
+      changeListener = listener;
+    },
+    removeEventListener(type, listener) {
+      assert.equal(type, 'change');
+      removedListener = listener;
+    },
+  };
+  const changes = [];
+  const cleanup = subscribeToSystemTheme(
+    'system',
+    event => changes.push(event.matches),
+    () => mediaQuery,
+  );
+
+  changeListener({ matches: true });
+  assert.deepEqual(changes, [true]);
+  cleanup();
+  assert.equal(removedListener, changeListener);
+
+  assert.doesNotThrow(() => subscribeToSystemTheme(
+    'system',
+    () => {},
+    () => { throw new Error('media unavailable'); },
+  )());
 });
 
 test('platform tokens expose the product palette, sizing, radii, and dark mappings', () => {
@@ -155,13 +239,8 @@ test('platform tokens expose the product palette, sizing, radii, and dark mappin
   assert.match(tokens, /@media \(max-width: 640px\)[\s\S]*--container-gutter: 16px;/);
 });
 
-test('platform preferences provider persists and applies guarded document preferences', () => {
+test('platform preferences hook retains its outside-provider guard', () => {
   const provider = readFileSync(new URL('./app/PlatformPreferences.jsx', import.meta.url), 'utf8');
 
-  assert.match(provider, /localStorage\.setItem\(LANGUAGE_STORAGE_KEY, language\)/);
-  assert.match(provider, /localStorage\.setItem\(THEME_STORAGE_KEY, theme\)/);
-  assert.match(provider, /document\.documentElement\.lang = language === 'zh' \? 'zh-CN' : 'en'/);
-  assert.match(provider, /root\.dataset\.theme = resolvedTheme/);
-  assert.match(provider, /root\.style\.colorScheme = resolvedTheme/);
   assert.match(provider, /usePlatformPreferences must be used within PlatformPreferencesProvider/);
 });
