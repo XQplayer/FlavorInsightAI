@@ -10,6 +10,14 @@ const styles = await readFile(
   new URL('./components/platform/PlatformShell.css', import.meta.url),
   'utf8',
 );
+const homeSource = await readFile(
+  new URL('./pages/PlatformHomePage.jsx', import.meta.url),
+  'utf8',
+).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const pageStyles = await readFile(
+  new URL('./pages/PlatformPages.css', import.meta.url),
+  'utf8',
+).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 
 test('provides a skip link and a labelled main landmark', () => {
   assert.match(source, /href="#main-content"/);
@@ -99,4 +107,67 @@ test('keeps fixed-header compensation inside the shell height budget', () => {
   assert.match(shellRules[0] ?? '', /min-height:\s*100dvh/);
   assert.match(shellRules[1] ?? '', /padding-top:\s*60px/);
   assert.match(shellRules[1] ?? '', /min-height:\s*100dvh/);
+});
+
+test('presents the approved bilingual evidence-led platform identity', () => {
+  assert.match(homeSource, /usePlatformPreferences/);
+  assert.match(homeSource, /FlavorInsight AI 食品风味信息学智能分析平台/);
+  assert.match(homeSource, /FlavorInsight AI Food Flavor Informatics Platform/);
+  assert.match(homeSource, /从仪器信号到可解释的风味证据/);
+  assert.match(homeSource, /From instrumental signals to interpretable flavor evidence/);
+  assert.match(homeSource, /可追溯/);
+  assert.match(homeSource, /traceable/i);
+});
+
+test('exposes real database, search, and processing destinations', () => {
+  for (const route of ['database', 'search', 'processing']) {
+    assert.match(homeSource, new RegExp(`routeHref\\('${route}',`));
+    assert.match(homeSource, new RegExp(`handleNavigation\\(event, '${route}'\\)`));
+  }
+  assert.match(homeSource, /typeof onNavigate === 'function'/);
+});
+
+test('renders the real capability preview and complete honest research chain', () => {
+  assert.match(homeSource, /platform-home__capability-preview/);
+  assert.match(homeSource, /乙酸乙酯/);
+  assert.match(homeSource, /141-78-6/);
+  assert.match(homeSource, /仪器数据/);
+  assert.match(homeSource, /化合物鉴定/);
+  assert.match(homeSource, /风味数据库/);
+  assert.match(homeSource, /风味贡献评价/);
+  assert.match(homeSource, /AI 解析与预测/);
+  assert.doesNotMatch(homeSource, /<img\b/i);
+});
+
+test('labels capability status without claiming deployed AI', () => {
+  assert.match(homeSource, /已上线/);
+  assert.match(homeSource, /开发中/);
+  assert.match(homeSource, /规划中/);
+  assert.match(homeSource, /当前未部署生产级 AI 模型/);
+  assert.match(homeSource, /No production AI model is deployed/);
+  assert.doesNotMatch(homeSource, /AI(?:模型)?已上线|AI (?:prediction|model) is (?:live|available)/i);
+  assert.doesNotMatch(homeSource, /用户数量|使用次数|客户评价|users trust|testimonials?/i);
+});
+
+test('includes four factual FAQs, platform principles, and a compact footer', () => {
+  assert.match(homeSource, /证据可追溯/);
+  assert.match(homeSource, /质量门禁/);
+  assert.match(homeSource, /本地优先/);
+  assert.match(homeSource, /标准化导出/);
+  assert.equal((homeSource.match(/<details\b/g) ?? []).length, 4);
+  assert.match(homeSource, /<footer\b/);
+  assert.match(homeSource, /v1\.5\.0/);
+  assert.match(homeSource, /mailto:hanxq888@gmail\.com/);
+});
+
+test('keeps the homepage responsive and motion restrained', () => {
+  assert.match(pageStyles, /overflow-x:\s*(?:clip|hidden)/);
+  assert.match(pageStyles, /min-height:\s*clamp\(520px,[^;]+650px\)/);
+  assert.match(pageStyles, /animation-duration:\s*(?:[34]\d{2}|500)ms/);
+  assert.match(pageStyles, /@media \(max-width:\s*1024px\)/);
+  assert.match(pageStyles, /@media \(max-width:\s*768px\)/);
+  assert.match(pageStyles, /@media \(max-width:\s*420px\)/);
+  assert.match(pageStyles, /@media \(min-width:\s*1440px\)/);
+  assert.match(pageStyles, /@media \(prefers-reduced-motion:\s*reduce\)/);
+  assert.match(pageStyles, /animation:\s*none\s*!important/);
 });
