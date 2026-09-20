@@ -47,6 +47,13 @@ test('labels language, theme, and account controls and uses Lucide icons only', 
   assert.doesNotMatch(source, /[\u{1F300}-\u{1FAFF}]/u);
 });
 
+test('drives the theme control from the provider resolved theme', () => {
+  assert.match(source, /resolvedTheme/);
+  assert.match(source, /darkThemeActive = resolvedTheme === 'dark'/);
+  assert.match(source, /setTheme\(nextThemePreference\(resolvedTheme\)\)/);
+  assert.doesNotMatch(source, /darkThemeActive = theme === 'dark'/);
+});
+
 test('uses an operable mobile disclosure and dismissible account explanation', () => {
   assert.match(source, /aria-expanded=\{mobileMenuOpen\}/);
   assert.match(source, /dismissTopDisclosureOnEscape/);
@@ -78,4 +85,18 @@ test('keeps the fixed shell accessible and responsive', () => {
   assert.match(styles, /scroll-margin-top:/);
   assert.match(styles, /overflow-x:\s*(?:clip|hidden)/);
   assert.match(styles, /@media \(prefers-reduced-motion:\s*reduce\)/);
+});
+
+test('keeps fixed-header compensation inside the shell height budget', () => {
+  const bodyRule = styles.match(/body\s*\{([^}]*)\}/)?.[1] ?? '';
+  const shellRules = [...styles.matchAll(/\.platform-shell\s*\{([^}]*)\}/g)]
+    .map(match => match[1]);
+
+  assert.doesNotMatch(bodyRule, /padding-top:/);
+  assert.match(shellRules[0] ?? '', /box-sizing:\s*border-box/);
+  assert.match(shellRules[0] ?? '', /padding-top:\s*var\(--navbar-height,\s*70px\)/);
+  assert.match(shellRules[0] ?? '', /min-height:\s*100vh/);
+  assert.match(shellRules[0] ?? '', /min-height:\s*100dvh/);
+  assert.match(shellRules[1] ?? '', /padding-top:\s*60px/);
+  assert.match(shellRules[1] ?? '', /min-height:\s*100dvh/);
 });

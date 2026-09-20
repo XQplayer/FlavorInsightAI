@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
 import {
   LANGUAGE_STORAGE_KEY,
@@ -10,6 +18,7 @@ import {
   normalizeLanguage,
   normalizeTheme,
   persistPreference,
+  resolveTheme,
   subscribeToSystemTheme,
 } from './platformPreferences.js';
 
@@ -18,6 +27,16 @@ const PlatformPreferencesContext = createContext(null);
 export function PlatformPreferencesProvider({ children }) {
   const [language, setLanguageState] = useState(() => loadLanguagePreference());
   const [theme, setThemeState] = useState(() => loadThemePreference());
+  const subscribeToResolvedTheme = useCallback(
+    listener => subscribeToSystemTheme(theme, listener),
+    [theme],
+  );
+  const getResolvedTheme = useCallback(() => resolveTheme(theme), [theme]);
+  const resolvedTheme = useSyncExternalStore(
+    subscribeToResolvedTheme,
+    getResolvedTheme,
+    getResolvedTheme,
+  );
 
   const setLanguage = useCallback(nextLanguage => {
     setLanguageState(currentLanguage => normalizeLanguage(
@@ -38,17 +57,19 @@ export function PlatformPreferencesProvider({ children }) {
 
   useEffect(() => {
     persistPreference(THEME_STORAGE_KEY, theme);
-    const applyTheme = () => applyThemePreference(theme);
-    applyTheme();
-    return subscribeToSystemTheme(theme, applyTheme);
   }, [theme]);
+
+  useEffect(() => {
+    applyThemePreference(resolvedTheme);
+  }, [resolvedTheme]);
 
   const value = useMemo(() => ({
     language,
     setLanguage,
     theme,
+    resolvedTheme,
     setTheme,
-  }), [language, setLanguage, setTheme, theme]);
+  }), [language, resolvedTheme, setLanguage, setTheme, theme]);
 
   return (
     <PlatformPreferencesContext.Provider value={value}>

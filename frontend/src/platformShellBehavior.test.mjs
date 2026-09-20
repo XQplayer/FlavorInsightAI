@@ -5,6 +5,7 @@ import {
   dismissTopDisclosureOnEscape,
   isNormalLeftClick,
   isOutsideDisclosure,
+  nextThemePreference,
 } from './components/platform/platformShellBehavior.js';
 
 function boundaryFor(insideTarget) {
@@ -67,4 +68,9 @@ test('normal unmodified left clicks remain eligible for client navigation', () =
   assert.equal(isNormalLeftClick({ button: 0, metaKey: true }), false);
   assert.equal(isNormalLeftClick({ button: 0, shiftKey: true }), false);
   assert.equal(isNormalLeftClick({ button: 0, altKey: true }), false);
+});
+
+test('theme toggles follow the resolved theme instead of the stored preference', () => {
+  assert.equal(nextThemePreference('dark'), 'light');
+  assert.equal(nextThemePreference('light'), 'dark');
 });

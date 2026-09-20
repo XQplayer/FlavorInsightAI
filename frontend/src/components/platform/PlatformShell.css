@@ -7,7 +7,6 @@ html {
 body {
   max-width: 100%;
   overflow-x: clip;
-  padding-top: var(--navbar-height, 70px);
 }
 
 #root {
@@ -17,8 +16,11 @@ body {
 }
 
 .platform-shell {
+  box-sizing: border-box;
   min-width: 0;
-  min-height: calc(100vh - var(--navbar-height, 70px));
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: var(--navbar-height, 70px);
   color: var(--text-primary);
   background: var(--surface-workbench);
 }
@@ -322,12 +324,10 @@ body {
     scroll-padding-top: 84px;
   }
 
-  body {
-    padding-top: 60px;
-  }
-
   .platform-shell {
-    min-height: calc(100vh - 60px);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: 60px;
   }
 
   .platform-shell__header {

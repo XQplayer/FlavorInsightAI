@@ -10,6 +10,10 @@ export function isOutsideDisclosure(target, { trigger, panel }) {
   return !trigger?.contains(target) && !panel?.contains(target);
 }
 
+export function nextThemePreference(resolvedTheme) {
+  return resolvedTheme === 'dark' ? 'light' : 'dark';
+}
+
 export function dismissTopDisclosureOnEscape(event, disclosures) {
   if (event.key !== 'Escape') {
     return false;

@@ -244,3 +244,13 @@ test('platform preferences hook retains its outside-provider guard', () => {
 
   assert.match(provider, /usePlatformPreferences must be used within PlatformPreferencesProvider/);
 });
+
+test('platform preferences expose a live resolved theme snapshot to consumers', () => {
+  const provider = readFileSync(new URL('./app/PlatformPreferences.jsx', import.meta.url), 'utf8');
+
+  assert.match(provider, /useSyncExternalStore/);
+  assert.match(provider, /const resolvedTheme = useSyncExternalStore\(/);
+  assert.match(provider, /subscribeToSystemTheme\(theme, listener\)/);
+  assert.match(provider, /applyThemePreference\(resolvedTheme\)/);
+  assert.match(provider, /resolvedTheme,/);
+});

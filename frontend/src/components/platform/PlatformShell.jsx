@@ -15,6 +15,7 @@ import {
   dismissTopDisclosureOnEscape,
   isNormalLeftClick,
   isOutsideDisclosure,
+  nextThemePreference,
 } from './platformShellBehavior.js';
 
 const NAV_ITEMS = Object.freeze([
@@ -65,7 +66,12 @@ const COPY = Object.freeze({
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
 export default function PlatformShell({ route, onNavigate, children }) {
-  const { language, setLanguage, theme, setTheme } = usePlatformPreferences();
+  const {
+    language,
+    setLanguage,
+    resolvedTheme,
+    setTheme,
+  } = usePlatformPreferences();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const menuButtonRef = useRef(null);
@@ -74,7 +80,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
   const accountPopoverRef = useRef(null);
   const copy = COPY[language] ?? COPY.zh;
   const activeRoute = route === 'search' ? 'database' : route;
-  const darkThemeActive = theme === 'dark';
+  const darkThemeActive = resolvedTheme === 'dark';
 
   useEffect(() => {
     if (!mobileMenuOpen && !accountOpen) {
@@ -216,7 +222,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
                 aria-label={copy.themeControl}
                 aria-pressed={darkThemeActive}
                 title={darkThemeActive ? copy.useLightTheme : copy.useDarkTheme}
-                onClick={() => setTheme(darkThemeActive ? 'light' : 'dark')}
+                onClick={() => setTheme(nextThemePreference(resolvedTheme))}
               >
                 {darkThemeActive
                   ? <Sun aria-hidden="true" size={20} strokeWidth={1.8} />
