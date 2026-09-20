@@ -17,7 +17,7 @@ export default function OverviewChapter({ identity, chapters = [], sourceStates 
         <dl className="overview-chapter__facts">
           <div>
             <dt>{isEnglish ? 'Preferred name' : '首选名称'}</dt>
-            <dd>{(isEnglish ? identity?.englishName : identity?.chineseName) || identity?.englishName || identity?.chineseName || '—'}</dd>
+            <dd>{(isEnglish ? formatSentenceCaseEnglishName(identity?.englishName) : identity?.chineseName) || formatSentenceCaseEnglishName(identity?.englishName) || identity?.chineseName || '—'}</dd>
           </div>
           <div>
             <dt>{isEnglish ? 'Molecular formula' : '分子式'}</dt>
@@ -59,3 +59,4 @@ export default function OverviewChapter({ identity, chapters = [], sourceStates 
     </div>
   );
 }
+import { formatSentenceCaseEnglishName } from '../../../lib/compoundNameFormat';

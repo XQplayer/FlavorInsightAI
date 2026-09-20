@@ -7,7 +7,7 @@ export default function CompoundIdentityHeader({
 }) {
   if (!identity) return null;
 
-  const englishName = String(identity.englishName || '').trim();
+  const englishName = formatSentenceCaseEnglishName(identity.englishName);
   const chineseName = String(identity.chineseName || '').trim();
   const preferredName = isEnglish
     ? englishName || chineseName
@@ -79,3 +79,4 @@ export default function CompoundIdentityHeader({
     </header>
   );
 }
+import { formatSentenceCaseEnglishName } from '../../lib/compoundNameFormat';

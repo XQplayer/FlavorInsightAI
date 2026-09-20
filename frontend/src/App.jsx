@@ -25,6 +25,9 @@ import {
 } from './searchWorkbenchModel';
 import { recordCompoundSearch } from './lib/supabase';
 import { classifyCompoundBySmarts } from './lib/compoundClassification';
+import { casClassificationService } from './lib/casClassification';
+import { CLASSIFICATION_EXPORT_COLUMNS, classificationExportValues } from './lib/csvClassificationExport';
+import { formatSentenceCaseEnglishName } from './lib/compoundNameFormat';
 import { loadResultView, saveResultView } from './resultViewPreference';
 import {
   buildCsvExportContract,
@@ -1244,14 +1247,9 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
     };
   };
 
-  const formatDisplayCommonEnglishName = (value) => {
-    const raw = (value || '').toString().replace(/\([^)]*\)/g, '').trim();
-    if (!raw) return '';
-    const lower = raw.toLowerCase().replace(/\s+/g, ' ');
-    return lower.replace(/[A-Za-z]/, match => match.toUpperCase());
-  };
+  const formatDisplayCommonEnglishName = (value) => formatSentenceCaseEnglishName((value || '').toString().replace(/\([^)]*\)/g, '').trim());
 
-  const exportCSV = (exportMode) => {
+  const exportCSV = async (exportMode) => {
     const exportContract = buildCsvExportContract({
       resultView,
       queryMatchedResults,
@@ -1276,6 +1274,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
         return mediumDelta || a.index - b.index;
       })
       .map(({ item }) => item);
+    const classifications = await casClassificationService.classifyCasValues(exportOrderedResults.map(item => item.cas));
     const getBookMatchesForItem = (item, fema, commonName) => {
       if (!exportContract.includeBookResults || !bookIndex.length) return [];
       return searchBookIndex({
@@ -1303,9 +1302,9 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
       'CAS号',
       '化合物中文名',
       '常用英文名',
+      ...CLASSIFICATION_EXPORT_COLUMNS,
       ...(exportContract.includeFlavorDB ? ['主要官能团', 'FlavorDB2 CID', 'FlavorDB2风味描述', 'FlavorDB2链接'] : []),
       ...(exportContract.includePubChem ? [
-        '主要化合物类别',
         'SMARTS命中',
         '分子式',
         '分子量',
@@ -1372,7 +1371,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
         'CAS号',
         '化合物中文名',
         '常用英文名',
-        '化合物类别',
+        ...CLASSIFICATION_EXPORT_COLUMNS,
         '分子式',
         'FEMA风味描述',
         ...selectedMediaInOrder.flatMap(medium => [
@@ -1395,7 +1394,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
         const fema = femaProfiles[item.cas] || {};
         const profile = compoundProfiles[item.cas] || {};
         const pubchem = profile.pubchem || {};
-        const exportClassification = getExportClassification(profile, isEnglish);
+        const classificationValues = classificationExportValues(classifications, item.cas);
         const commonEnglishNameText = formatCommonEnglishName(fema.name || item.english_name);
         const entityBookResults = getBookMatchesForItem(item, fema, commonEnglishNameText);
         const thresholdCells = selectedMediaInOrder.flatMap(medium => {
@@ -1417,7 +1416,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
           csvCasCell(item.cas),
           csvCell(item.chinese_name),
           csvCell(commonEnglishNameText),
-          csvCell(exportClassification.label),
+          ...classificationValues.map(csvCell),
           csvCell(pubchem.molecular_formula),
           csvCell(splitDescriptorValues(fema.flavor_profile).join('; ')),
           ...thresholdCells,
@@ -1451,6 +1450,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
       const thresholdRecords = filteredThresholds.length ? filteredThresholds : [''];
       const functionalGroups = flavordb.functional_groups || [];
       const exportClassification = getExportClassification(profile, isEnglish);
+      const classificationValues = classificationExportValues(classifications, item.cas);
 
       thresholdRecords.forEach(threshold => {
         const parsed = threshold
@@ -1462,6 +1462,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
         csvCasCell(item.cas),
         csvCell(item.chinese_name),
         csvCell(commonEnglishNameText),
+        ...classificationValues.map(csvCell),
         ...(exportContract.includeFlavorDB ? [
           csvCell(functionalGroups.join('; ')),
           csvCell(flavordb.cid),
@@ -1473,7 +1474,6 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
           csvCell(flavordb.url)
         ] : []),
         ...(exportContract.includePubChem ? [
-          csvCell(exportClassification.label),
           csvCell(exportClassification.matches.join('; ')),
           csvCell(pubchem.molecular_formula),
           csvCell(pubchem.molecular_weight),
@@ -1923,7 +1923,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
                     ['CAS', summaryEntity.cas],
                     ['CID', summaryPubChem.cid || summaryFlavorDb.cid],
                     ['中文名', summaryEntity.chinese_name],
-                    ['英文名', summaryEntity.english_name || summaryEntity.common_english_name],
+                    ['英文名', formatSentenceCaseEnglishName(summaryEntity.english_name || summaryEntity.common_english_name)],
                     ['分子式', summaryPubChem.molecular_formula],
                     ['主要官能团', summaryFlavorDb.functional_groups],
                     ['化合物分类', summaryIntegrated.profile?.smart_classification?.zh || summaryIntegrated.profile?.smart_classification?.en],
