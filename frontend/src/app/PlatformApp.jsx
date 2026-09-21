@@ -128,7 +128,6 @@ function PlatformRoute({ route, onNavigate }) {
       <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}>
         <Suspense fallback={<RouteLoading />}>
           <DatabaseOverviewPage
-            key={route}
             initialView={route === 'search' ? 'search' : 'home'}
             embedded
             language={language}

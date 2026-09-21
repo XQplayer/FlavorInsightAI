@@ -347,12 +347,24 @@ select:focus-visible,
 .science-secondary-action {
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--surface-panel);
 }
 
 .science-secondary-action:hover {
   border-color: var(--action-primary);
   color: var(--action-primary);
+}
+
+:root[data-theme='dark'] .science-secondary-action {
+  border-color: var(--platform-border);
+  color: var(--platform-ink);
+  background: var(--platform-surface);
+}
+
+:root[data-theme='dark'] .science-secondary-action:hover {
+  border-color: var(--platform-brand);
+  color: var(--platform-ink);
+  background: var(--surface-muted);
 }
 
 .science-metrics {

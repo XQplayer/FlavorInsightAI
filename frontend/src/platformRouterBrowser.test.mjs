@@ -47,6 +47,17 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   }
   const { chromium } = await import(pathToFileURL(playwrightPath).href);
 
+  const previousSupabaseUrl = process.env.VITE_SUPABASE_URL;
+  const previousSupabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  process.env.VITE_SUPABASE_URL = 'https://flavorinsight-browser-test.invalid';
+  process.env.VITE_SUPABASE_ANON_KEY = 'browser-test-anon-key';
+  t.after(() => {
+    if (previousSupabaseUrl === undefined) delete process.env.VITE_SUPABASE_URL;
+    else process.env.VITE_SUPABASE_URL = previousSupabaseUrl;
+    if (previousSupabaseAnonKey === undefined) delete process.env.VITE_SUPABASE_ANON_KEY;
+    else process.env.VITE_SUPABASE_ANON_KEY = previousSupabaseAnonKey;
+  });
+
   const vite = await createServer({
     root: frontendRoot,
     configFile: path.join(frontendRoot, 'vite.config.js'),
@@ -70,6 +81,32 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
 
   const page = await browser.newPage();
   await page.addInitScript(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (!url.startsWith('https://flavorinsight-browser-test.invalid/')) {
+        return originalFetch(input, init);
+      }
+      const headers = { 'Content-Type': 'application/json' };
+      if (url.includes('/rest/v1/search_stats')) {
+        return new Response(JSON.stringify([{
+          cas: '141-78-6',
+          common_name: 'Ethyl acetate',
+          chinese_name: '乙酸乙酯',
+          search_count: 12,
+          last_searched_at: '2026-09-21T00:00:00.000Z',
+        }]), { status: 200, headers });
+      }
+      if (url.includes('/rest/v1/rpc/get_analytics_summary')) {
+        return new Response(JSON.stringify({
+          total_visits: 24,
+          total_searches: 12,
+          today_searches: 3,
+        }), { status: 200, headers });
+      }
+      return new Response('null', { status: 200, headers });
+    };
+
     const originalAdd = window.addEventListener.bind(window);
     const originalRemove = window.removeEventListener.bind(window);
     const listeners = new Set();
@@ -101,11 +138,33 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await page.getByRole('link', { name: /进入数据库/ }).first().click();
   await page.waitForURL('**/FlavorThresholdDB/database/');
   await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
+
+  const insight = page.getByRole('button', { name: /Ethyl acetate/ });
+  await insight.waitFor();
+  await insight.click();
+  await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
+  const compoundSearch = page.locator('#compound-search');
+  await compoundSearch.waitFor();
+  assert.equal(await compoundSearch.inputValue(), '141-78-6');
+  await page.getByText('CAS 141-78-6', { exact: true }).first().waitFor();
+
+  const platformNavigation = page.getByRole('navigation', { name: '平台主导航' });
+  await platformNavigation.getByRole('link', { name: 'FlavorThresholdDB', exact: true }).click();
+  await page.waitForURL('**/FlavorThresholdDB/database/');
+  await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
+  await page.getByRole('button', { name: '开启风味探索之旅' }).click();
+  await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
+  assert.equal(await page.locator('#compound-search').inputValue(), '141-78-6');
+
+  await page.goBack();
+  await page.waitForURL('**/FlavorThresholdDB/database/');
+  await page.goBack();
+  await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
+  await page.goBack();
+  await page.waitForURL('**/FlavorThresholdDB/database/');
   await page.goBack();
   await page.waitForURL(baseUrl);
-  await page.getByRole('heading', {
-    name: 'FlavorInsight AI 食品风味信息学智能分析平台',
-  }).waitFor();
+  await page.getByRole('heading', { name: 'FlavorInsight AI 食品风味信息学智能分析平台' }).waitFor();
 
   const listenerState = await page.evaluate(() => ({
     active: window.__platformPopstateTracker.active(),

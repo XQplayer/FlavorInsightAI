@@ -239,6 +239,13 @@ export default function App({
   }, [isEnglish]);
 
   useEffect(() => {
+    if (!embedded) return;
+    // The platform owns the embedded route while this instance retains its search state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurrentView(initialView);
+  }, [embedded, initialView]);
+
+  useEffect(() => {
     if (embedded) {
       return undefined;
     }
