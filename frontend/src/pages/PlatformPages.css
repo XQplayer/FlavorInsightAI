@@ -149,10 +149,11 @@
 
 .platform-status--live { color: #087a55; background: color-mix(in srgb, var(--status-success) 10%, transparent); }
 .platform-status--building { color: #9a4b0e; background: color-mix(in srgb, var(--status-warning) 10%, transparent); }
-.platform-status--planned { color: var(--text-secondary); background: var(--surface-muted); }
+.platform-status--planned { color: #475569; background: var(--surface-muted); }
 
 :root[data-theme='dark'] .platform-status--live { color: #6ee7b7; }
 :root[data-theme='dark'] .platform-status--building { color: #fbbf24; }
+:root[data-theme='dark'] .platform-status--planned { color: #cbd5e1; }
 
 .platform-home__compound-card {
   margin-top: 24px;
@@ -170,7 +171,7 @@
 .platform-home__compound-identity div > span { margin-top: 3px; color: var(--text-secondary); font: 600 12px/1.4 ui-monospace, monospace; }
 .platform-home__compound-card dl { margin: 20px 0 0; }
 .platform-home__compound-card dl div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 11px 0; border-top: 1px solid var(--border-default); }
-.platform-home__compound-card dt { color: var(--text-tertiary); font-size: 12px; font-weight: 700; }
+.platform-home__compound-card dt { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
 .platform-home__compound-card dd { margin: 0; overflow-wrap: anywhere; color: var(--text-secondary); font-size: 13px; font-weight: 650; }
 .platform-home__process-preview {
   display: flex;
@@ -181,12 +182,13 @@
   padding: 12px 14px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-surface);
-  color: var(--text-secondary);
+  color: #475569;
   background: var(--surface-muted);
   font-size: 11px;
   font-weight: 700;
 }
 .platform-home__process-preview svg { flex: 0 0 auto; color: var(--action-primary); }
+:root[data-theme='dark'] .platform-home__process-preview { color: #cbd5e1; }
 .platform-home__preview-note { margin: 16px 2px 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
 
 .platform-section { padding-top: clamp(72px, 9vw, 116px); padding-bottom: clamp(72px, 9vw, 116px); }
