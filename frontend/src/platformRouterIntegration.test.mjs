@@ -35,6 +35,21 @@ test('PlatformApp keeps the homepage eager and mature workbenches behind lazy bo
   assert.match(platformAppSource, /<PlatformShell[\s\S]*route=\{route\}[\s\S]*onNavigate=\{navigate\}/);
 });
 
+test('each lazy route keeps its Suspense boundary inside a route error boundary', () => {
+  const boundaries = [...platformAppSource.matchAll(
+    /<RouteErrorBoundary\b[\s\S]*?<\/RouteErrorBoundary>/g,
+  )].map(match => match[0]);
+
+  assert.equal(boundaries.length, 2);
+  assert.match(boundaries[0], /<Suspense[\s\S]*<DatabaseApp/);
+  assert.match(boundaries[1], /<Suspense[\s\S]*<ShimadzuAnalysisPage/);
+  for (const boundary of boundaries) {
+    assert.match(boundary, /routeKey=\{route\}/);
+    assert.match(boundary, /language=\{language\}/);
+    assert.match(boundary, /onNavigate=\{onNavigate\}/);
+  }
+});
+
 test('the database app exposes the embedded controlled contract', () => {
   assert.match(databaseAppSource, /function App\(\{[\s\S]*initialView[\s\S]*embedded[\s\S]*language[\s\S]*onLanguageChange[\s\S]*onNavigate[\s\S]*\}\)/);
   assert.match(databaseAppSource, /embedded\s*\?/);
