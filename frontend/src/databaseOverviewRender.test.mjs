@@ -16,7 +16,9 @@ test('the production database page SSRs distinct embedded home and search views'
   t.after(() => vite.close());
 
   const pageModule = await vite.ssrLoadModule('/src/pages/DatabaseOverviewPage.jsx');
+  const appModule = await vite.ssrLoadModule('/src/App.jsx');
   const DatabaseOverviewPage = pageModule.default;
+  const DatabaseApp = appModule.default;
   const sharedProps = {
     onLanguageChange() {},
     onNavigate() {},
@@ -29,6 +31,10 @@ test('the production database page SSRs distinct embedded home and search views'
   }));
   const searchMarkup = renderToStaticMarkup(React.createElement(DatabaseOverviewPage, {
     ...sharedProps,
+    initialView: 'search',
+    language: 'en',
+  }));
+  const standaloneSearchMarkup = renderToStaticMarkup(React.createElement(DatabaseApp, {
     initialView: 'search',
     language: 'en',
   }));
@@ -47,4 +53,10 @@ test('the production database page SSRs distinct embedded home and search views'
   assert.match(searchMarkup, /id="compound-search"/);
   assert.doesNotMatch(searchMarkup, /class="science-nav/);
   assert.doesNotMatch(searchMarkup, /Contact us|HXQLab/);
+  assert.equal((searchMarkup.match(/<main\b/g) ?? []).length, 0);
+  assert.equal((searchMarkup.match(/id="main-content"/g) ?? []).length, 0);
+
+  assert.equal((standaloneSearchMarkup.match(/<main\b/g) ?? []).length, 1);
+  assert.equal((standaloneSearchMarkup.match(/id="main-content"/g) ?? []).length, 1);
+  assert.equal((standaloneSearchMarkup.match(/href="#main-content"/g) ?? []).length, 1);
 });

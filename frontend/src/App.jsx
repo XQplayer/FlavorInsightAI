@@ -235,8 +235,10 @@ export default function App({
 
   useEffect(() => {
     document.documentElement.lang = isEnglish ? 'en' : 'zh-CN';
-    document.title = isEnglish ? 'FlavorThresholdDB | HXQLab' : '香气阈值与风味描述检索库 | HXQLab';
-  }, [isEnglish]);
+    if (!embedded) {
+      document.title = isEnglish ? 'FlavorThresholdDB | HXQLab' : '香气阈值与风味描述检索库 | HXQLab';
+    }
+  }, [embedded, isEnglish]);
 
   useEffect(() => {
     if (!embedded) return;
@@ -1570,6 +1572,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
   const summaryPubChem = summaryIntegrated.profile?.pubchem || {};
   const summaryFema = summaryIntegrated.fema || {};
   const summaryFlavorDb = summaryIntegrated.profile?.flavordb || {};
+  const SearchContentRoot = embedded ? 'div' : 'main';
 
   return (
     <div className={`app-shell ${embedded ? 'embedded ' : ''}${currentView === 'home' ? 'home-view' : currentView === 'search' ? 'search-view' : 'shimadzu-view'}`}>
@@ -1759,7 +1762,10 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
           <p>{isEnglish ? 'Search thresholds, flavor descriptors, and source records.' : '检索阈值、风味描述与来源记录。'}</p>
         </div>
       </header>
-      <main id="main-content" className="search-main relative z-20 mx-auto flex flex-col px-4 md:px-8 pb-10">
+      <SearchContentRoot
+        id={embedded ? undefined : 'main-content'}
+        className="search-main relative z-20 mx-auto flex flex-col px-4 md:px-8 pb-10"
+      >
         {/* Search Controls */}
         <div id="search-workspace" className="science-workspace search-control-panel bg-white p-5 md:p-6 mb-8 scroll-mt-6">
           
@@ -2764,7 +2770,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
         </div>
         )}
 
-      </main>
+      </SearchContentRoot>
       </>
       )}
 

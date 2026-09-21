@@ -17,6 +17,25 @@ const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.js
 const ShimadzuAnalysisPage = lazy(() => import('../components/shimadzu/ShimadzuAnalysisPage.jsx'));
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
+const PLATFORM_ROUTE_TITLES = Object.freeze({
+  zh: {
+    home: 'FlavorInsight AI | 食品风味信息学智能分析平台',
+    database: 'FlavorThresholdDB 数据库 | FlavorInsight AI',
+    search: '香气阈值检索 | FlavorInsight AI',
+    processing: '数据处理 | FlavorInsight AI',
+    analysis: '数据分析 | FlavorInsight AI',
+    resources: '资源中心 | FlavorInsight AI',
+  },
+  en: {
+    home: 'FlavorInsight AI | Food Flavor Informatics Platform',
+    database: 'FlavorThresholdDB Database | FlavorInsight AI',
+    search: 'Aroma Threshold Search | FlavorInsight AI',
+    processing: 'Data Processing | FlavorInsight AI',
+    analysis: 'Data Analysis | FlavorInsight AI',
+    resources: 'Resources | FlavorInsight AI',
+  },
+});
+
 const ROUTE_ERROR_COPY = Object.freeze({
   zh: {
     title: '工作区加载失败',
@@ -118,6 +137,12 @@ function PlannedRoute({ route, onNavigate }) {
 
 function PlatformRoute({ route, onNavigate }) {
   const { language, setLanguage } = usePlatformPreferences();
+
+  useEffect(() => {
+    document.title = PLATFORM_ROUTE_TITLES[language]?.[route]
+      ?? PLATFORM_ROUTE_TITLES.zh[route]
+      ?? PLATFORM_ROUTE_TITLES.zh.home;
+  }, [language, route]);
 
   if (route === 'home') {
     return <PlatformHomePage onNavigate={onNavigate} />;

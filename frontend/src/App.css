@@ -546,8 +546,8 @@ select:focus-visible,
   padding: 0 14px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-control);
-  color: var(--text-secondary);
-  background: rgba(248, 250, 252, 0.9);
+  color: var(--text-primary);
+  background: var(--surface-panel);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -559,6 +559,12 @@ select:focus-visible,
 .search-insights-counters strong {
   color: var(--text-primary);
   font-size: 17px;
+}
+
+:root[data-theme='dark'] .search-insights-counters span {
+  border-color: var(--platform-border);
+  color: var(--platform-ink);
+  background: var(--platform-surface);
 }
 
 .compound-treemap {

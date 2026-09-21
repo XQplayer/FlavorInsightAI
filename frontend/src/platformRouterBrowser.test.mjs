@@ -31,6 +31,12 @@ async function findEdge() {
   return null;
 }
 
+async function assertSinglePlatformLandmarks(page) {
+  assert.equal(await page.locator('main').count(), 1);
+  assert.equal(await page.locator('#main-content').count(), 1);
+  assert.equal(await page.locator('a[href="#main-content"]').count(), 1);
+}
+
 test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   timeout: 45_000,
 }, async t => {
@@ -135,9 +141,18 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await page.getByRole('heading', {
     name: 'FlavorInsight AI 食品风味信息学智能分析平台',
   }).waitFor();
+  assert.equal(await page.title(), 'FlavorInsight AI | 食品风味信息学智能分析平台');
+  await assertSinglePlatformLandmarks(page);
   await page.getByRole('link', { name: /进入数据库/ }).first().click();
   await page.waitForURL('**/FlavorThresholdDB/database/');
   await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
+  assert.equal(await page.title(), 'FlavorThresholdDB 数据库 | FlavorInsight AI');
+  await assertSinglePlatformLandmarks(page);
+
+  await page.locator('button[data-language="en"]').click();
+  assert.equal(await page.title(), 'FlavorThresholdDB Database | FlavorInsight AI');
+  await page.locator('button[data-language="zh"]').click();
+  assert.equal(await page.title(), 'FlavorThresholdDB 数据库 | FlavorInsight AI');
 
   const insight = page.getByRole('button', { name: /Ethyl acetate/ });
   await insight.waitFor();
@@ -147,14 +162,18 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await compoundSearch.waitFor();
   assert.equal(await compoundSearch.inputValue(), '141-78-6');
   await page.getByText('CAS 141-78-6', { exact: true }).first().waitFor();
+  assert.equal(await page.title(), '香气阈值检索 | FlavorInsight AI');
+  await assertSinglePlatformLandmarks(page);
 
   const platformNavigation = page.getByRole('navigation', { name: '平台主导航' });
   await platformNavigation.getByRole('link', { name: 'FlavorThresholdDB', exact: true }).click();
   await page.waitForURL('**/FlavorThresholdDB/database/');
   await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
+  await assertSinglePlatformLandmarks(page);
   await page.getByRole('button', { name: '开启风味探索之旅' }).click();
   await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
   assert.equal(await page.locator('#compound-search').inputValue(), '141-78-6');
+  await assertSinglePlatformLandmarks(page);
 
   await page.goBack();
   await page.waitForURL('**/FlavorThresholdDB/database/');
@@ -165,6 +184,8 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await page.goBack();
   await page.waitForURL(baseUrl);
   await page.getByRole('heading', { name: 'FlavorInsight AI 食品风味信息学智能分析平台' }).waitFor();
+  assert.equal(await page.title(), 'FlavorInsight AI | 食品风味信息学智能分析平台');
+  await assertSinglePlatformLandmarks(page);
 
   const listenerState = await page.evaluate(() => ({
     active: window.__platformPopstateTracker.active(),

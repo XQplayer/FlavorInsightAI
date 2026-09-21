@@ -54,6 +54,18 @@ test('database and search routes share the lazy database overview boundary', () 
   assert.match(appSource, /useEffect\(\(\) => \{[\s\S]*if \(!embedded\)[\s\S]*setCurrentView\(initialView\)[\s\S]*\}, \[embedded, initialView\]\)/);
 });
 
+test('the platform owns route titles while the standalone database keeps its title', () => {
+  assert.match(platformSource, /const PLATFORM_ROUTE_TITLES = Object\.freeze\(/);
+  assert.match(platformSource, /useEffect\(\(\) => \{[\s\S]*document\.title = PLATFORM_ROUTE_TITLES\[language\]\?\.\[route\][\s\S]*\}, \[language, route\]\)/);
+  assert.match(appSource, /useEffect\(\(\) => \{[\s\S]*if \(!embedded\) \{[\s\S]*document\.title = [\s\S]*\}[\s\S]*\}, \[embedded, isEnglish\]\)/);
+});
+
+test('embedded search yields its main landmark and skip target to the platform shell', () => {
+  assert.match(appSource, /const SearchContentRoot = embedded \? ['"]div['"] : ['"]main['"]/);
+  assert.match(appSource, /<SearchContentRoot[\s\S]*id=\{embedded \? undefined : ['"]main-content['"]\}/);
+  assert.match(appSource, /<\/SearchContentRoot>/);
+});
+
 test('the legacy homepage is explicitly scoped to the database module', () => {
   assert.match(appSource, /FlavorInsight AI · Database module/);
   assert.match(appSource, /FlavorInsight AI · 数据库模块/);
@@ -80,6 +92,21 @@ test('embedded database chrome inherits platform surfaces without legacy top off
 test('the secondary database action uses tokenized light and dark colors above AA contrast', () => {
   assert.match(appStyles, /\.science-secondary-action\s*\{[^}]*color:\s*var\(--text-primary\)[^}]*background:\s*var\(--surface-panel\)/);
   assert.match(appStyles, /:root\[data-theme=['"]dark['"]\] \.science-secondary-action\s*\{[^}]*color:\s*var\(--platform-ink\)[^}]*background:\s*var\(--platform-surface\)/);
+  const lightTokens = tokenStyles.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+  const darkTokens = tokenStyles.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+  assert.ok(contrastRatio(
+    tokenValue(lightTokens, 'platform-ink'),
+    tokenValue(lightTokens, 'platform-surface'),
+  ) >= 4.5);
+  assert.ok(contrastRatio(
+    tokenValue(darkTokens, 'platform-ink'),
+    tokenValue(darkTokens, 'platform-surface'),
+  ) >= 4.5);
+});
+
+test('search insight counters use tokenized light and dark surfaces above AA contrast', () => {
+  assert.match(appStyles, /\.search-insights-counters span\s*\{[^}]*color:\s*var\(--text-primary\)[^}]*background:\s*var\(--surface-panel\)/);
+  assert.match(appStyles, /:root\[data-theme=['"]dark['"]\] \.search-insights-counters span\s*\{[^}]*color:\s*var\(--platform-ink\)[^}]*background:\s*var\(--platform-surface\)/);
   const lightTokens = tokenStyles.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? '';
   const darkTokens = tokenStyles.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\}/)?.[1] ?? '';
   assert.ok(contrastRatio(
