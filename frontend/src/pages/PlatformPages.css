@@ -477,10 +477,9 @@
   gap: 20px;
   margin-top: 28px;
   padding: 26px;
-  border: 1px solid var(--border-default);
-  border-left: 4px solid var(--status-warning);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 24%, var(--border-default));
   border-radius: var(--radius-panel, 16px);
-  background: var(--surface-panel);
+  background: color-mix(in srgb, var(--status-warning) 4%, var(--surface-panel));
 }
 
 .platform-status-page__boundary > svg {

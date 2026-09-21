@@ -293,5 +293,6 @@ test('styles status pages with platform tokens and responsive grids', () => {
   assert.match(pageStyles, /\.platform-resources__planned-card\s*\{/);
   assert.match(pageStyles, /var\(--surface-panel\)/);
   assert.match(pageStyles, /var\(--border-default\)/);
+  assert.doesNotMatch(pageStyles, /\.platform-status-page__boundary\s*\{[^}]*border-left:\s*[2-9]px/s);
   assert.match(pageStyles, /@media \(max-width:\s*768px\)[\s\S]*\.platform-status-page__feature-grid/);
 });

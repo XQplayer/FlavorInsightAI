@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -59,4 +60,12 @@ test('the production database page SSRs distinct embedded home and search views'
   assert.equal((standaloneSearchMarkup.match(/<main\b/g) ?? []).length, 1);
   assert.equal((standaloneSearchMarkup.match(/id="main-content"/g) ?? []).length, 1);
   assert.equal((standaloneSearchMarkup.match(/href="#main-content"/g) ?? []).length, 1);
+});
+
+test('the mobile database hero keeps the product name and coverage metrics readable', () => {
+  const css = readFileSync(fileURLToPath(new URL('./App.css', import.meta.url)), 'utf8');
+
+  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.science-hero-content h1\s*\{[\s\S]*?font-size:\s*clamp\(26px,\s*8vw,\s*34px\)/);
+  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.science-metrics\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.science-metrics > div \+ div\s*\{[\s\S]*?border-left:\s*0[\s\S]*?border-top:/);
 });
