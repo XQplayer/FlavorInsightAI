@@ -19,6 +19,54 @@ body {
   background: var(--surface-workbench);
 }
 
+.app-shell.embedded {
+  --surface-workbench: var(--platform-canvas);
+  --surface-panel: var(--platform-surface);
+  --surface-primary: var(--platform-surface);
+  --text-primary: var(--platform-ink);
+  --text-secondary: var(--platform-text);
+  min-height: calc(100vh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--navbar-height, 70px));
+  color: var(--platform-ink);
+  background: var(--platform-canvas);
+}
+
+.app-shell.embedded .science-hero {
+  min-height: calc(100vh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--navbar-height, 70px));
+  padding-top: 0;
+  background:
+    radial-gradient(ellipse 56% 38% at 82% 14%, color-mix(in srgb, var(--platform-brand) 8%, transparent), transparent 72%),
+    linear-gradient(150deg, var(--platform-surface) 0%, var(--platform-canvas) 72%);
+}
+
+.app-shell.embedded .hero-inner {
+  min-height: calc(100dvh - var(--navbar-height, 70px));
+}
+
+.app-shell.embedded .science-hero-content {
+  padding-top: clamp(48px, 8vh, 88px);
+}
+
+.app-shell.embedded .search-page-header {
+  padding-top: 0;
+  background: var(--platform-canvas);
+}
+
+.app-shell.embedded .science-hero-content h1,
+.app-shell.embedded .search-shell-content h1 {
+  color: var(--platform-ink);
+}
+
+.app-shell.embedded .science-metrics,
+.app-shell.embedded .search-insights,
+.app-shell.embedded .science-citation-panel,
+.app-shell.embedded .search-shell-content,
+.app-shell.embedded .search-control-panel {
+  border-color: var(--platform-border);
+  background: color-mix(in srgb, var(--platform-surface) 94%, transparent);
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -220,6 +268,15 @@ select:focus-visible,
   margin: 0 auto;
   padding: clamp(76px, 11vh, 120px) 0 var(--space-12);
   text-align: center;
+}
+
+.science-module-label {
+  margin: 0 0 var(--space-3);
+  color: var(--action-primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .science-hero-content h1 {

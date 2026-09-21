@@ -13,7 +13,7 @@ import {
   subscribeToPlatformPopstate,
 } from './platformRoutes.js';
 
-const DatabaseApp = lazy(() => import('../App.jsx'));
+const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.jsx'));
 const ShimadzuAnalysisPage = lazy(() => import('../components/shimadzu/ShimadzuAnalysisPage.jsx'));
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
@@ -127,7 +127,7 @@ function PlatformRoute({ route, onNavigate }) {
     return (
       <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}>
         <Suspense fallback={<RouteLoading />}>
-          <DatabaseApp
+          <DatabaseOverviewPage
             key={route}
             initialView={route === 'search' ? 'search' : 'home'}
             embedded

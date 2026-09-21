@@ -32,7 +32,7 @@ test('production bundle keeps database data and the Shimadzu worker out of the p
 
   const manifest = JSON.parse(await readFile(path.join(outDir, '.vite', 'manifest.json'), 'utf8'));
   const platformEntry = manifestEntry(manifest, 'index.html');
-  const databaseChunk = manifestEntry(manifest, 'src/App.jsx');
+  const databaseChunk = manifestEntry(manifest, 'src/pages/DatabaseOverviewPage.jsx');
   const shimadzuChunk = manifestEntry(
     manifest,
     'src/components/shimadzu/ShimadzuAnalysisPage.jsx',

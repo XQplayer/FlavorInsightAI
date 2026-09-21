@@ -306,7 +306,9 @@ export default function App({
     setShowCitationExample(true);
     setCitationExpanded(true);
     setShowContact(false);
-    window.history.pushState({ view: 'home' }, '', `${APP_BASE_PATH}/`);
+    if (!embedded) {
+      window.history.pushState({ view: 'home' }, '', `${APP_BASE_PATH}/`);
+    }
     window.setTimeout(() => {
       document.querySelector('.science-citation-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 0);
@@ -1607,6 +1609,9 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
           )}
 
           <header id="top" className="science-hero-content">
+            <p className="science-module-label">
+              {isEnglish ? 'FlavorInsight AI · Database module' : 'FlavorInsight AI · 数据库模块'}
+            </p>
             <h1>FlavorThresholdDB</h1>
             <p className="science-subtitle">
               {isEnglish ? 'An Integrated Flavor Threshold and Descriptor Retrieval Database' : '香气阈值与风味描述检索库'}
@@ -1623,9 +1628,14 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
                     <Search className="w-5 h-5" />
                   {isEnglish ? 'Begin your flavor exploration' : '开启风味探索之旅'}
                   </button>
+                  {embedded && (
+                    <button type="button" onClick={openDataSources} className="science-secondary-action">
+                      {isEnglish ? 'Sources and citations' : '数据来源与引用'}
+                    </button>
+                  )}
                 </div>
 
-                <div className="science-metrics" aria-label={isEnglish ? 'Platform coverage' : '平台数据覆盖'}>
+                <div className="science-metrics" aria-label={isEnglish ? 'Database coverage' : '数据库数据覆盖'}>
                   <div>
                     <span className="science-metric-icon"><Database aria-hidden="true" /></span>
                     <span className="science-metric-copy"><strong>5</strong><span>{isEnglish ? 'integrated data sources' : '整合数据来源'}</span></span>
