@@ -17,6 +17,13 @@ test('keeps the live browser engine status in the hero', () => {
   assert.match(source, /engine\.detail/)
 })
 
+test('yields document title ownership only when embedded without skipping the worker lifecycle', () => {
+  assert.match(source, /function ShimadzuAnalysisPage\(\{ embedded = false, onHome \}\)/)
+  assert.match(source, /useEffect\(\(\) => \{\s*if \(!embedded\) \{\s*document\.title = '岛津气质分析 \| HXQLab'\s*\}\s*workerClientRef\.current = createShimadzuWorkerClient\(\)/)
+  assert.match(source, /workerClientRef\.current\?\.dispose\(\)/)
+  assert.match(source, /\}, \[api, embedded\]\)/)
+})
+
 test('uses the approved Shimadzu data control deck shell', () => {
   assert.match(source, /data-ui-revision="data-control-deck-v4"/)
   assert.match(source, /className="shimadzu-deck-topbar"/)

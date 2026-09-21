@@ -393,7 +393,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride }) {
   )
 }
 
-export default function ShimadzuAnalysisPage({ onHome }) {
+export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
   const api = useMemo(() => createShimadzuApi(API_BASE), [])
   const cloud = useMemo(() => createShimadzuCloud(supabase), [])
   const taskStore = useMemo(() => createShimadzuTaskStore(), [])
@@ -462,14 +462,16 @@ export default function ShimadzuAnalysisPage({ onHome }) {
   }
 
   useEffect(() => {
-    document.title = '岛津气质分析 | HXQLab'
+    if (!embedded) {
+      document.title = '岛津气质分析 | HXQLab'
+    }
     workerClientRef.current = createShimadzuWorkerClient()
     return () => {
       workerClientRef.current?.dispose()
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current)
       if (partialResultUrlRef.current) URL.revokeObjectURL(partialResultUrlRef.current)
     }
-  }, [api])
+  }, [api, embedded])
 
   useEffect(() => {
     if (!cloud.configured) return undefined
