@@ -137,8 +137,14 @@ const MatchModeControl = ({ exactMatch, onChange, isEnglish, compact = false }) 
   </div>
 );
 
-export default function App() {
-  const [currentView, setCurrentView] = useState(getViewFromLocation);
+export default function App({
+  initialView,
+  embedded = false,
+  language,
+  onLanguageChange,
+  onNavigate,
+}) {
+  const [currentView, setCurrentView] = useState(() => initialView || getViewFromLocation());
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [coreSearchError, setCoreSearchError] = useState(null);
@@ -177,7 +183,7 @@ export default function App() {
   const [citationExpanded, setCitationExpanded] = useState(true);
   const [showContact, setShowContact] = useState(false);
   const [citationCopied, setCitationCopied] = useState(false);
-  const [interfaceLanguage, setInterfaceLanguage] = useState('zh');
+  const [internalLanguage, setInternalLanguage] = useState('zh');
   const [refsLookup, setRefsLookup] = useState({});
   const [bookIndex, setBookIndex] = useState([]);
   const [bookEntities, setBookEntities] = useState([]);
@@ -195,7 +201,19 @@ export default function App() {
   });
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
+  const interfaceLanguage = language === 'en' || language === 'zh'
+    ? language
+    : internalLanguage;
   const isEnglish = interfaceLanguage === 'en';
+  const setInterfaceLanguage = useCallback(nextLanguage => {
+    const normalizedLanguage = nextLanguage === 'en' ? 'en' : 'zh';
+    if (language !== 'en' && language !== 'zh') {
+      setInternalLanguage(normalizedLanguage);
+    }
+    if (typeof onLanguageChange === 'function') {
+      onLanguageChange(normalizedLanguage);
+    }
+  }, [language, onLanguageChange]);
 
   const resetWorkbenchCandidateSelection = () => setSelectedWorkbenchCandidate({
     scopeKey: '',
@@ -221,6 +239,10 @@ export default function App() {
   }, [isEnglish]);
 
   useEffect(() => {
+    if (embedded) {
+      return undefined;
+    }
+
     const syncViewWithLocation = () => setCurrentView(getViewFromLocation());
     window.addEventListener('popstate', syncViewWithLocation);
     window.addEventListener('hashchange', syncViewWithLocation);
@@ -228,26 +250,50 @@ export default function App() {
       window.removeEventListener('popstate', syncViewWithLocation);
       window.removeEventListener('hashchange', syncViewWithLocation);
     };
-  }, []);
+  }, [embedded]);
+
+  const navigateWithFallback = (route, fallback) => {
+    if (typeof onNavigate === 'function') {
+      onNavigate(route);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    fallback();
+  };
 
   const openSearchView = () => {
-    setCurrentView('search');
-    window.history.pushState({ view: 'search' }, '', SEARCH_PATH);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateWithFallback('search', () => {
+      setCurrentView('search');
+      window.history.pushState({ view: 'search' }, '', SEARCH_PATH);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   const openHomeView = () => {
-    setCurrentView('home');
-    setShowCitationExample(false);
-    window.history.pushState({ view: 'home' }, '', `${APP_BASE_PATH}/`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateWithFallback('home', () => {
+      setCurrentView('home');
+      setShowCitationExample(false);
+      window.history.pushState({ view: 'home' }, '', `${APP_BASE_PATH}/`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
+
+  const openDatabaseView = () => {
+    navigateWithFallback('database', () => {
+      setCurrentView('home');
+      setShowCitationExample(false);
+      window.history.pushState({ view: 'home' }, '', `${APP_BASE_PATH}/`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   const openShimadzuView = () => {
-    setCurrentView('shimadzu');
-    setShowContact(false);
-    window.history.pushState({ view: 'shimadzu' }, '', SHIMADZU_PATH);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigateWithFallback('processing', () => {
+      setCurrentView('shimadzu');
+      setShowContact(false);
+      window.history.pushState({ view: 'shimadzu' }, '', SHIMADZU_PATH);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   const changeResultView = (view) => {
@@ -1517,7 +1563,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
   const summaryFlavorDb = summaryIntegrated.profile?.flavordb || {};
 
   return (
-    <div className={`app-shell ${currentView === 'home' ? 'home-view' : currentView === 'search' ? 'search-view' : 'shimadzu-view'}`}>
+    <div className={`app-shell ${embedded ? 'embedded ' : ''}${currentView === 'home' ? 'home-view' : currentView === 'search' ? 'search-view' : 'shimadzu-view'}`}>
       {currentView === 'shimadzu' && (
         <Suspense fallback={<div className="shimadzu-route-loading" role="status">正在加载岛津分析工作台…</div>}>
           <ShimadzuAnalysisPage
@@ -1531,8 +1577,9 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
       {currentView === 'home' && (
       <section className="science-hero">
         <div className="hero-inner">
+          {!embedded && (
           <nav className="science-nav" aria-label={isEnglish ? 'Primary navigation' : '主导航'}>
-            <a href="#top" className="science-brand" aria-label="HXQLab">
+            <a href="#top" className="science-brand" aria-label="HXQLab" onClick={event => { event.preventDefault(); openDatabaseView(); }}>
               <span className="science-brand-mark"><Network className="w-6 h-6" /></span>
               <span className="science-brand-copy">
                 <strong>HXQLab</strong>
@@ -1557,6 +1604,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
               <button type="button" onClick={() => setInterfaceLanguage('en')} aria-pressed={interfaceLanguage === 'en'} className={interfaceLanguage === 'en' ? 'active' : ''}>EN</button>
             </div>
           </nav>
+          )}
 
           <header id="top" className="science-hero-content">
             <h1>FlavorThresholdDB</h1>
@@ -1665,8 +1713,9 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
 
       {currentView === 'search' && (
       <>
-      <a className="skip-link" href="#main-content">{isEnglish ? 'Skip to search' : '跳到检索区域'}</a>
+      {!embedded && <a className="skip-link" href="#main-content">{isEnglish ? 'Skip to search' : '跳到检索区域'}</a>}
       <header className="search-page-header">
+        {!embedded && (
         <nav className="science-nav search-science-nav" aria-label={isEnglish ? 'Primary navigation' : '主导航'}>
           <button type="button" className="science-brand" onClick={openHomeView} aria-label="HXQLab home">
             <span className="science-brand-mark"><Network className="w-6 h-6" /></span>
@@ -1687,6 +1736,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
             <button type="button" onClick={() => setInterfaceLanguage('en')} aria-pressed={interfaceLanguage === 'en'} className={interfaceLanguage === 'en' ? 'active' : ''}>EN</button>
           </div>
         </nav>
+        )}
         <div className="search-shell-content">
           <h1>{isEnglish ? 'Aroma threshold and flavor descriptor search' : '香气阈值与风味描述检索'}</h1>
           <p>{isEnglish ? 'Search thresholds, flavor descriptors, and source records.' : '检索阈值、风味描述与来源记录。'}</p>

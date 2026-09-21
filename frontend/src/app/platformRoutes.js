@@ -31,3 +31,16 @@ export function routeHref(route, basePath = '') {
     : '';
   return `${normalizedBasePath}/${segment ? `${segment}/` : ''}`;
 }
+
+export function navigatePlatformRoute(route, { basePath = '', history = window.history } = {}) {
+  history.pushState({ route }, '', routeHref(route, basePath));
+}
+
+export function subscribeToPlatformPopstate(onRouteChange, target = window) {
+  const handlePopstate = () => {
+    onRouteChange(parsePlatformRoute(target.location.pathname));
+  };
+
+  target.addEventListener('popstate', handlePopstate);
+  return () => target.removeEventListener('popstate', handlePopstate);
+}
