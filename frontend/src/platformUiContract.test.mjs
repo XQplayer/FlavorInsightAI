@@ -131,11 +131,14 @@ test('renders the real capability preview and complete honest research chain', (
   assert.match(homeSource, /platform-home__capability-preview/);
   assert.match(homeSource, /乙酸乙酯/);
   assert.match(homeSource, /141-78-6/);
+  assert.match(homeSource, /原始峰表/);
+  assert.match(homeSource, /质量门禁/);
+  assert.match(homeSource, /审核结果包/);
   assert.match(homeSource, /仪器数据/);
   assert.match(homeSource, /化合物鉴定/);
   assert.match(homeSource, /风味数据库/);
   assert.match(homeSource, /风味贡献评价/);
-  assert.match(homeSource, /AI 解析与预测/);
+  assert.match(homeSource, /数据分析与 AI/);
   assert.doesNotMatch(homeSource, /<img\b/i);
 });
 
@@ -151,19 +154,31 @@ test('labels capability status without claiming deployed AI', () => {
 
 test('includes four factual FAQs, platform principles, and a compact footer', () => {
   assert.match(homeSource, /证据可追溯/);
+  assert.match(homeSource, /Traceable evidence/);
   assert.match(homeSource, /质量门禁/);
+  assert.match(homeSource, /Quality gates/);
   assert.match(homeSource, /本地优先/);
+  assert.match(homeSource, /Local-first/);
   assert.match(homeSource, /标准化导出/);
+  assert.match(homeSource, /Standardized export/);
+  assert.match(homeSource, /多仪器与 AI/);
   assert.equal((homeSource.match(/<details\b/g) ?? []).length, 4);
+  assert.match(homeSource, /当前支持哪些仪器/);
+  assert.match(homeSource, /数据库信息来自哪里/);
   assert.match(homeSource, /<footer\b/);
   assert.match(homeSource, /v1\.5\.0/);
   assert.match(homeSource, /mailto:hanxq888@gmail\.com/);
+  assert.match(homeSource, /引用说明/);
+  assert.match(homeSource, /隐私说明/);
+  assert.match(homeSource, /routeHref\('resources',/);
 });
 
 test('keeps the homepage responsive and motion restrained', () => {
   assert.match(pageStyles, /overflow-x:\s*(?:clip|hidden)/);
   assert.match(pageStyles, /min-height:\s*clamp\(520px,[^;]+650px\)/);
   assert.match(pageStyles, /animation-duration:\s*(?:[34]\d{2}|500)ms/);
+  assert.match(pageStyles, /font-size:\s*clamp\([^;]+56px\)/);
+  assert.match(pageStyles, /font-size:\s*32px/);
   assert.match(pageStyles, /@media \(max-width:\s*1024px\)/);
   assert.match(pageStyles, /@media \(max-width:\s*768px\)/);
   assert.match(pageStyles, /@media \(max-width:\s*420px\)/);

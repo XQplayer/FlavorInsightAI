@@ -76,11 +76,11 @@ const STATUS = Object.freeze({
 });
 
 const WORKFLOW = Object.freeze([
-  { icon: Activity, zh: '仪器数据', en: 'Instrument data', status: 'live' },
-  { icon: FlaskConical, zh: '化合物鉴定', en: 'Compound identification', status: 'live' },
-  { icon: Database, zh: '风味数据库', en: 'Flavor database', status: 'live' },
-  { icon: ShieldCheck, zh: '风味贡献评价', en: 'Flavor contribution', status: 'building' },
-  { icon: Bot, zh: 'AI 解析与预测', en: 'AI interpretation and prediction', status: 'planned' },
+  { icon: Activity, zh: '仪器数据', en: 'Instrument data', statuses: ['live'] },
+  { icon: FlaskConical, zh: '化合物鉴定', en: 'Compound identification', statuses: ['live'] },
+  { icon: Database, zh: '风味数据库', en: 'Flavor database', statuses: ['live'] },
+  { icon: ShieldCheck, zh: '风味贡献评价', en: 'Flavor contribution', statuses: ['live'] },
+  { icon: Bot, zh: '数据分析与 AI', en: 'Data analysis and AI', statuses: ['building', 'planned'] },
 ]);
 
 const MODULES = Object.freeze([
@@ -112,13 +112,44 @@ const MODULES = Object.freeze([
     enBody: 'Being developed for statistical analysis, differential interpretation, and visualization of standardized result packages.',
   },
   {
-    icon: Download,
+    icon: Bot,
     status: 'planned',
-    route: 'resources',
-    zh: '资源中心',
-    en: 'Resource center',
-    zhBody: '逐步整理可验证的模板、方法说明与数据规范；未就绪资源不会提供虚假下载。',
-    enBody: 'Will curate verified templates, methods, and data specifications; unavailable resources never appear as fake downloads.',
+    route: null,
+    zh: '多仪器与 AI',
+    en: 'Multi-instrument and AI',
+    zhBody: 'GC–O、GC–IMS、GC×GC–MS 适配，以及结构—气味关系、未知物辅助鉴定和风味预测均处于规划阶段。',
+    enBody: 'GC–O, GC–IMS, GC×GC–MS support, structure–odor analysis, unknown identification, and flavor prediction remain planned.',
+  },
+]);
+
+const PRINCIPLES = Object.freeze([
+  {
+    icon: ShieldCheck,
+    zh: '证据可追溯',
+    en: 'Traceable evidence',
+    zhBody: '保留来源、检索时间与分类规则。',
+    enBody: 'Preserve sources, query time, and classification rules.',
+  },
+  {
+    icon: FileCheck2,
+    zh: '质量门禁',
+    en: 'Quality gates',
+    zhBody: '关键阶段先检查，再进入后续计算。',
+    enBody: 'Validate critical stages before downstream calculations.',
+  },
+  {
+    icon: Laptop,
+    zh: '本地优先',
+    en: 'Local-first',
+    zhBody: '原始工作簿在当前设备处理，不会自动上传。',
+    enBody: 'Raw workbooks are processed on this device and are not uploaded automatically.',
+  },
+  {
+    icon: Download,
+    zh: '标准化导出',
+    en: 'Standardized export',
+    zhBody: '主结果保持简洁，审核信息独立保留。',
+    enBody: 'Keep primary results concise and retain audit evidence separately.',
   },
 ]);
 
@@ -209,6 +240,15 @@ export default function PlatformHomePage({ onNavigate }) {
               <div><dt>{language === 'zh' ? '输出' : 'Output'}</dt><dd>{language === 'zh' ? '来源与规则可追溯' : 'Traceable sources and rules'}</dd></div>
             </dl>
           </div>
+          <div className="platform-home__process-preview" aria-label={language === 'zh' ? '数据处理流程预览' : 'Processing workflow preview'}>
+            <span>{language === 'zh' ? '原始峰表' : 'Raw peak table'}</span>
+            <ArrowRight aria-hidden="true" size={15} />
+            <span>{language === 'zh' ? '质量门禁' : 'Quality gates'}</span>
+            <ArrowRight aria-hidden="true" size={15} />
+            <span>{language === 'zh' ? '半定量 · 阈值 · OAV' : 'Semi-quant · Threshold · OAV'}</span>
+            <ArrowRight aria-hidden="true" size={15} />
+            <span>{language === 'zh' ? '审核结果包' : 'Auditable result package'}</span>
+          </div>
           <p className="platform-home__preview-note">{copy.previewNote}</p>
         </div>
       </section>
@@ -227,7 +267,11 @@ export default function PlatformHomePage({ onNavigate }) {
                 <span className="platform-home__workflow-index">{String(index + 1).padStart(2, '0')}</span>
                 <Icon aria-hidden="true" size={22} strokeWidth={1.8} />
                 <strong>{item[language] ?? item.zh}</strong>
-                <StatusPill status={item.status} language={language} />
+                <span className="platform-home__workflow-statuses">
+                  {item.statuses.map(status => (
+                    <StatusPill status={status} language={language} key={status} />
+                  ))}
+                </span>
               </li>
             );
           })}
@@ -245,20 +289,26 @@ export default function PlatformHomePage({ onNavigate }) {
             const title = language === 'en' ? module.en : module.zh;
             const body = language === 'en' ? module.enBody : module.zhBody;
             return (
-              <article className={`platform-home__module-card platform-home__module-card--${index + 1}`} key={module.route}>
+              <article className={`platform-home__module-card platform-home__module-card--${index + 1}`} key={module.zh}>
                 <div className="platform-home__module-topline">
                   <span className="platform-home__module-icon"><Icon aria-hidden="true" size={22} /></span>
                   <StatusPill status={module.status} language={language} />
                 </div>
                 <h3>{title}</h3>
                 <p>{body}</p>
-                <a
-                  href={routeHref(module.route, PLATFORM_BASE_PATH)}
-                  onClick={event => handleNavigation(event, module.route)}
-                >
-                  {language === 'zh' ? '查看模块' : 'View module'}
-                  <ArrowRight aria-hidden="true" size={17} />
-                </a>
+                {module.route ? (
+                  <a
+                    href={routeHref(module.route, PLATFORM_BASE_PATH)}
+                    onClick={event => handleNavigation(event, module.route)}
+                  >
+                    {language === 'zh' ? '查看模块' : 'View module'}
+                    <ArrowRight aria-hidden="true" size={17} />
+                  </a>
+                ) : (
+                  <span className="platform-home__planned-note">
+                    {language === 'zh' ? '不提供未就绪入口' : 'No unavailable entry is shown'}
+                  </span>
+                )}
               </article>
             );
           })}
@@ -271,10 +321,16 @@ export default function PlatformHomePage({ onNavigate }) {
           <h2 id="principles-title">{copy.principlesTitle}</h2>
         </header>
         <div className="platform-home__principles">
-          <article><ShieldCheck aria-hidden="true" /><h3>证据可追溯</h3><p>{language === 'zh' ? '保留来源、检索时间与分类规则。' : 'Preserve sources, query time, and classification rules.'}</p></article>
-          <article><FileCheck2 aria-hidden="true" /><h3>质量门禁</h3><p>{language === 'zh' ? '关键阶段先检查，再进入后续计算。' : 'Validate critical stages before downstream calculations.'}</p></article>
-          <article><Laptop aria-hidden="true" /><h3>本地优先</h3><p>{language === 'zh' ? '原始工作簿在当前设备处理，不会自动上传。' : 'Raw workbooks are processed on this device and are not uploaded automatically.'}</p></article>
-          <article><Download aria-hidden="true" /><h3>标准化导出</h3><p>{language === 'zh' ? '主结果保持简洁，审核信息独立保留。' : 'Keep primary results concise and retain audit evidence separately.'}</p></article>
+          {PRINCIPLES.map(principle => {
+            const Icon = principle.icon;
+            return (
+              <article key={principle.zh}>
+                <Icon aria-hidden="true" />
+                <h3>{principle[language] ?? principle.zh}</h3>
+                <p>{language === 'en' ? principle.enBody : principle.zhBody}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -284,16 +340,28 @@ export default function PlatformHomePage({ onNavigate }) {
           <h2 id="faq-title">{copy.faqTitle}</h2>
         </header>
         <div className="platform-home__faq-list">
-          <details><summary>{language === 'zh' ? '平台目前哪些功能可以直接使用？' : 'Which capabilities are available now?'}</summary><p>{language === 'zh' ? 'FlavorThresholdDB 检索与岛津 GC–MS 数据处理已上线；数据分析页用于呈现开发范围。' : 'FlavorThresholdDB search and Shimadzu GC–MS processing are live; the analysis page documents the development scope.'}</p></details>
           <details><summary>{language === 'zh' ? '原始工作簿会上传云端吗？' : 'Are raw workbooks uploaded to the cloud?'}</summary><p>{language === 'zh' ? '不会。当前处理在本机浏览器与本地服务中完成，账号与可选云端留存仍在规划。' : 'No. Current processing runs in the local browser and service; accounts and optional cloud retention remain planned.'}</p></details>
-          <details><summary>{language === 'zh' ? '化合物分类和阈值结果能否复核？' : 'Can classification and threshold results be reviewed?'}</summary><p>{language === 'zh' ? '可以。设计保留 CAS、结构来源、规则命中、阈值原值、单位与来源，供审核表复核。' : 'Yes. The design retains CAS, structure source, rule hits, original threshold value, unit, and provenance for review.'}</p></details>
+          <details><summary>{language === 'zh' ? '当前支持哪些仪器？' : 'Which instruments are supported now?'}</summary><p>{language === 'zh' ? '当前已上线岛津 GC–MS 工作簿处理。GC–O、GC–IMS、GC×GC–MS 与其他厂商格式处于规划阶段。' : 'Shimadzu GC–MS workbook processing is live. GC–O, GC–IMS, GC×GC–MS, and other vendor formats remain planned.'}</p></details>
+          <details><summary>{language === 'zh' ? '数据库信息来自哪里？' : 'Where does database information come from?'}</summary><p>{language === 'zh' ? '平台整合 FlavorThresholdDB 本地档案，并按字段标注 FEMA、FlavorDB2、PubChem、书籍与其他可核验来源；具体记录以检索结果所示来源为准。' : 'The platform combines local FlavorThresholdDB records with field-level FEMA, FlavorDB2, PubChem, book, and other verifiable sources; each record is governed by the provenance shown in its result.'}</p></details>
           <details><summary>{language === 'zh' ? 'AI 预测现在是否已经部署？' : 'Is AI prediction deployed now?'}</summary><p>{language === 'zh' ? '当前未部署生产级 AI 模型。未知物辅助鉴定、结构—气味关系和风味预测属于后续规划。' : 'No production AI model is deployed. Unknown-compound assistance, structure–odor relationships, and flavor prediction are planned work.'}</p></details>
         </div>
       </section>
 
       <footer className="platform-home__footer">
-        <span>{copy.footer}</span>
-        <a href="mailto:hanxq888@gmail.com">{copy.contact}</a>
+        <div className="platform-home__footer-meta">
+          <strong>{copy.footer}</strong>
+          <span>{language === 'zh' ? '引用说明：使用结果时请同时引用原始数据来源。' : 'Citation: cite the original data sources alongside platform outputs.'}</span>
+          <span>{language === 'zh' ? '隐私说明：原始工作簿默认仅在本地处理，不会自动上传。' : 'Privacy: raw workbooks are processed locally by default and are not uploaded automatically.'}</span>
+        </div>
+        <nav aria-label={language === 'zh' ? '页脚链接' : 'Footer links'}>
+          <a
+            href={routeHref('resources', PLATFORM_BASE_PATH)}
+            onClick={event => handleNavigation(event, 'resources')}
+          >
+            {language === 'zh' ? '资源中心' : 'Resources'}
+          </a>
+          <a href="mailto:hanxq888@gmail.com">{copy.contact}</a>
+        </nav>
       </footer>
     </div>
   );
