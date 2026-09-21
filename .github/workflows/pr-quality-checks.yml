@@ -51,9 +51,17 @@ jobs:
         working-directory: frontend
         run: pnpm run test:static-routes
 
+      - name: Platform contract tests
+        working-directory: frontend
+        run: pnpm run test:platform
+
       - name: Shimadzu regression tests
         working-directory: frontend
         run: pnpm run test:shimadzu
+
+      - name: Shimadzu browser workflow tests
+        working-directory: frontend
+        run: pnpm run test:shimadzu-browser
 
       - name: Lint
         working-directory: frontend
