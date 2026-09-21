@@ -139,6 +139,8 @@ test('renders the real capability preview and complete honest research chain', (
   assert.match(homeSource, /风味数据库/);
   assert.match(homeSource, /风味贡献评价/);
   assert.match(homeSource, /数据分析与 AI/);
+  assert.match(homeSource, /风味贡献评价[^\n]+statuses:\s*\['building'\]/);
+  assert.doesNotMatch(homeSource, /半定量[^\n]+OAV/);
   assert.doesNotMatch(homeSource, /<img\b/i);
 });
 

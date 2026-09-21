@@ -79,7 +79,7 @@ const WORKFLOW = Object.freeze([
   { icon: Activity, zh: '仪器数据', en: 'Instrument data', statuses: ['live'] },
   { icon: FlaskConical, zh: '化合物鉴定', en: 'Compound identification', statuses: ['live'] },
   { icon: Database, zh: '风味数据库', en: 'Flavor database', statuses: ['live'] },
-  { icon: ShieldCheck, zh: '风味贡献评价', en: 'Flavor contribution', statuses: ['live'] },
+  { icon: ShieldCheck, zh: '风味贡献评价', en: 'Flavor contribution', statuses: ['building'] },
   { icon: Bot, zh: '数据分析与 AI', en: 'Data analysis and AI', statuses: ['building', 'planned'] },
 ]);
 
@@ -245,7 +245,7 @@ export default function PlatformHomePage({ onNavigate }) {
             <ArrowRight aria-hidden="true" size={15} />
             <span>{language === 'zh' ? '质量门禁' : 'Quality gates'}</span>
             <ArrowRight aria-hidden="true" size={15} />
-            <span>{language === 'zh' ? '半定量 · 阈值 · OAV' : 'Semi-quant · Threshold · OAV'}</span>
+            <span>{language === 'zh' ? '半定量 · 阈值' : 'Semi-quant · Threshold'}</span>
             <ArrowRight aria-hidden="true" size={15} />
             <span>{language === 'zh' ? '审核结果包' : 'Auditable result package'}</span>
           </div>
