@@ -1,7 +1,9 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useState } from 'react';
 
 import PlatformShell from '../components/platform/PlatformShell.jsx';
+import DataAnalysisPage from '../pages/DataAnalysisPage.jsx';
 import PlatformHomePage from '../pages/PlatformHomePage.jsx';
+import ResourcesPage from '../pages/ResourcesPage.jsx';
 import {
   PlatformPreferencesProvider,
   usePlatformPreferences,
@@ -111,30 +113,6 @@ function RouteLoading() {
   );
 }
 
-function PlannedRoute({ route, onNavigate }) {
-  const { language } = usePlatformPreferences();
-  const isAnalysis = route === 'analysis';
-
-  return (
-    <section className="platform-route-placeholder" aria-labelledby="platform-route-placeholder-title">
-      <p>{language === 'en' ? 'In development' : '开发中'}</p>
-      <h1 id="platform-route-placeholder-title">
-        {isAnalysis
-          ? (language === 'en' ? 'Data analysis' : '数据分析')
-          : (language === 'en' ? 'Resources' : '资源中心')}
-      </h1>
-      <p>
-        {language === 'en'
-          ? 'This section is being prepared. Current production capabilities remain available from the platform home.'
-          : '此模块正在建设中，当前已上线能力可从平台首页进入。'}
-      </p>
-      <button type="button" onClick={() => onNavigate('home')}>
-        {language === 'en' ? 'Back to home' : '返回首页'}
-      </button>
-    </section>
-  );
-}
-
 function PlatformRoute({ route, onNavigate }) {
   const { language, resolvedTheme, setLanguage } = usePlatformPreferences();
 
@@ -178,7 +156,15 @@ function PlatformRoute({ route, onNavigate }) {
     );
   }
 
-  return <PlannedRoute route={route} onNavigate={onNavigate} />;
+  if (route === 'analysis') {
+    return <DataAnalysisPage onNavigate={onNavigate} />;
+  }
+
+  if (route === 'resources') {
+    return <ResourcesPage />;
+  }
+
+  return <PlatformHomePage onNavigate={onNavigate} />;
 }
 
 export default function PlatformApp() {

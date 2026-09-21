@@ -18,6 +18,18 @@ const pageStyles = await readFile(
   new URL('./pages/PlatformPages.css', import.meta.url),
   'utf8',
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const analysisSource = await readFile(
+  new URL('./pages/DataAnalysisPage.jsx', import.meta.url),
+  'utf8',
+).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const resourcesSource = await readFile(
+  new URL('./pages/ResourcesPage.jsx', import.meta.url),
+  'utf8',
+).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const platformAppSource = await readFile(
+  new URL('./app/PlatformApp.jsx', import.meta.url),
+  'utf8',
+);
 
 test('provides a skip link and a labelled main landmark', () => {
   assert.match(source, /href="#main-content"/);
@@ -187,4 +199,99 @@ test('keeps the homepage responsive and motion restrained', () => {
   assert.match(pageStyles, /@media \(min-width:\s*1440px\)/);
   assert.match(pageStyles, /@media \(prefers-reduced-motion:\s*reduce\)/);
   assert.match(pageStyles, /animation:\s*none\s*!important/);
+});
+
+test('presents data analysis as a bilingual future capability without fake controls', () => {
+  assert.match(analysisSource, /usePlatformPreferences/);
+  assert.match(analysisSource, /title: '数据分析平台'/);
+  assert.match(analysisSource, /title: 'Data analysis platform'/);
+  assert.match(analysisSource, /建设中/);
+  assert.match(analysisSource, /待开发/);
+  assert.match(analysisSource, /In development/);
+  assert.match(analysisSource, /标准数据包/);
+  assert.match(analysisSource, /standard data package/i);
+
+  for (const feature of [
+    '质量摘要',
+    'PCA',
+    'HCA',
+    '热图',
+    '差异化合物',
+    'OAV',
+    '风味类别',
+    '结构相似性',
+    '未知物辅助鉴定',
+    '风味预测',
+  ]) {
+    assert.match(analysisSource, new RegExp(feature));
+  }
+
+  assert.match(analysisSource, /status:\s*'building'/);
+  assert.match(analysisSource, /status:\s*'planned'/);
+  assert.match(analysisSource, /routeHref\('processing',\s*PLATFORM_BASE_PATH\)/);
+  assert.doesNotMatch(analysisSource, /<main\b/i);
+  assert.doesNotMatch(analysisSource, /<input\b|type=['"]file['"]|<button\b/i);
+  assert.doesNotMatch(analysisSource, /用户数量|使用次数|客户评价|production AI (?:is live|is available)/i);
+});
+
+test('offers only verified resources and keeps pending resources non-interactive', () => {
+  assert.match(resourcesSource, /usePlatformPreferences/);
+  assert.match(resourcesSource, /资源中心/);
+  assert.match(resourcesSource, /Resources/);
+  assert.match(resourcesSource, /VERIFIED_RESOURCES\.map\([\s\S]*?<a\b[\s\S]*?href=\{resource\.href\}/);
+  assert.match(resourcesSource, /PLANNED_RESOURCES\.map\([\s\S]*?<article\b/);
+
+  for (const verifiedPath of [
+    'Shimadzu_Raw_Workbook_Example.xlsx',
+    'Shimadzu_Sample_Internal_Standard_Template.xlsx',
+    'docs/DATA_DICTIONARY.md',
+    'docs/DATA_SOURCES.md',
+    'CHANGELOG.md',
+  ]) {
+    assert.match(resourcesSource, new RegExp(verifiedPath.replaceAll('.', '\\.')));
+  }
+
+  for (const plannedResource of [
+    '分析流程与 SOP',
+    '标准数据包字段字典',
+    '半定量、阈值选择与 OAV 规则',
+    '结果包解释',
+  ]) {
+    assert.match(resourcesSource, new RegExp(plannedResource));
+  }
+
+  assert.match(resourcesSource, /待开放/);
+  assert.match(resourcesSource, /Coming later/);
+  const plannedRenderStart = resourcesSource.indexOf('{PLANNED_RESOURCES.map');
+  const plannedRenderEnd = resourcesSource.indexOf('</section>', plannedRenderStart);
+  assert.notEqual(plannedRenderStart, -1);
+  assert.notEqual(plannedRenderEnd, -1);
+  assert.doesNotMatch(
+    resourcesSource.slice(plannedRenderStart, plannedRenderEnd),
+    /<a\b|<button\b|onClick=/i,
+  );
+  assert.doesNotMatch(resourcesSource, /<main\b/i);
+  assert.doesNotMatch(resourcesSource, /用户数量|使用次数|客户评价|AI 用户|testimonials?/i);
+});
+
+test('routes analysis and resources through their real pages with owned titles', () => {
+  assert.match(platformAppSource, /import DataAnalysisPage from ['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]/);
+  assert.match(platformAppSource, /import ResourcesPage from ['"]\.\.\/pages\/ResourcesPage\.jsx['"]/);
+  assert.match(platformAppSource, /route === 'analysis'[\s\S]*?<DataAnalysisPage\s+onNavigate=\{onNavigate\}/);
+  assert.match(platformAppSource, /route === 'resources'[\s\S]*?<ResourcesPage\s*\/>/);
+  assert.doesNotMatch(platformAppSource, /function PlannedRoute\b|<PlannedRoute\b/);
+  assert.match(platformAppSource, /analysis:\s*'数据分析 \| FlavorInsight AI'/);
+  assert.match(platformAppSource, /resources:\s*'资源中心 \| FlavorInsight AI'/);
+  assert.match(platformAppSource, /analysis:\s*'Data Analysis \| FlavorInsight AI'/);
+  assert.match(platformAppSource, /resources:\s*'Resources \| FlavorInsight AI'/);
+});
+
+test('styles status pages with platform tokens and responsive grids', () => {
+  assert.match(pageStyles, /\.platform-status-page\s*\{/);
+  assert.match(pageStyles, /\.platform-status-page__feature-grid\s*\{/);
+  assert.match(pageStyles, /\.platform-resources__verified-grid\s*\{/);
+  assert.match(pageStyles, /\.platform-resources__planned-card\s*\{/);
+  assert.match(pageStyles, /var\(--surface-panel\)/);
+  assert.match(pageStyles, /var\(--border-default\)/);
+  assert.match(pageStyles, /@media \(max-width:\s*768px\)[\s\S]*\.platform-status-page__feature-grid/);
 });
