@@ -163,6 +163,110 @@ test('does not add identity columns to later stages when classification is disab
   assert.equal(readWorkbookSheets(bytes)[0].rows[0].cells.includes('FlavorDB2 CID'), false)
 })
 
+test('adds independently enabled water thresholds at Stage 4 and preserves them through Stages 5 and 6', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const expectedColumns = ['水中觉察阈值原始数据', '水中觉察阈值来源', '水中觉察阈值（μg/L）']
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, enableClassification: false, enableWaterDetectionThreshold: true,
+    resolveWaterDetectionThreshold: async cas => ({
+      '水中觉察阈值原始数据': `${cas} raw`, '水中觉察阈值来源': 'test source', '水中觉察阈值（μg/L）': 1.25,
+    }),
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const paths = [
+    '04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx',
+    '05_统计_CV_CAS与QC/05_02_Mean浓度与SD.xlsx',
+    Object.keys(zip.files).find(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('_CV筛选前_Mean浓度.xlsx')),
+  ]
+  for (const path of paths) {
+    const header = readWorkbookSheets(await zip.file(path).async('uint8array'))[0].rows[0].cells
+    assert.deepEqual(expectedColumns.map(column => header.includes(column)), [true, true, true])
+  }
+  const run = JSON.parse(await zip.file('v2-run.json').async('string'))
+  const stageManifest = JSON.parse(await zip.file('04_跨样品合并与半定量/manifest.json').async('string'))
+  const completeness = JSON.parse(await zip.file('完整性验证/v2-completeness-verification.json').async('string'))
+  assert.deepEqual(run.parameters, {
+    enableClassification: false, enableWaterDetectionThreshold: true,
+    enableCvScreening: true, cvThreshold: 30,
+  })
+  assert.equal(stageManifest.parameters.enableWaterDetectionThreshold, true)
+  assert.equal(completeness.parameters.enableWaterDetectionThreshold, true)
+})
+
+test('does not resolve or export water threshold columns when the independent setting is disabled', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, enableClassification: false, enableWaterDetectionThreshold: false,
+    resolveWaterDetectionThreshold: async () => { throw new Error('threshold resolver must not run') },
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const header = readWorkbookSheets(await zip.file('04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx').async('uint8array'))[0].rows[0].cells
+  assert.equal(header.includes('水中觉察阈值（μg/L）'), false)
+})
+
+test('turns cancellation into a downloadable audit and partial-result archive', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const controller = new AbortController()
+  let error
+  try {
+    await runShimadzuBrowserPipeline({
+      rawBytes, sampleBytes, name: 'cancel audit', signal: controller.signal,
+      enableClassification: false, enableWaterDetectionThreshold: false,
+      onEvent(event) { if (event.type === 'stage-complete' && event.stage === 0) controller.abort() },
+    })
+  } catch (value) {
+    error = value
+  }
+  assert.equal(error?.code, 'ANALYSIS_CANCELLED')
+  assert.ok(error?.archiveBytes?.byteLength > 0)
+  assert.match(error?.fileName || '', /部分结果\.zip$/)
+  const zip = await JSZip.loadAsync(error.archiveBytes)
+  const state = JSON.parse(await zip.file('取消任务/取消状态.json').async('string'))
+  const run = JSON.parse(await zip.file('v2-run.json').async('string'))
+  assert.equal(state.status, 'CANCELLED')
+  assert.equal(state.errorCode, 'ANALYSIS_CANCELLED')
+  assert.equal(state.completedStages.length, 1)
+  assert.equal(run.status, 'CANCELLED')
+  assert.equal(run.oavExecuted, false)
+  assert.deepEqual(run.parameters, {
+    enableClassification: false, enableWaterDetectionThreshold: false,
+    enableCvScreening: true, cvThreshold: 30,
+  })
+})
+
+test('honors cancellation at the final coherent stage boundary before sealing a PASS archive', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const controller = new AbortController()
+  let error
+  try {
+    await runShimadzuBrowserPipeline({
+      rawBytes, sampleBytes, signal: controller.signal, enableWaterDetectionThreshold: false,
+      onEvent(event) { if (event.type === 'stage-complete' && event.stage === 6) controller.abort() },
+    })
+  } catch (value) {
+    error = value
+  }
+  assert.equal(error?.code, 'ANALYSIS_CANCELLED')
+  const zip = await JSZip.loadAsync(error.archiveBytes)
+  const state = JSON.parse(await zip.file('取消任务/取消状态.json').async('string'))
+  assert.equal(state.completedStages.length, 7)
+  assert.equal(state.cancelledBeforeStage, 7)
+})
+
 test('exports CAS recovery audit rows without adding unresolved records to CAS analysis', async () => {
   const [rawBytes, sampleBytes] = await Promise.all([
     readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),

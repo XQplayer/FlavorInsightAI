@@ -33,11 +33,11 @@ test('lets the platform own theme, language and navigation when embedded', () =>
 
 test('exposes the processing workbench as three explicitly labelled regions', () => {
   assert.match(source, /<section[^>]+aria-labelledby="analysis-output-configuration-title"/)
-  assert.match(source, /id="analysis-output-configuration-title"[^>]*>分析流程与数据导出配置</)
+  assert.match(source, /id="analysis-output-configuration-title"[^>]*>[\s\S]*?分析流程与数据导出配置[\s\S]*?Analysis workflow and data export configuration/)
   assert.match(source, /<section[^>]+aria-labelledby="data-import-preflight-title"/)
-  assert.match(source, /id="data-import-preflight-title"[^>]*>数据导入与运行前检查</)
+  assert.match(source, /id="data-import-preflight-title"[^>]*>[\s\S]*?数据导入与运行前检查[\s\S]*?Data import and preflight checks/)
   assert.match(source, /<section[^>]+aria-labelledby="process-monitor-results-title"/)
-  assert.match(source, /id="process-monitor-results-title"[^>]*>过程监控与结果</)
+  assert.match(source, /id="process-monitor-results-title"[^>]*>[\s\S]*?过程监控与结果[\s\S]*?Process monitoring and results/)
 })
 
 test('does not offer step-by-step execution in the integrated workbench', () => {
@@ -64,7 +64,7 @@ test('uses the approved Shimadzu data control deck shell', () => {
 
 test('places the setup workspace before the workflow dock', () => {
   const setupIndex = source.indexOf('className="shimadzu-setup"')
-  const workflowRenderIndex = source.lastIndexOf('<WorkflowMap job={job} />')
+  const workflowRenderIndex = source.lastIndexOf('<WorkflowMap job={job} language={language} />')
 
   assert.notEqual(setupIndex, -1)
   assert.notEqual(workflowRenderIndex, -1)
@@ -158,6 +158,34 @@ test('exposes an opt-in PubChem SMARTS classification control', () => {
   assert.match(source, /enableClassification: taskEnableClassification/)
 })
 
+test('keeps water detection thresholds independently enabled by default and persisted with tasks', () => {
+  assert.match(source, /const \[enableWaterDetectionThreshold, setEnableWaterDetectionThreshold\] = useState\(true\)/)
+  assert.match(source, /启用水中觉察阈值/)
+  assert.match(source, /enableWaterDetectionThreshold: taskEnableWaterDetectionThreshold/)
+  assert.match(source, /task\.enableWaterDetectionThreshold !== false/)
+})
+
+test('offers the audit archive after a task is cancelled', () => {
+  assert.match(source, /job\.status === 'cancelled'/)
+  assert.match(source, /下载取消审计与部分结果/)
+})
+
+test('provides English copy for the major processing controls, states, stages and result actions', () => {
+  for (const copy of [
+    'Analysis workflow and data export configuration',
+    'Data import and preflight checks',
+    'Process monitoring and results',
+    'Enable CAS structural classification',
+    'Enable water detection thresholds',
+    'Live analysis monitor',
+    'Analysis cancelled',
+    'Download cancellation audit and partial results',
+    'Stage status and processing counts',
+  ]) assert.match(source, new RegExp(copy))
+  assert.match(source, /enLabel: 'Input configuration and inventory'/)
+  assert.match(source, /enLabel: 'Statistics, CV, CAS, and QC'/)
+})
+
 test('keeps the full workflow description below the compact control deck header', () => {
   assert.doesNotMatch(styles, /\.shimadzu-header \{ padding-top: 64px; \}/)
   assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-section-intro p \{ display: block;/)
@@ -196,7 +224,7 @@ test('keeps the idle state lightweight and only mounts the monitor for a job', (
 })
 
 test('keeps the workflow dock singular and preserves the research utility surfaces', () => {
-  assert.equal((source.match(/<WorkflowMap job=\{job\} \/>/g) || []).length, 1)
+  assert.equal((source.match(/<WorkflowMap job=\{job\} language=\{language\} \/>/g) || []).length, 1)
   assert.match(source, /<AnalysisSummary/)
   assert.match(source, /<WorkspaceTabs/)
   assert.match(source, /HistoryPanel/)

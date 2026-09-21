@@ -44,9 +44,19 @@ self.onmessage = async ({ data }) => {
       stageSummaries: result.stages.map(stage => ({ stage: stage.stage, counts: stage.counts, issues: stage.issues?.length || 0 })),
     }, [archiveBytes])
   } catch (error) {
-    const cancelled = controller.signal.aborted || error?.code === 'ANALYSIS_CANCELLED'
+    const cancelled = error?.code === 'ANALYSIS_CANCELLED'
     if (cancelled) {
-      self.postMessage({ type: 'cancelled', code: 'ANALYSIS_CANCELLED', message: '分析已取消' })
+      const payload = {
+        type: 'cancelled', code: 'ANALYSIS_CANCELLED', message: '分析已取消', details: error?.details,
+        archiveSha256: error?.archiveSha256, archiveSize: error?.archiveSize, fileName: error?.fileName,
+      }
+      const archiveBytes = error?.archiveBytes instanceof Uint8Array
+        ? error.archiveBytes
+        : error?.archiveBytes ? new Uint8Array(error.archiveBytes) : null
+      if (archiveBytes) {
+        payload.archiveBytes = archiveBytes.buffer
+        self.postMessage(payload, [payload.archiveBytes])
+      } else self.postMessage(payload)
     } else {
       const payload = {
         type: 'error', code: error?.code || 'BROWSER_ANALYSIS_FAILED',

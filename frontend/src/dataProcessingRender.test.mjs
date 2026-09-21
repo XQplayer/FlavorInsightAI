@@ -46,4 +46,5 @@ test('the production processing page renders on the Edge server without duplicat
   assert.doesNotMatch(markup, /class="shimadzu-header"/);
   assert.doesNotMatch(markup, /<main\b/);
   assert.doesNotMatch(markup, /逐步复核|mode="step"/);
+  assert.doesNotMatch(markup, /[\u3400-\u9fff]/, 'English processing UI must not retain Chinese static copy');
 });

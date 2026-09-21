@@ -737,6 +737,7 @@
 .shimadzu-job-identity { min-width: 0; display: flex; align-items: center; gap: 12px; }
 .shimadzu-job-badge { min-height: 28px; padding: 0 9px; border-radius: 8px; display: inline-flex; align-items: center; color: var(--sz-accent-deep); background: var(--sz-accent-soft); font-size: 11px; font-weight: 760; white-space: nowrap; }
 .shimadzu-job-badge.complete { color: var(--sz-success); background: var(--sz-success-soft); }
+.shimadzu-job-badge.cancelled { color: var(--sz-warning); background: var(--sz-warning-soft); }
 .shimadzu-job-badge.saving { color: var(--sz-accent-deep); background: var(--sz-accent-soft); }
 .shimadzu-job-badge.failed { color: var(--sz-danger); background: var(--sz-danger-soft); }
 .shimadzu-job-badge.interrupted { color: var(--sz-warning); background: var(--sz-warning-soft); }
@@ -1337,6 +1338,7 @@
 .shimadzu-job-workspace.state-running { --sz-state-accent: var(--sz-deck-blue); }
 .shimadzu-job-workspace.state-waiting_review { --sz-state-accent: #f2b84b; }
 .shimadzu-job-workspace.state-failed { --sz-state-accent: var(--sz-deck-red); }
+.shimadzu-job-workspace.state-cancelled { --sz-state-accent: var(--sz-warning); }
 .shimadzu-job-workspace.state-complete { --sz-state-accent: var(--sz-deck-green); }
 .shimadzu-job-bar { border-color: var(--sz-state-accent, var(--sz-deck-line)); background: #101a29; }
 .shimadzu-job-identity h2 { color: #edf4ff; }

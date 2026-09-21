@@ -59,7 +59,7 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
   if (typeof enableCvScreening !== "boolean") throw fail("INVALID_CV_SCREENING_FLAG");
   if (!Array.isArray(source.sampleOrder) || !Array.isArray(source.groupOrder) || !Array.isArray(source.sampleConfigs)) throw fail("INVALID_STAGE4_STRUCTURE");
   const samplesByGroup = groupSamples(source);
-  const identityColumns = V2_COMPOUND_IDENTITY_COLUMNS.filter(column => source.table.columns.includes(column));
+  const identityColumns = V2_OPTIONAL_COMPOUND_METADATA_COLUMNS.filter(column => source.table.columns.includes(column));
   const expectedColumns = ["CAS #", "Name", ...identityColumns];
   for (const sampleName of source.sampleOrder) expectedColumns.push(`${sampleName}（μg/mL）`);
   const meanColumns = ["CAS #", "Name", ...identityColumns];
@@ -173,4 +173,4 @@ export function processV2Statistics({ stage4Data, cvThreshold = 30, enableCvScre
     counts,
   };
 }
-import { V2_COMPOUND_IDENTITY_COLUMNS } from './v2-identity-columns.mjs';
+import { V2_OPTIONAL_COMPOUND_METADATA_COLUMNS } from './v2-identity-columns.mjs';

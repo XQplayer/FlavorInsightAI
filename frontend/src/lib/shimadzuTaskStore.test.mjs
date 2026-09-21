@@ -108,3 +108,19 @@ test('preserves CV screening settings across task recovery', async () => {
   assert.equal(restored.enableCvScreening, true)
   assert.equal(restored.cvThreshold, 12.5)
 })
+
+test('preserves the independent water threshold setting and a cancelled audit archive', async () => {
+  const adapter = memoryAdapter()
+  const store = createShimadzuTaskStore({ adapter })
+  const partial = new Uint8Array([5, 4, 3]).buffer
+  await store.save(task({
+    status: 'cancelled', enableClassification: false, enableWaterDetectionThreshold: true,
+    error: { code: 'ANALYSIS_CANCELLED', message: 'ANALYSIS_CANCELLED' },
+    partialArchiveBytes: partial, partialArchiveSha256: 'cancel-sha', partialArchiveFileName: 'cancelled_部分结果.zip',
+  }))
+  const restored = await store.load('user-1')
+  assert.equal(restored.status, 'cancelled')
+  assert.equal(restored.enableClassification, false)
+  assert.equal(restored.enableWaterDetectionThreshold, true)
+  assert.deepEqual([...new Uint8Array(restored.partialArchiveBytes)], [5, 4, 3])
+})

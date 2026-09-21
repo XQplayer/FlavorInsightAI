@@ -1,6 +1,5 @@
 import { validateWorkerEvent } from './shimadzuBrowserContract.js'
 
-const cancelledError = () => Object.assign(new Error('ANALYSIS_CANCELLED'), { code: 'ANALYSIS_CANCELLED' })
 const interruptedError = () => Object.assign(new Error('ANALYSIS_INTERRUPTED'), { code: 'ANALYSIS_INTERRUPTED' })
 
 export function createShimadzuWorkerClient({
@@ -51,20 +50,18 @@ export function createShimadzuWorkerClient({
   }
 
   return {
-    run({ rawBytes, sampleBytes, rawName, sampleName, name, mode = 'continuous', resumeFromStage = 0, enableCvScreening = true, cvThreshold = 30, enableClassification = false, onEvent = () => {} }) {
+    run({ rawBytes, sampleBytes, rawName, sampleName, name, mode = 'continuous', resumeFromStage = 0, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enableWaterDetectionThreshold = true, onEvent = () => {} }) {
       if (active) return Promise.reject(new Error('ANALYSIS_ALREADY_RUNNING'))
       const instance = ensureWorker()
       return new Promise((resolve, reject) => {
-        active = { resolve, reject, onEvent }
-        instance.postMessage({ type: 'start', rawBytes, sampleBytes, rawName, sampleName, name, mode, resumeFromStage, enableCvScreening, cvThreshold, enableClassification }, [rawBytes, sampleBytes])
+        active = { resolve, reject, onEvent, cancelRequested: false }
+        instance.postMessage({ type: 'start', rawBytes, sampleBytes, rawName, sampleName, name, mode, resumeFromStage, enableCvScreening, cvThreshold, enableClassification, enableWaterDetectionThreshold }, [rawBytes, sampleBytes])
       })
     },
     cancel() {
-      if (!active) return
+      if (!active || active.cancelRequested) return
+      active.cancelRequested = true
       worker?.postMessage({ type: 'cancel' })
-      const reject = active.reject
-      active = null
-      reject(cancelledError())
     },
     continueReview() {
       worker?.postMessage({ type: 'continue' })

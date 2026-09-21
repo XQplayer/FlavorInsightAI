@@ -11,6 +11,7 @@ import { processV2Statistics } from '../shimadzu-core/v2-statistics-stage.mjs'
 import { splitV2Matrices } from '../shimadzu-core/v2-matrix-split-stage.mjs'
 import { shimadzuCompoundEnrichmentService } from '../lib/shimadzuCompoundEnrichment.js'
 import { shimadzuCasRecoveryService } from '../lib/shimadzuCasRecovery.js'
+import { shimadzuWaterDetectionThresholdService, WATER_DETECTION_THRESHOLD_COLUMNS } from '../lib/shimadzuWaterDetectionThreshold.js'
 import { V2_COMPOUND_IDENTITY_COLUMNS } from '../shimadzu-core/v2-identity-columns.mjs'
 import { readSampleConfiguration, readWorkbookSheets, writeTableWorkbook } from './shimadzuWorkbook.js'
 
@@ -44,13 +45,37 @@ function recordTable(name, records, columns = HIT1_OUTPUT_COLUMNS) {
   return { name, columns: [...columns], rows: clone(records ?? []) }
 }
 
-async function enrichStage4Data(data, enrichCasValues) {
-  const enrichments = await enrichCasValues(data.table.rows.map(row => row['CAS #']))
+async function enrichStage4Data(data, {
+  enableClassification,
+  enableWaterDetectionThreshold,
+  enrichCasValues,
+  resolveWaterDetectionThreshold,
+}) {
+  const casValues = [...new Set(data.table.rows.map(row => String(row['CAS #'] || '').trim()).filter(Boolean))]
+  const identityByCas = enableClassification
+    ? await enrichCasValues(casValues)
+    : new Map()
+  const thresholdByCas = enableWaterDetectionThreshold
+    ? new Map(await Promise.all(casValues.map(async cas => [cas, await resolveWaterDetectionThreshold(cas)])))
+    : new Map()
+  const extraColumns = [
+    ...(enableClassification ? V2_COMPOUND_IDENTITY_COLUMNS : []),
+    ...(enableWaterDetectionThreshold ? WATER_DETECTION_THRESHOLD_COLUMNS : []),
+  ]
+  const emptyIdentity = Object.fromEntries(V2_COMPOUND_IDENTITY_COLUMNS.map(column => [column, 'NA']))
+  const emptyThreshold = Object.fromEntries(WATER_DETECTION_THRESHOLD_COLUMNS.map(column => [column, 'NA']))
   return {
     ...data,
     table: {
-      columns: ['CAS #', ...V2_COMPOUND_IDENTITY_COLUMNS, ...data.table.columns.filter(column => column !== 'CAS #')],
-      rows: data.table.rows.map(row => ({ ...row, ...(enrichments.get(String(row['CAS #'] || '').trim()) || Object.fromEntries(V2_COMPOUND_IDENTITY_COLUMNS.map(column => [column, 'NA']))) })),
+      columns: ['CAS #', ...extraColumns, ...data.table.columns.filter(column => column !== 'CAS #')],
+      rows: data.table.rows.map(row => {
+        const cas = String(row['CAS #'] || '').trim()
+        return {
+          ...row,
+          ...(enableClassification ? identityByCas.get(cas) || emptyIdentity : {}),
+          ...(enableWaterDetectionThreshold ? thresholdByCas.get(cas) || emptyThreshold : {}),
+        }
+      }),
     },
   }
 }
@@ -61,7 +86,7 @@ async function addWorkbook(zip, path, sheets, outputs) {
   outputs.push({ path, sha256: await sha256(bytes), size: bytes.byteLength })
 }
 
-async function addStage(zip, index, data, workbookSpecs) {
+async function addStage(zip, index, data, workbookSpecs, parameters = {}) {
   const directory = V2_STAGE_DIRECTORIES[index]
   const outputs = []
   for (const spec of workbookSpecs) await addWorkbook(zip, `${directory}/${spec.file}`, spec.sheets, outputs)
@@ -76,6 +101,7 @@ async function addStage(zip, index, data, workbookSpecs) {
     severity: issueStatus(data.issues),
     canAdvance: !(data.issues || []).some(issue => issue.severity === 'FAIL'),
     counts: data.counts || {},
+    parameters: clone(parameters),
     outputHashes: outputs,
   }
   const manifestBytes = textBytes(`${JSON.stringify(manifest, null, 2)}\n`)
@@ -93,7 +119,7 @@ const archiveFileName = name => {
   return `${safeName}_部分结果.zip`
 }
 
-export async function createPartialFailureArchive({ zip, name, stage, issues = [], completedStages = [] }) {
+export async function createPartialFailureArchive({ zip, name, stage, issues = [], completedStages = [], parameters = {} }) {
   const normalizedIssues = clone(Array.isArray(issues) ? issues : [issues])
   const completed = clone(completedStages)
   const generatedAt = new Date().toISOString()
@@ -115,7 +141,7 @@ export async function createPartialFailureArchive({ zip, name, stage, issues = [
   zip.file('失败任务/部分运行状态.sha256', `${await sha256(stateBytes)}\n`)
   const runBytes = textBytes(`${JSON.stringify({
     schemaVersion: 'shimadzu-browser-run-1', completedAt: generatedAt, status: 'PARTIAL_FAILED',
-    oavExecuted: false, name, failedStage: stage, completedStages: completed,
+    oavExecuted: false, name, failedStage: stage, completedStages: completed, parameters: clone(parameters),
   }, null, 2)}\n`)
   zip.file('v2-run.json', runBytes)
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)
@@ -126,6 +152,42 @@ export async function createPartialFailureArchive({ zip, name, stage, issues = [
     code: 'STAGE_GATE_FAILED', details, ...details,
     archiveBytes, archiveSha256, archiveSize: archiveBytes.byteLength,
     fileName: archiveFileName(name),
+  })
+}
+
+export async function createPartialCancellationArchive({ zip, name, stage, completedStages = [], parameters = {} }) {
+  const completed = clone(completedStages)
+  const normalizedParameters = clone(parameters)
+  const generatedAt = new Date().toISOString()
+  const state = {
+    schemaVersion: 'shimadzu-browser-cancellation-1', status: 'CANCELLED', errorCode: 'ANALYSIS_CANCELLED',
+    name, cancelledBeforeStage: stage, completedStages: completed, parameters: normalizedParameters,
+    archiveContents: 'Completed stage outputs, manifests, cancellation audit, and run parameters', generatedAt,
+  }
+  const stateBytes = textBytes(`${JSON.stringify(state, null, 2)}\n`)
+  zip.file('取消任务/取消状态.json', stateBytes)
+  zip.file('取消任务/取消状态.sha256', `${await sha256(stateBytes)}\n`)
+  const manifest = {
+    schemaVersion: 'shimadzu-browser-cancel-manifest-1', status: 'CANCELLED', errorCode: 'ANALYSIS_CANCELLED',
+    generatedAt, completedStages: completed, parameters: normalizedParameters,
+  }
+  const manifestBytes = textBytes(`${JSON.stringify(manifest, null, 2)}\n`)
+  zip.file('取消任务/manifest.json', manifestBytes)
+  zip.file('取消任务/manifest.sha256', `${await sha256(manifestBytes)}\n`)
+  const run = {
+    schemaVersion: 'shimadzu-browser-run-1', completedAt: generatedAt, status: 'CANCELLED',
+    errorCode: 'ANALYSIS_CANCELLED', oavExecuted: false, name, cancelledBeforeStage: stage,
+    completedStages: completed, parameters: normalizedParameters,
+  }
+  const runBytes = textBytes(`${JSON.stringify(run, null, 2)}\n`)
+  zip.file('v2-run.json', runBytes)
+  zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)
+  const archiveBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+  const archiveSha256 = await sha256(archiveBytes)
+  const details = { stage, completedStages: completed, archiveStatus: 'CANCELLED', parameters: normalizedParameters }
+  return Object.assign(new Error('ANALYSIS_CANCELLED'), {
+    code: 'ANALYSIS_CANCELLED', details, archiveBytes, archiveSha256,
+    archiveSize: archiveBytes.byteLength, fileName: archiveFileName(name),
   })
 }
 
@@ -354,11 +416,19 @@ function workbookSpecs(index, data) {
   })
 }
 
-export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues, recoverCasRecord = shimadzuCasRecoveryService.recover }) {
+export async function runShimadzuBrowserPipeline({
+  rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析',
+  onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30,
+  enableClassification = false, enableWaterDetectionThreshold = true,
+  enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues,
+  resolveWaterDetectionThreshold = shimadzuWaterDetectionThresholdService.resolve,
+  recoverCasRecord = shimadzuCasRecoveryService.recover,
+}) {
   const raw = rawBytes instanceof Uint8Array ? rawBytes : new Uint8Array(rawBytes)
   const samples = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes)
   const zip = new JSZip()
   const stages = []
+  const parameters = { enableClassification, enableWaterDetectionThreshold, enableCvScreening, cvThreshold }
   const builders = [
     () => stage0(raw, samples, rawName, sampleName),
     () => stage1(stages[0], rawName, recoverCasRecord),
@@ -372,42 +442,56 @@ export async function runShimadzuBrowserPipeline({ rawBytes, sampleBytes, rawNam
   for (let index = 0; index < builders.length; index += 1) {
     try {
       assertNotCancelled(signal)
-    onEvent({ type: 'stage-start', stage: index, progress: Math.round(index / 7 * 100), message: V2_STAGE_DIRECTORIES[index] })
-    const builtData = await builders[index]()
-    const data = enableClassification && index === 4 ? await enrichStage4Data(builtData, enrichCasValues) : builtData
-    const manifest = await addStage(zip, index, data, workbookSpecs(index, data))
-    if (!manifest.canAdvance) {
-      throw await createPartialFailureArchive({
-        zip, name, stage: index, issues: data.issues,
-        completedStages: [...manifests, { stage: manifest.stage, status: manifest.severity, counts: manifest.counts }],
-      })
-    }
-    stages.push(data)
-    manifests.push(manifest)
-    onEvent({ type: 'stage-complete', stage: index, progress: Math.round((index + 1) / 7 * 100), status: manifest.severity, counts: data.counts })
-    if (reviewGate && index < builders.length - 1) {
-      onEvent({ type: 'stage-review', stage: index, progress: Math.round((index + 1) / 7 * 100), message: '等待用户复核后继续' })
-      await reviewGate(index)
+      onEvent({ type: 'stage-start', stage: index, progress: Math.round(index / 7 * 100), message: V2_STAGE_DIRECTORIES[index] })
+      const builtData = await builders[index]()
+      const data = index === 4 && (enableClassification || enableWaterDetectionThreshold)
+        ? await enrichStage4Data(builtData, {
+          enableClassification, enableWaterDetectionThreshold, enrichCasValues, resolveWaterDetectionThreshold,
+        })
+        : builtData
       assertNotCancelled(signal)
+      const manifest = await addStage(zip, index, data, workbookSpecs(index, data), parameters)
+      if (!manifest.canAdvance) {
+        throw await createPartialFailureArchive({
+          zip, name, stage: index, issues: data.issues,
+          completedStages: [...manifests, { stage: manifest.stage, status: manifest.severity, counts: manifest.counts }], parameters,
+        })
+      }
+      stages.push(data)
+      manifests.push(manifest)
+      onEvent({ type: 'stage-complete', stage: index, progress: Math.round((index + 1) / 7 * 100), status: manifest.severity, counts: data.counts })
+      if (reviewGate && index < builders.length - 1) {
+        onEvent({ type: 'stage-review', stage: index, progress: Math.round((index + 1) / 7 * 100), message: '等待用户复核后继续' })
+        await reviewGate(index)
+        assertNotCancelled(signal)
       }
     } catch (error) {
-      if (error?.code === 'ANALYSIS_CANCELLED' || error?.archiveBytes) throw error
+      if (error?.code === 'ANALYSIS_CANCELLED') {
+        if (error?.archiveBytes) throw error
+        throw await createPartialCancellationArchive({ zip, name, stage: index, completedStages: manifests, parameters })
+      }
+      if (error?.archiveBytes) throw error
       throw await createPartialFailureArchive({
         zip, name, stage: index,
         issues: [{ severity: 'FAIL', code: error?.code || 'BROWSER_ANALYSIS_FAILED', message: error?.message || String(error), ...error?.details }],
-        completedStages: manifests,
+        completedStages: manifests, parameters,
       })
     }
   }
+  if (signal?.aborted) {
+    throw await createPartialCancellationArchive({
+      zip, name, stage: builders.length, completedStages: manifests, parameters,
+    })
+  }
   const completeness = {
     schemaVersion: 'shimadzu-v2-completeness-1', verifiedAt: new Date().toISOString(), status: 'PASS',
-    scope: '步骤0至步骤6', oavExecuted: false, completedStages: [...V2_STAGE_DIRECTORIES],
+    scope: '步骤0至步骤6', oavExecuted: false, parameters, completedStages: [...V2_STAGE_DIRECTORIES],
     stageResults: manifests.map((manifest, index) => ({ index, stage: manifest.stage, status: manifest.severity, counts: manifest.counts })),
   }
   const completenessBytes = textBytes(`${JSON.stringify(completeness, null, 2)}\n`)
   zip.file('完整性验证/v2-completeness-verification.json', completenessBytes)
   zip.file('完整性验证/v2-completeness-verification.sha256', `${await sha256(completenessBytes)}\n`)
-  const run = { schemaVersion: 'shimadzu-browser-run-1', completedAt: new Date().toISOString(), status: 'PASS', oavExecuted: false, name, completedStages: [...V2_STAGE_DIRECTORIES] }
+  const run = { schemaVersion: 'shimadzu-browser-run-1', completedAt: new Date().toISOString(), status: 'PASS', oavExecuted: false, name, parameters, completedStages: [...V2_STAGE_DIRECTORIES] }
   const runBytes = textBytes(`${JSON.stringify(run, null, 2)}\n`)
   zip.file('v2-run.json', runBytes)
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)

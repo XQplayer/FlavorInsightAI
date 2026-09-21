@@ -19,6 +19,7 @@ test('transfers workbook buffers and resolves the completed archive', async () =
   const pending = client.run({ rawBytes, sampleBytes, name: '测试', resumeFromStage: 2, onEvent: event => events.push(event) })
   assert.equal(FakeWorker.latest.messages[0].message.type, 'start')
   assert.equal(FakeWorker.latest.messages[0].message.resumeFromStage, 2)
+  assert.equal(FakeWorker.latest.messages[0].message.enableWaterDetectionThreshold, true)
   assert.deepEqual(FakeWorker.latest.messages[0].transfer, [rawBytes, sampleBytes])
   FakeWorker.latest.emit({ type: 'stage-complete', stage: 0, progress: 14 })
   const archive = new Uint8Array([9, 8]).buffer
@@ -53,12 +54,45 @@ test('sends the opt-in classification setting with the browser start request', a
   client.dispose()
 })
 
-test('cancel rejects an active browser analysis', async () => {
+test('sends the independent default-on water detection threshold setting with the browser start request', async () => {
+  const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
+  const pending = client.run({
+    rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1),
+    enableClassification: false, enableWaterDetectionThreshold: false,
+  })
+  const start = FakeWorker.latest.messages[0].message
+  assert.equal(start.enableClassification, false)
+  assert.equal(start.enableWaterDetectionThreshold, false)
+  FakeWorker.latest.emit({ type: 'complete', fileName: 'result.zip', archiveBytes: new ArrayBuffer(0), archiveSha256: 'abc' })
+  await pending
+  client.dispose()
+})
+
+test('cancel waits for and preserves the worker cancellation archive', async () => {
   const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
   const pending = client.run({ rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1) })
+  let settled = false
+  pending.then(() => { settled = true }, () => { settled = true })
   client.cancel()
-  await assert.rejects(pending, /ANALYSIS_CANCELLED/)
+  client.cancel()
   assert.equal(FakeWorker.latest.messages.at(-1).message.type, 'cancel')
+  assert.equal(FakeWorker.latest.messages.filter(entry => entry.message.type === 'cancel').length, 1)
+  await Promise.resolve()
+  assert.equal(settled, false)
+
+  const archive = new Uint8Array([4, 3, 2]).buffer
+  FakeWorker.latest.emit({
+    type: 'cancelled', code: 'ANALYSIS_CANCELLED', message: 'Analysis cancelled',
+    archiveBytes: archive, archiveSha256: 'cancel-sha', archiveSize: archive.byteLength,
+    fileName: 'cancelled_partial.zip',
+  })
+  await assert.rejects(pending, error => {
+    assert.equal(error.code, 'ANALYSIS_CANCELLED')
+    assert.deepEqual([...new Uint8Array(error.archiveBytes)], [4, 3, 2])
+    assert.equal(error.archiveSha256, 'cancel-sha')
+    assert.equal(error.fileName, 'cancelled_partial.zip')
+    return true
+  })
 })
 
 test('dispose reports an interruption so page unload does not erase resumable inputs', async () => {
