@@ -77,6 +77,10 @@ test('records disabled CV screening without filtering the Stage 5 results', asyn
   assert.equal(stage5.cvThreshold, 12.5)
   assert.equal(stage5.counts.filteredGroups, 0)
   assert.equal(stage5.qcRows.some(row => row[0] === 'CV筛查' && row[2] === '未执行'), true)
+  const paths = Object.keys(zip.files)
+  assert.equal(paths.some(path => /05_0[345]_.*CV|CV筛查未执行/.test(path)), false)
+  assert.equal(paths.some(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('.xlsx') && /CV/.test(path)), false)
+  assert.equal(result.stages[6].counts.workbooks, 2)
 })
 
 test('adds CAS-resolved identity fields to the enabled Stage 4 workbook export', async () => {
@@ -141,7 +145,7 @@ test('enriches Stage 4 identities and preserves them through Stage 5 and Stage 6
   const paths = [
     '04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx',
     '05_统计_CV_CAS与QC/05_02_Mean浓度与SD.xlsx',
-    Object.keys(zip.files).find(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('_CV筛选前_Mean浓度.xlsx')),
+    Object.keys(zip.files).find(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('Mean浓度.xlsx')),
   ]
   for (const path of paths) {
     assert.ok(path)
@@ -163,6 +167,27 @@ test('does not add identity columns to later stages when classification is disab
   assert.equal(readWorkbookSheets(bytes)[0].rows[0].cells.includes('FlavorDB2 CID'), false)
 })
 
+test('exports a Stage 4 compound-information audit workbook with one row per CAS', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, enableClassification: true,
+    enrichCasValues: async casValues => new Map(casValues.map(cas => [cas, {
+      identity: { 中文名: '乙酸乙酯', 常用英文名: 'Ethyl acetate', 主要官能团: 'carboxylic acid ester', 化合物分类: '酯类', FEMA编号: 'NA', FEMA风味描述: 'NA', 'FlavorDB2 CID': 'NA', 'FlavorDB2风味描述': 'NA' },
+      audit: { CAS: cas, SMILES: 'CCOC(C)=O', '结构来源': 'PubChem', 'SMARTS 命中规则': 'ester', '分类方法': 'SMARTS', '可靠性': '高', '失败原因': 'NA', '查询时间': '2026-09-21T00:00:00.000Z' },
+    }])),
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const auditPath = '04_跨样品合并与半定量/04_化合物信息审核表.xlsx'
+  assert.ok(zip.file(auditPath))
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const sheet = readWorkbookSheets(await zip.file(auditPath).async('uint8array'))[0]
+  assert.deepEqual(sheet.rows[0].cells, ['CAS', 'SMILES', '结构来源', 'SMARTS 命中规则', '分类方法', '可靠性', '失败原因', '查询时间'])
+  assert.equal(sheet.rows.length, 4)
+})
+
 test('adds independently enabled water thresholds at Stage 4 and preserves them through Stages 5 and 6', async () => {
   const [rawBytes, sampleBytes] = await Promise.all([
     readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
@@ -180,7 +205,7 @@ test('adds independently enabled water thresholds at Stage 4 and preserves them 
   const paths = [
     '04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx',
     '05_统计_CV_CAS与QC/05_02_Mean浓度与SD.xlsx',
-    Object.keys(zip.files).find(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('_CV筛选前_Mean浓度.xlsx')),
+    Object.keys(zip.files).find(path => path.startsWith('06_按矩阵拆分/') && path.endsWith('Mean浓度.xlsx')),
   ]
   for (const path of paths) {
     const header = readWorkbookSheets(await zip.file(path).async('uint8array'))[0].rows[0].cells
@@ -191,6 +216,7 @@ test('adds independently enabled water thresholds at Stage 4 and preserves them 
   const completeness = JSON.parse(await zip.file('完整性验证/v2-completeness-verification.json').async('string'))
   assert.deepEqual(run.parameters, {
     enableClassification: false, enableWaterDetectionThreshold: true,
+    enableEstimatedReferenceOav: false,
     enableCvScreening: true, cvThreshold: 30,
   })
   assert.equal(stageManifest.parameters.enableWaterDetectionThreshold, true)
@@ -210,6 +236,33 @@ test('does not resolve or export water threshold columns when the independent se
   const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
   const header = readWorkbookSheets(await zip.file('04_跨样品合并与半定量/04_全样品_峰面积与浓度.xlsx').async('uint8array'))[0].rows[0].cells
   assert.equal(header.includes('水中觉察阈值（μg/L）'), false)
+})
+
+test('exports estimated reference OAV after Stage 6 and forces water thresholds when enabled', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  let thresholdCalls = 0
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, enableWaterDetectionThreshold: false, enableEstimatedReferenceOav: true,
+    resolveWaterDetectionThreshold: async () => {
+      thresholdCalls += 1
+      return { '水中觉察阈值原始数据': '1 μg/L', '水中觉察阈值来源': 'test', '水中觉察阈值（μg/L）': 1 }
+    },
+  })
+  assert.equal(thresholdCalls > 0, true)
+  assert.equal(result.oavExecuted, true)
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const path = '07_估算参考OAV/07_估算参考OAV.xlsx'
+  assert.ok(zip.file(path))
+  const { readWorkbookSheets } = await import('./shimadzuWorkbook.js')
+  const sheets = readWorkbookSheets(await zip.file(path).async('uint8array'))
+  assert.equal(sheets[0].rows[0].cells.includes('估算参考 OAV'), true)
+  assert.equal(sheets[0].rows[0].cells.includes('OAV说明'), true)
+  const run = JSON.parse(await zip.file('v2-run.json').async('string'))
+  assert.equal(run.parameters.enableEstimatedReferenceOav, true)
+  assert.equal(run.parameters.enableWaterDetectionThreshold, true)
 })
 
 test('turns cancellation into a downloadable audit and partial-result archive', async () => {
@@ -241,8 +294,28 @@ test('turns cancellation into a downloadable audit and partial-result archive', 
   assert.equal(run.oavExecuted, false)
   assert.deepEqual(run.parameters, {
     enableClassification: false, enableWaterDetectionThreshold: false,
+    enableEstimatedReferenceOav: false,
     enableCvScreening: true, cvThreshold: 30,
   })
+})
+
+test('cancels promptly while Stage 4 enrichment is awaiting a network result', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const controller = new AbortController()
+  const pending = runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, signal: controller.signal, enableClassification: true,
+    enrichCasValues: () => new Promise(() => {}),
+    onEvent(event) { if (event.type === 'stage-start' && event.stage === 4) controller.abort() },
+  })
+  const outcome = await Promise.race([
+    pending.then(() => null, error => error),
+    new Promise(resolve => setTimeout(() => resolve('timeout'), 250)),
+  ])
+  assert.notEqual(outcome, 'timeout')
+  assert.equal(outcome?.code, 'ANALYSIS_CANCELLED')
 })
 
 test('honors cancellation at the final coherent stage boundary before sealing a PASS archive', async () => {

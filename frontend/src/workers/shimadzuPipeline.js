@@ -37,6 +37,19 @@ function assertNotCancelled(signal) {
   if (signal?.aborted) throw fail('ANALYSIS_CANCELLED')
 }
 
+function awaitWithAbort(promise, signal) {
+  assertNotCancelled(signal)
+  if (!signal) return promise
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(fail('ANALYSIS_CANCELLED'))
+    signal.addEventListener('abort', abort, { once: true })
+    Promise.resolve(promise).then(
+      value => { signal.removeEventListener('abort', abort); resolve(value) },
+      error => { signal.removeEventListener('abort', abort); reject(error) },
+    )
+  })
+}
+
 function table(name, source) {
   return { name, columns: [...(source?.columns ?? [])], rows: clone(source?.rows ?? []) }
 }
@@ -45,18 +58,55 @@ function recordTable(name, records, columns = HIT1_OUTPUT_COLUMNS) {
   return { name, columns: [...columns], rows: clone(records ?? []) }
 }
 
+function estimatedReferenceOavTable(stage4Data) {
+  const rowByCas = new Map(stage4Data.table.rows.map(row => [String(row['CAS #'] || '').trim(), row]))
+  const sampleByName = new Map(stage4Data.sampleConfigs.map(sample => [sample.sampleName, sample]))
+  const columns = ['CAS', 'Name', '样品名称', '样品形态', '浓度（μg/mL）', ...WATER_DETECTION_THRESHOLD_COLUMNS, '估算参考 OAV', 'OAV说明']
+  const rows = stage4Data.concentrationStatus.map(entry => {
+    const source = rowByCas.get(String(entry.cas || '').trim()) || {}
+    const threshold = Number(source['水中觉察阈值（μg/L）'])
+    const concentration = Number(entry.concentration)
+    const usable = Number.isFinite(concentration) && concentration >= 0 && Number.isFinite(threshold) && threshold > 0
+    return {
+      CAS: entry.cas || 'NA', Name: source.Name || 'NA', '样品名称': entry.sampleName || 'NA', '样品形态': sampleByName.get(entry.sampleName)?.sampleForm || 'NA',
+      '浓度（μg/mL）': Number.isFinite(concentration) ? concentration : 'NA',
+      '水中觉察阈值原始数据': source['水中觉察阈值原始数据'] || 'NA', '水中觉察阈值来源': source['水中觉察阈值来源'] || 'NA', '水中觉察阈值（μg/L）': Number.isFinite(threshold) ? threshold : 'NA',
+      '估算参考 OAV': usable ? concentration * 1000 / threshold : 'NA',
+      'OAV说明': usable ? '浓度（μg/mL）×1000÷水中觉察阈值（μg/L）；非水基质仅作参考。' : '缺少可用浓度或单值水中觉察阈值。',
+    }
+  })
+  return { columns, rows }
+}
+
 async function enrichStage4Data(data, {
   enableClassification,
   enableWaterDetectionThreshold,
   enrichCasValues,
   resolveWaterDetectionThreshold,
+  signal,
 }) {
   const casValues = [...new Set(data.table.rows.map(row => String(row['CAS #'] || '').trim()).filter(Boolean))]
   const identityByCas = enableClassification
-    ? await enrichCasValues(casValues)
+    ? await awaitWithAbort(enrichCasValues(casValues, { signal }), signal)
     : new Map()
+  const compoundAudit = enableClassification
+    ? casValues.map(cas => {
+      const entry = identityByCas.get(cas) || {}
+      const audit = entry.audit || {}
+      return {
+        CAS: cas,
+        SMILES: audit.SMILES || 'NA',
+        '结构来源': audit['结构来源'] || 'NA',
+        'SMARTS 命中规则': audit['SMARTS 命中规则'] || 'NA',
+        '分类方法': audit['分类方法'] || 'NA',
+        '可靠性': audit['可靠性'] || 'NA',
+        '失败原因': audit['失败原因'] || 'NA',
+        '查询时间': audit['查询时间'] || 'NA',
+      }
+    })
+    : []
   const thresholdByCas = enableWaterDetectionThreshold
-    ? new Map(await Promise.all(casValues.map(async cas => [cas, await resolveWaterDetectionThreshold(cas)])))
+    ? new Map(await awaitWithAbort(Promise.all(casValues.map(async cas => [cas, await resolveWaterDetectionThreshold(cas, { signal })])), signal))
     : new Map()
   const extraColumns = [
     ...(enableClassification ? V2_COMPOUND_IDENTITY_COLUMNS : []),
@@ -66,13 +116,14 @@ async function enrichStage4Data(data, {
   const emptyThreshold = Object.fromEntries(WATER_DETECTION_THRESHOLD_COLUMNS.map(column => [column, 'NA']))
   return {
     ...data,
+    compoundAudit,
     table: {
       columns: ['CAS #', ...extraColumns, ...data.table.columns.filter(column => column !== 'CAS #')],
       rows: data.table.rows.map(row => {
         const cas = String(row['CAS #'] || '').trim()
         return {
           ...row,
-          ...(enableClassification ? identityByCas.get(cas) || emptyIdentity : {}),
+          ...(enableClassification ? identityByCas.get(cas)?.identity || identityByCas.get(cas) || emptyIdentity : {}),
           ...(enableWaterDetectionThreshold ? thresholdByCas.get(cas) || emptyThreshold : {}),
         }
       }),
@@ -391,8 +442,15 @@ function workbookSpecs(index, data) {
   if (index === 4) return [
     { file: '04_全样品_峰面积与浓度.xlsx', sheets: [table('峰面积与浓度', data.table)] },
     { file: '04_半定量计算报告.xlsx', sheets: [{ name: '计算说明', columns: ['项目', '内容'], rows: [{ 项目: '响应因子', 内容: 1 }, { 项目: 'OAV', 内容: '未执行' }, { 项目: '样品数', 内容: data.counts.samples }] }, { name: '浓度状态', columns: ['样品', 'CAS', '状态', '浓度'], rows: data.concentrationStatus.map(entry => ({ 样品: entry.sampleName, CAS: entry.cas, 状态: entry.status, 浓度: entry.concentration })) }] },
+    ...(data.compoundAudit?.length ? [{ file: '04_化合物信息审核表.xlsx', sheets: [{ name: '化合物审核', columns: ['CAS', 'SMILES', '结构来源', 'SMARTS 命中规则', '分类方法', '可靠性', '失败原因', '查询时间'], rows: data.compoundAudit }] }] : []),
   ]
   if (index === 5) {
+    if (!data.cvScreeningExecuted) return [
+      { file: '05_01_三个平行浓度.xlsx', sheets: [table('三个平行浓度', data.triplicateBefore)] },
+      { file: '05_02_Mean浓度与SD.xlsx', sheets: [table('Mean浓度与SD', data.meanSdBefore)] },
+      { file: '05_06_CAS清单.xlsx', sheets: [table('全部筛查后CAS', data.allScreenedCas), table('最终分析CAS', data.finalAnalysisCas)] },
+      { file: '05_07_QC报告.xlsx', sheets: [{ name: 'QC', columns: ['检查项', '状态', '结果'], rows: data.qcRows.map(row => ({ 检查项: row[0], 状态: row[1], 结果: row[2] })) }] },
+    ]
     const cvLabel = data.cvScreeningExecuted ? `CV${data.cvThreshold}筛选后` : 'CV筛查未执行'
     return [
     { file: '05_01_三个平行浓度.xlsx', sheets: [table('三个平行浓度', data.triplicateBefore)] },
@@ -404,6 +462,13 @@ function workbookSpecs(index, data) {
     { file: '05_07_QC报告.xlsx', sheets: [{ name: 'QC', columns: ['检查项', '状态', '结果'], rows: data.qcRows.map(row => ({ 检查项: row[0], 状态: row[1], 结果: row[2] })) }] },
     ]
   }
+  if (!data.cvScreeningExecuted) return data.matrices.flatMap(matrix => {
+    const prefix = matrix.matrixName
+    return [
+      { file: `${prefix}/${prefix}_三个平行浓度.xlsx`, sheets: [table('浓度', matrix.beforeTriplicate)] },
+      { file: `${prefix}/${prefix}_Mean浓度.xlsx`, sheets: [table('浓度', matrix.beforeMean)] },
+    ]
+  })
   return data.matrices.flatMap(matrix => {
     const prefix = matrix.matrixName
     const cvLabel = data.cvScreeningExecuted ? 'CV筛选后' : 'CV筛查未执行'
@@ -419,7 +484,7 @@ function workbookSpecs(index, data) {
 export async function runShimadzuBrowserPipeline({
   rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析',
   onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30,
-  enableClassification = false, enableWaterDetectionThreshold = true,
+  enableClassification = false, enableWaterDetectionThreshold = true, enableEstimatedReferenceOav = false,
   enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues,
   resolveWaterDetectionThreshold = shimadzuWaterDetectionThresholdService.resolve,
   recoverCasRecord = shimadzuCasRecoveryService.recover,
@@ -428,7 +493,8 @@ export async function runShimadzuBrowserPipeline({
   const samples = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes)
   const zip = new JSZip()
   const stages = []
-  const parameters = { enableClassification, enableWaterDetectionThreshold, enableCvScreening, cvThreshold }
+  const effectiveEnableWaterDetectionThreshold = enableEstimatedReferenceOav || enableWaterDetectionThreshold
+  const parameters = { enableClassification, enableWaterDetectionThreshold: effectiveEnableWaterDetectionThreshold, enableEstimatedReferenceOav, enableCvScreening, cvThreshold }
   const builders = [
     () => stage0(raw, samples, rawName, sampleName),
     () => stage1(stages[0], rawName, recoverCasRecord),
@@ -444,9 +510,10 @@ export async function runShimadzuBrowserPipeline({
       assertNotCancelled(signal)
       onEvent({ type: 'stage-start', stage: index, progress: Math.round(index / 7 * 100), message: V2_STAGE_DIRECTORIES[index] })
       const builtData = await builders[index]()
-      const data = index === 4 && (enableClassification || enableWaterDetectionThreshold)
+      const data = index === 4 && (enableClassification || effectiveEnableWaterDetectionThreshold)
         ? await enrichStage4Data(builtData, {
-          enableClassification, enableWaterDetectionThreshold, enrichCasValues, resolveWaterDetectionThreshold,
+          enableClassification, enableWaterDetectionThreshold: effectiveEnableWaterDetectionThreshold, enrichCasValues, resolveWaterDetectionThreshold,
+          signal,
         })
         : builtData
       assertNotCancelled(signal)
@@ -483,15 +550,23 @@ export async function runShimadzuBrowserPipeline({
       zip, name, stage: builders.length, completedStages: manifests, parameters,
     })
   }
+  if (enableEstimatedReferenceOav) {
+    const oav = estimatedReferenceOavTable(stages[4])
+    const outputs = []
+    await addWorkbook(zip, '07_估算参考OAV/07_估算参考OAV.xlsx', [table('估算参考OAV', oav)], outputs)
+    const oavBytes = textBytes(`${JSON.stringify({ schemaVersion: 'shimadzu-estimated-reference-oav-1', createdAt: new Date().toISOString(), rows: oav.rows }, null, 2)}\n`)
+    zip.file('07_估算参考OAV/data.json', oavBytes)
+    zip.file('07_估算参考OAV/manifest.sha256', `${await sha256(oavBytes)}\n`)
+  }
   const completeness = {
     schemaVersion: 'shimadzu-v2-completeness-1', verifiedAt: new Date().toISOString(), status: 'PASS',
-    scope: '步骤0至步骤6', oavExecuted: false, parameters, completedStages: [...V2_STAGE_DIRECTORIES],
+    scope: enableEstimatedReferenceOav ? '步骤0至步骤7' : '步骤0至步骤6', oavExecuted: enableEstimatedReferenceOav, parameters, completedStages: [...V2_STAGE_DIRECTORIES, ...(enableEstimatedReferenceOav ? ['07_估算参考OAV'] : [])],
     stageResults: manifests.map((manifest, index) => ({ index, stage: manifest.stage, status: manifest.severity, counts: manifest.counts })),
   }
   const completenessBytes = textBytes(`${JSON.stringify(completeness, null, 2)}\n`)
   zip.file('完整性验证/v2-completeness-verification.json', completenessBytes)
   zip.file('完整性验证/v2-completeness-verification.sha256', `${await sha256(completenessBytes)}\n`)
-  const run = { schemaVersion: 'shimadzu-browser-run-1', completedAt: new Date().toISOString(), status: 'PASS', oavExecuted: false, name, parameters, completedStages: [...V2_STAGE_DIRECTORIES] }
+  const run = { schemaVersion: 'shimadzu-browser-run-1', completedAt: new Date().toISOString(), status: 'PASS', oavExecuted: enableEstimatedReferenceOav, name, parameters, completedStages: [...V2_STAGE_DIRECTORIES, ...(enableEstimatedReferenceOav ? ['07_估算参考OAV'] : [])] }
   const runBytes = textBytes(`${JSON.stringify(run, null, 2)}\n`)
   zip.file('v2-run.json', runBytes)
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)

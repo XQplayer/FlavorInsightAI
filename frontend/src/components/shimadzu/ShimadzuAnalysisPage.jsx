@@ -225,18 +225,18 @@ function HistoryPanelLegacy({ jobs, interruptedJobIds, onDownload, onMarkInterru
   )
 }
 
-function HistoryPanel({ jobs, interruptedJobIds, onDownload, onMarkInterrupted, onDownloadInput, onDeleteResult, isAdmin = false, language }) {
+function HistoryPanel({ jobs, interruptedJobIds, onDownload, onMarkInterrupted, onDeleteResult, isAdmin = false, language }) {
   if (!jobs.length) return <section id="task-workbench" className="shimadzu-history shimadzu-history-empty" aria-labelledby="history-title"><div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{textFor(language, '任务台', 'Task desk')}</h2><p>{textFor(language, '当前没有可查看的历史任务。完成登录并运行分析后，任务、结果下载和失败原因会集中显示在这里。', 'No task history is available. After sign-in and analysis, tasks, result downloads, and failure reasons will appear here.')}</p></div><span>{textFor(language, '暂无记录', 'No records')}</span></div></section>
   return (
     <section id="task-workbench" className="shimadzu-history shimadzu-reveal" aria-labelledby="history-title">
-      <div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{isAdmin ? textFor(language, '管理员任务台', 'Administrator task desk') : textFor(language, '最近任务', 'Recent tasks')}</h2><p>{isAdmin ? textFor(language, '可查看所有用户运行状态，并下载原始工作簿与结果证据。', 'View every user task and download raw workbooks and result evidence.') : textFor(language, '任务与 QC 摘要保留 90 天；结果包完成后保留 7 天。', 'Task and QC summaries are retained for 90 days; completed result packages for 7 days.')}</p></div><span>{isAdmin ? textFor(language, '管理员可见', 'Administrator view') : textFor(language, '私有记录', 'Private records')}</span></div>
+      <div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{isAdmin ? textFor(language, '管理员任务台', 'Administrator task desk') : textFor(language, '最近任务', 'Recent tasks')}</h2><p>{isAdmin ? textFor(language, '可查看所有用户运行状态与结果证据；原始工作簿始终只保留在运行浏览器。', 'View every user task status and retained result evidence; raw workbooks always remain in the originating browser.') : textFor(language, '任务与 QC 摘要保留 90 天；结果包完成后保留 7 天。', 'Task and QC summaries are retained for 90 days; completed result packages for 7 days.')}</p></div><span>{isAdmin ? textFor(language, '管理员可见', 'Administrator view') : textFor(language, '私有记录', 'Private records')}</span></div>
       <div className="shimadzu-history-table" role="table">
         {jobs.map(item => {
           const downloadable = item.result_path && new Date(item.result_expires_at) > new Date()
           const interrupted = interruptedJobIds.has(item.id)
           const visibleStatus = interrupted ? 'interrupted' : item.status
           const issue = Array.isArray(item.stage_summary) ? [...item.stage_summary].reverse().find(entry => entry?.type === 'error' || entry?.type === 'interrupted') : null
-          return <div key={item.id} role="row"><div><strong>{localizedTaskName(item.name, language)}</strong><small>{isAdmin ? `${textFor(language, '用户', 'User')} ${item.user_id} · ` : ''}{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false })}</small>{issue && <small className="shimadzu-history-error"><b>{issue.code || textFor(language, '任务异常', 'Task exception')}</b>{issue.message || textFor(language, '请打开任务查看详细日志。', 'Open the task for detailed logs.')}</small>}</div><span className={`shimadzu-job-badge ${visibleStatus}`}>{statusLabel(visibleStatus, language)}</span><span>{textFor(language, '步骤', 'Stage')} {item.current_stage}/7 · {item.progress}%</span><div className="shimadzu-history-actions">{interrupted ? <button type="button" onClick={() => onMarkInterrupted(item)}>{textFor(language, '确认中断', 'Confirm interruption')}</button> : downloadable ? <button type="button" onClick={() => onDownload(item)}><CloudDownload />{textFor(language, '重新下载', 'Download again')}</button> : <small>{item.status === 'complete' || item.status === 'expired' ? textFor(language, '结果已过期', 'Result expired') : textFor(language, '暂无结果', 'No result')}</small>}{isAdmin && item.raw_path && <button type="button" onClick={() => onDownloadInput(item)}><Download />{textFor(language, '原始文件', 'Raw files')}</button>}{downloadable && onDeleteResult && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>{textFor(language, '删除结果', 'Delete result')}</button>}</div></div>
+          return <div key={item.id} role="row"><div><strong>{localizedTaskName(item.name, language)}</strong><small>{isAdmin ? `${textFor(language, '用户', 'User')} ${item.user_id} · ` : ''}{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false })}</small>{issue && <small className="shimadzu-history-error"><b>{issue.code || textFor(language, '任务异常', 'Task exception')}</b>{issue.message || textFor(language, '请打开任务查看详细日志。', 'Open the task for detailed logs.')}</small>}</div><span className={`shimadzu-job-badge ${visibleStatus}`}>{statusLabel(visibleStatus, language)}</span><span>{textFor(language, '步骤', 'Stage')} {item.current_stage}/7 · {item.progress}%</span><div className="shimadzu-history-actions">{interrupted ? <button type="button" onClick={() => onMarkInterrupted(item)}>{textFor(language, '确认中断', 'Confirm interruption')}</button> : downloadable ? <button type="button" onClick={() => onDownload(item)}><CloudDownload />{textFor(language, '重新下载', 'Download again')}</button> : <small>{item.status === 'complete' || item.status === 'expired' ? textFor(language, '结果已过期', 'Result expired') : textFor(language, '暂无结果', 'No result')}</small>}{downloadable && onDeleteResult && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>{textFor(language, '删除结果', 'Delete result')}</button>}</div></div>
         })}
       </div>
     </section>
@@ -451,6 +451,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const [cvThreshold, setCvThreshold] = useState('30')
   const [enableClassification, setEnableClassification] = useState(true)
   const [enableWaterDetectionThreshold, setEnableWaterDetectionThreshold] = useState(true)
+  const [enableEstimatedReferenceOav, setEnableEstimatedReferenceOav] = useState(false)
   const [job, setJob] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -646,6 +647,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     const taskCvThreshold = Number.isFinite(Number(task.cvThreshold)) ? Number(task.cvThreshold) : 30
     const taskEnableClassification = task.enableClassification === true
     const taskEnableWaterDetectionThreshold = task.enableWaterDetectionThreshold !== false
+    const taskEnableEstimatedReferenceOav = task.enableEstimatedReferenceOav === true
     setSubmitting(true)
     setError('')
     activeJobIdRef.current = task.id
@@ -661,6 +663,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     setCvThreshold(String(taskCvThreshold))
     setEnableClassification(taskEnableClassification)
     setEnableWaterDetectionThreshold(taskEnableWaterDetectionThreshold)
+    setEnableEstimatedReferenceOav(taskEnableEstimatedReferenceOav)
     setJob(jobFromStoredTask(task, 'running', language))
     if (restored) setRecoveryNotice(textFor(language, '已从当前浏览器恢复任务，正在重新验证已完成步骤。', 'Task restored from this browser; revalidating completed stages.'))
     try {
@@ -675,6 +678,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
         cvThreshold: taskCvThreshold,
         enableClassification: taskEnableClassification,
         enableWaterDetectionThreshold: taskEnableWaterDetectionThreshold,
+        enableEstimatedReferenceOav: taskEnableEstimatedReferenceOav,
         resumeFromStage: resumeFromStageRef.current,
         onEvent: handleWorkerEvent,
       })
@@ -767,11 +771,13 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       const taskEnableCvScreening = enableCvScreening
       const taskCvThreshold = cvReadiness.threshold ?? 30
       const taskEnableClassification = enableClassification
-      const taskEnableWaterDetectionThreshold = enableWaterDetectionThreshold
+      const taskEnableEstimatedReferenceOav = enableEstimatedReferenceOav
+      const taskEnableWaterDetectionThreshold = taskEnableEstimatedReferenceOav || enableWaterDetectionThreshold
       const task = {
         id: crypto.randomUUID(), scope, userId: session?.user?.id || '', name: localizedName.trim() || textFor(language, '岛津气质分析', 'Shimadzu GC-MS analysis'), mode,
         enableCvScreening: taskEnableCvScreening, cvThreshold: taskCvThreshold, enableClassification: taskEnableClassification,
         enableWaterDetectionThreshold: taskEnableWaterDetectionThreshold,
+        enableEstimatedReferenceOav: taskEnableEstimatedReferenceOav,
         status: 'running', nextStage: 0, stageSummary: [], rawName: rawFile.name, sampleName: samplesFile.name,
         rawSize: rawFile.size, sampleSize: samplesFile.size, rawBytes, sampleBytes,
       }
@@ -787,11 +793,6 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           },
         })
         cloudJobId = task.id
-        try {
-          await cloud.uploadInputs({ userId: task.userId, jobId: task.id, rawBytes, sampleBytes })
-        } catch (value) {
-          setCloudError(`${textFor(language, '原始工作簿云端留存失败，分析仍会继续：', 'Cloud retention of raw workbooks failed; analysis will continue: ')}${value.message}`)
-        }
       }
       await taskStore.save(task)
       await runTask(task)
@@ -822,10 +823,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       const taskCvThreshold = Number.isFinite(Number(task.cvThreshold)) ? Number(task.cvThreshold) : 30
       const taskEnableClassification = task.enableClassification === true
       const taskEnableWaterDetectionThreshold = task.enableWaterDetectionThreshold !== false
+      const taskEnableEstimatedReferenceOav = task.enableEstimatedReferenceOav === true
       setEnableCvScreening(taskEnableCvScreening)
       setCvThreshold(String(taskCvThreshold))
       setEnableClassification(taskEnableClassification)
       setEnableWaterDetectionThreshold(taskEnableWaterDetectionThreshold)
+      setEnableEstimatedReferenceOav(taskEnableEstimatedReferenceOav)
       if (['failed', 'cancelled'].includes(task.status)) {
         const restoredJob = jobFromStoredTask(task, task.status, language)
         if (task.partialArchiveBytes) {
@@ -910,14 +913,6 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       const url = await cloud.downloadUrl(item.result_path)
       window.location.assign(url)
     } catch (value) { setCloudError(`${textFor(language, '无法建立下载链接：', 'Could not create the download link: ')}${value.message}`) }
-  }
-
-  const downloadCloudInput = async item => {
-    setCloudError('')
-    try {
-      const url = await cloud.downloadInputUrl(item.raw_path)
-      window.location.assign(url)
-    } catch (value) { setCloudError(`${textFor(language, '无法建立原始工作簿下载链接：', 'Could not create the raw-workbook download link: ')}${value.message}`) }
   }
 
   const deleteCloudResult = async item => {
@@ -1056,6 +1051,20 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                   </fieldset>
                 )}
                 {!job && (
+                  <fieldset className="shimadzu-cv-field" aria-describedby="oav-help">
+                    <legend>{textFor(language, '估算参考 OAV', 'Estimated reference OAV')}</legend>
+                    <label className="shimadzu-cv-toggle">
+                      <input type="checkbox" checked={enableEstimatedReferenceOav} onChange={event => {
+                        const enabled = event.target.checked
+                        setEnableEstimatedReferenceOav(enabled)
+                        if (enabled) setEnableWaterDetectionThreshold(true)
+                      }} />
+                      <span><strong>{textFor(language, '启用估算参考 OAV', 'Enable estimated reference OAV')}</strong><small>{textFor(language, '默认关闭；启用后自动使用水中觉察阈值，在第六步后导出。固体样品仅作参考性评价。', 'Off by default; enabling it requires water thresholds and exports after Stage 6. Solid samples are reference-only.')}</small></span>
+                    </label>
+                    <p id="oav-help" className="shimadzu-cv-help">{textFor(language, '公式：浓度（μg/mL）×1000÷水中觉察阈值（μg/L）。没有单值阈值时 OAV 写入 NA 并保留原因。', 'Formula: concentration (μg/mL) × 1000 ÷ water threshold (μg/L). OAV is NA with a reason when no scalar threshold is available.')}</p>
+                  </fieldset>
+                )}
+                {!job && (
                   <fieldset className="shimadzu-cv-field" aria-describedby="cv-screening-help">
                     <legend>{textFor(language, 'CV 筛查', 'CV screening')}</legend>
                     <label className="shimadzu-cv-toggle">
@@ -1066,7 +1075,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                     <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>
                   </fieldset>
                 )}
-                <dl className="shimadzu-parameter-list"><div><dt>{textFor(language, '身份与结构', 'Identity and structure')}</dt><dd>{enableClassification ? textFor(language, '开启（PubChem + SMARTS）', 'On (PubChem + SMARTS)') : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, '水中觉察阈值', 'Water detection threshold')}</dt><dd>{enableWaterDetectionThreshold ? textFor(language, '开启（本地证据库）', 'On (local evidence database)') : textFor(language, '关闭（不导出阈值列）', 'Off (threshold columns omitted)')}</dd></div><div><dt>{textFor(language, '估算参考 OAV', 'Estimated reference OAV')}</dt><dd>{textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, 'CV 筛查', 'CV screening')}</dt><dd>{enableCvScreening ? (language === 'en' ? `On (${cvReadiness.threshold ?? '—'}%)` : `启用（${cvReadiness.threshold ?? '—'}%）`) : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, '响应因子', 'Response factor')}</dt><dd>1</dd></div><div><dt>{textFor(language, '内标参数', 'Internal-standard parameters')}</dt><dd>{textFor(language, '按样品表', 'From sample sheet')}</dd></div></dl>
+                <dl className="shimadzu-parameter-list"><div><dt>{textFor(language, '身份与结构', 'Identity and structure')}</dt><dd>{enableClassification ? textFor(language, '开启（PubChem + SMARTS）', 'On (PubChem + SMARTS)') : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, '水中觉察阈值', 'Water detection threshold')}</dt><dd>{enableWaterDetectionThreshold ? textFor(language, '开启（本地证据库）', 'On (local evidence database)') : textFor(language, '关闭（不导出阈值列）', 'Off (threshold columns omitted)')}</dd></div><div><dt>{textFor(language, '估算参考 OAV', 'Estimated reference OAV')}</dt><dd>{enableEstimatedReferenceOav ? textFor(language, '开启（第六步后导出）', 'On (exported after Stage 6)') : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, 'CV 筛查', 'CV screening')}</dt><dd>{enableCvScreening ? (language === 'en' ? `On (${cvReadiness.threshold ?? '—'}%)` : `启用（${cvReadiness.threshold ?? '—'}%）`) : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, '响应因子', 'Response factor')}</dt><dd>1</dd></div><div><dt>{textFor(language, '内标参数', 'Internal-standard parameters')}</dt><dd>{textFor(language, '按样品表', 'From sample sheet')}</dd></div></dl>
               </div>
             </div>
           </details>
@@ -1107,7 +1116,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           {!job ? (
             <div className="shimadzu-overview-grid">
               <LiveMonitor job={null} capabilities={null} engine={engine} language={language} />
-              <HistoryPanel language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
+              <HistoryPanel language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
             </div>
           ) : (
             <>
@@ -1143,7 +1152,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                 </ol>
               </section>
             </div>
-            <HistoryPanel language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
+            <HistoryPanel language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
             </>
           )}
           <AccountPanel language={language} cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />

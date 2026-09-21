@@ -165,6 +165,12 @@ test('keeps water detection thresholds independently enabled by default and pers
   assert.match(source, /task\.enableWaterDetectionThreshold !== false/)
 })
 
+test('offers estimated reference OAV beside compound-enrichment controls and persists its dependency', () => {
+  assert.match(source, /enableEstimatedReferenceOav/)
+  assert.match(source, /启用估算参考 OAV/)
+  assert.match(source, /setEnableWaterDetectionThreshold\(true\)/)
+})
+
 test('offers the audit archive after a task is cancelled', () => {
   assert.match(source, /job\.status === 'cancelled'/)
   assert.match(source, /下载取消审计与部分结果/)
@@ -280,4 +286,9 @@ test('maps workbench colors to platform tokens and contains horizontal overflow 
   assert.match(styles, /\.shimadzu-stage-rail[\s\S]*overflow-x:\s*auto/)
   assert.match(styles, /\.shimadzu-history-table[\s\S]*overflow-x:\s*auto/)
   assert.match(styles, /\.shimadzu-page\[data-theme='light'\] \.shimadzu-monitor/)
+})
+
+test('keeps raw workbooks in the browser and never requests cloud input upload', () => {
+  assert.doesNotMatch(source, /uploadInputs/)
+  assert.doesNotMatch(source, /downloadInputUrl/)
 })

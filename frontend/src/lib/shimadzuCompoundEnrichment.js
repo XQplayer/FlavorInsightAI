@@ -41,7 +41,7 @@ export const createShimadzuCompoundEnrichmentService = ({
       const flavordb = compound?.flavordb || {}
       const smiles = pubchem.smiles || flavordb.smiles
       const classification = smiles ? await classifySmiles(smiles).catch(() => ({})) : {}
-      return {
+      const identity = {
         中文名: localNames.get(normalizedCas) || NA,
         常用英文名: formatSentenceCaseEnglishName(pubchem.title || flavordb.common_name) || NA,
         主要官能团: (flavordb.functional_groups || []).map(asText).filter(value => value !== NA).join('；') || NA,
@@ -51,14 +51,28 @@ export const createShimadzuCompoundEnrichmentService = ({
         'FlavorDB2 CID': asText(flavordb.cid),
         'FlavorDB2风味描述': descriptorText(flavordb),
       }
+      const source = pubchem.smiles ? 'PubChem' : flavordb.smiles ? 'FlavorDB2' : NA
+      return {
+        identity,
+        audit: {
+          CAS: normalizedCas,
+          SMILES: smiles || NA,
+          '结构来源': source,
+          'SMARTS 命中规则': classification.matches?.map(match => match.key).join('；') || NA,
+          '分类方法': classification.method || (smiles ? 'SMARTS' : NA),
+          '可靠性': classification.reliable === false ? '低' : smiles ? '高' : '低',
+          '失败原因': smiles ? (classification.reason || NA) : 'missing_smiles',
+          '查询时间': new Date().toISOString(),
+        },
+      }
     })())
-    return cache.get(normalizedCas)
+    return (await cache.get(normalizedCas)).identity
   }
   return {
     enrichCas,
     async enrichCasValues(values) {
       const casValues = [...new Set((values || []).map(asText).filter(value => value !== NA))]
-      return new Map(await Promise.all(casValues.map(async cas => [cas, await enrichCas(cas)])))
+      return new Map(await Promise.all(casValues.map(async cas => [cas, await cache.get(cas) || await (async () => { await enrichCas(cas); return cache.get(cas) })()])))
     },
   }
 }

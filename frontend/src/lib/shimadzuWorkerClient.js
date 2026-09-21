@@ -50,12 +50,12 @@ export function createShimadzuWorkerClient({
   }
 
   return {
-    run({ rawBytes, sampleBytes, rawName, sampleName, name, mode = 'continuous', resumeFromStage = 0, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enableWaterDetectionThreshold = true, onEvent = () => {} }) {
+    run({ rawBytes, sampleBytes, rawName, sampleName, name, mode = 'continuous', resumeFromStage = 0, enableCvScreening = true, cvThreshold = 30, enableClassification = false, enableWaterDetectionThreshold = true, enableEstimatedReferenceOav = false, onEvent = () => {} }) {
       if (active) return Promise.reject(new Error('ANALYSIS_ALREADY_RUNNING'))
       const instance = ensureWorker()
       return new Promise((resolve, reject) => {
         active = { resolve, reject, onEvent, cancelRequested: false }
-        instance.postMessage({ type: 'start', rawBytes, sampleBytes, rawName, sampleName, name, mode, resumeFromStage, enableCvScreening, cvThreshold, enableClassification, enableWaterDetectionThreshold }, [rawBytes, sampleBytes])
+        instance.postMessage({ type: 'start', rawBytes, sampleBytes, rawName, sampleName, name, mode, resumeFromStage, enableCvScreening, cvThreshold, enableClassification, enableWaterDetectionThreshold, enableEstimatedReferenceOav }, [rawBytes, sampleBytes])
       })
     },
     cancel() {

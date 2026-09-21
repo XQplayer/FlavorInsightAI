@@ -5,7 +5,6 @@ import test from 'node:test'
 import {
   authCallbackMessage,
   createShimadzuCloud,
-  inputObjectPath,
   resultObjectPath,
   retentionColumns,
   shimadzuAuthRedirect,
@@ -57,7 +56,7 @@ test('scopes every retained result to its user and job', () => {
   assert.throws(() => resultObjectPath('../owner', 'job'), /INVALID_STORAGE_ID/)
 })
 
-test('scopes raw workbooks and supports result deletion through the private buckets', async () => {
+test('supports result deletion through the private result bucket', async () => {
   const calls = []
   const client = {
     storage: {
@@ -78,12 +77,15 @@ test('scopes raw workbooks and supports result deletion through the private buck
   const cloud = createShimadzuCloud(client)
   const userId = '11111111-1111-4111-8111-111111111111'
   const jobId = '22222222-2222-4222-8222-222222222222'
-  assert.equal(inputObjectPath(userId, jobId, 'raw'), `${userId}/${jobId}/raw.xlsx`)
-  assert.throws(() => inputObjectPath('../owner', jobId, 'raw'), /INVALID_STORAGE_ID/)
-  await cloud.uploadInputs({ userId, jobId, rawBytes: new Uint8Array([1]), sampleBytes: new Uint8Array([2]) })
   await cloud.deleteResult({ jobId, path: resultObjectPath(userId, jobId) })
-  assert.deepEqual(calls.filter(call => call[0] === 'upload').map(call => call[1]), ['shimadzu-inputs', 'shimadzu-inputs'])
   assert.deepEqual(calls.find(call => call[0] === 'remove'), ['remove', 'shimadzu-results', [`${userId}/${jobId}/result.zip`]])
+})
+
+test('never exposes an adapter operation that uploads or downloads raw workbooks', async () => {
+  const source = await readFile(new URL('./shimadzuCloud.js', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /uploadInputs/)
+  assert.doesNotMatch(source, /downloadInputUrl/)
+  assert.doesNotMatch(source, /shimadzu-inputs/)
 })
 
 test('sets result retention to seven days and records to ninety days', () => {

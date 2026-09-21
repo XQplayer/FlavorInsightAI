@@ -20,6 +20,7 @@ test('transfers workbook buffers and resolves the completed archive', async () =
   assert.equal(FakeWorker.latest.messages[0].message.type, 'start')
   assert.equal(FakeWorker.latest.messages[0].message.resumeFromStage, 2)
   assert.equal(FakeWorker.latest.messages[0].message.enableWaterDetectionThreshold, true)
+  assert.equal(FakeWorker.latest.messages[0].message.enableEstimatedReferenceOav, false)
   assert.deepEqual(FakeWorker.latest.messages[0].transfer, [rawBytes, sampleBytes])
   FakeWorker.latest.emit({ type: 'stage-complete', stage: 0, progress: 14 })
   const archive = new Uint8Array([9, 8]).buffer

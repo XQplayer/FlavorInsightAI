@@ -76,7 +76,7 @@ export function splitV2Matrices({ stage5Data }) {
     matrices,
     counts: {
       matrices: matrices.length,
-      workbooks: matrices.length * 4,
+      workbooks: matrices.length * (stage5Data.cvScreeningExecuted ? 4 : 2),
       casRows: beforeTriplicate.rows.length,
       samples: sampleOrder.length,
       groups: groupOrder.length,

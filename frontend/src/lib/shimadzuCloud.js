@@ -29,11 +29,6 @@ export function resultObjectPath(userId, jobId) {
   return `${userId}/${jobId}/result.zip`
 }
 
-export function inputObjectPath(userId, jobId, kind) {
-  if (!UUID.test(userId) || !UUID.test(jobId) || !['raw', 'sample'].includes(kind)) throw Object.assign(new Error('INVALID_STORAGE_ID'), { code: 'INVALID_STORAGE_ID' })
-  return `${userId}/${jobId}/${kind}.xlsx`
-}
-
 export function retentionColumns(now = new Date().toISOString()) {
   return {
     result_expires_at: expiryFrom(now, RESULT_RETENTION_DAYS),
@@ -88,21 +83,8 @@ export function createShimadzuCloud(client) {
       unwrap(await requireClient(client).storage.from('shimadzu-results').upload(path, body, { contentType: 'application/zip', upsert: true }))
       return this.updateJob(jobId, { result_path: path, result_sha256: sha256, result_size: body.size, status, current_stage: currentStage, progress, completed_at: completedAt })
     },
-    async uploadInputs({ userId, jobId, rawBytes, sampleBytes }) {
-      const rawPath = inputObjectPath(userId, jobId, 'raw')
-      const samplePath = inputObjectPath(userId, jobId, 'sample')
-      const rawBody = rawBytes instanceof Blob ? rawBytes : new Blob([rawBytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const sampleBody = sampleBytes instanceof Blob ? sampleBytes : new Blob([sampleBytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const bucket = requireClient(client).storage.from('shimadzu-inputs')
-      unwrap(await bucket.upload(rawPath, rawBody, { contentType: rawBody.type, upsert: true }))
-      unwrap(await bucket.upload(samplePath, sampleBody, { contentType: sampleBody.type, upsert: true }))
-      return this.updateJob(jobId, { raw_path: rawPath, sample_path: samplePath })
-    },
     async downloadUrl(path, bucketName = 'shimadzu-results') {
       return unwrap(await requireClient(client).storage.from(bucketName).createSignedUrl(path, 300))?.signedUrl
-    },
-    async downloadInputUrl(path) {
-      return this.downloadUrl(path, 'shimadzu-inputs')
     },
     async deleteResult({ jobId, path }) {
       unwrap(await requireClient(client).storage.from('shimadzu-results').remove([path]))

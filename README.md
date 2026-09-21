@@ -94,7 +94,7 @@ http://127.0.0.1:5174/FlavorThresholdDB/shimadzu-analysis/
 http://127.0.0.1:8787/health
 ```
 
-The local Shimadzu GC-MS workbench accepts one raw `.xlsx` workbook and one sample/internal-standard `.xlsx` workbook. Matching example workbooks can be downloaded beside each upload control. It runs the verified Stage 0-6 workflow in continuous or step-review mode, maps the seven scientific stages to a persistent process diagram, streams the current command log into a 1.5-second monitor, and exposes the result ZIP only after completeness verification passes. OAV calculation is intentionally disabled in this integration. Uploaded files and generated jobs stay under ignored `_local/shimadzu/` storage and are not part of the public GitHub Pages deployment.
+The local Shimadzu GC-MS workbench accepts one raw `.xlsx` workbook and one sample/internal-standard `.xlsx` workbook. Matching example workbooks can be downloaded beside each upload control. It runs the verified Stage 0-6 workflow in continuous mode, maps the seven scientific stages to a persistent process diagram, streams the current command log into a 1.5-second monitor, and exposes the result ZIP only after completeness verification passes. Estimated reference OAV is off by default; when enabled, it uses the retained water detection-threshold evidence and is exported after Stage 6. Raw workbooks remain in the current browser and are never uploaded to cloud storage.
 
 Check or stop only confirmed FlavorThresholdDB processes with:
 
