@@ -28,7 +28,7 @@ test('PlatformApp owns history navigation and responds to browser popstate', () 
 test('PlatformApp keeps the homepage eager and mature workbenches behind lazy boundaries', () => {
   assert.match(platformAppSource, /import PlatformHomePage from ['"]\.\.\/pages\/PlatformHomePage\.jsx['"]/);
   assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DatabaseOverviewPage\.jsx['"]\)\)/);
-  assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/components\/shimadzu\/ShimadzuAnalysisPage\.jsx['"]\)\)/);
+  assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataProcessingPage\.jsx['"]\)\)/);
   assert.match(platformAppSource, /<Suspense[\s\S]*fallback=\{<RouteLoading/);
   assert.match(platformAppSource, /role=['"]status['"][\s\S]*aria-live=['"]polite['"]/);
   assert.match(platformAppSource, /<PlatformPreferencesProvider>/);
@@ -42,7 +42,7 @@ test('each lazy route keeps its Suspense boundary inside a route error boundary'
 
   assert.equal(boundaries.length, 2);
   assert.match(boundaries[0], /<Suspense[\s\S]*<DatabaseOverviewPage/);
-  assert.match(boundaries[1], /<Suspense[\s\S]*<ShimadzuAnalysisPage/);
+  assert.match(boundaries[1], /<Suspense[\s\S]*<DataProcessingPage/);
   for (const boundary of boundaries) {
     assert.match(boundary, /routeKey=\{route\}/);
     assert.match(boundary, /language=\{language\}/);

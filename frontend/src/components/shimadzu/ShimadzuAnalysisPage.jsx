@@ -52,6 +52,7 @@ const WORKFLOW = [
   { index: 5, short: '统计与 QC', label: '统计、CV、CAS 与 QC', description: '计算 Mean、样本 SD、CV，并按设置执行质量检查。', work: ['计算 Mean、SD 和 CV', '按需生成 CV 筛查结果', '检查 NA、重复 CAS、公式与内标回算'] },
   { index: 6, short: '矩阵拆分', label: '按矩阵拆分', description: '输出作图准备矩阵与完整项目 CAS 清单。', work: ['按矩阵名称拆分结果', '输出三个平行与 Mean 加 SD 版本', '执行完整性验证并封装结果'] },
 ]
+const PROCESS_RAIL = [...WORKFLOW, { index: 7, short: '结果包', label: '结果包与审计', description: '封装结果、质量证据与任务记录，供下载和复核。' }]
 
 const STATUS_LABELS = {
   created: '等待运行', queued: '排队中', running: '处理中', saving: '云端保存中', waiting_review: '等待复核', complete: '已完成', failed: '运行失败', interrupted: '已中断，需重新运行',
@@ -299,9 +300,11 @@ function WorkflowMap({ job }) {
         </div>
       </div>
       <div className="shimadzu-flow-track" role="list" aria-label="岛津气质分析流程图">
-        {WORKFLOW.map((stage, position) => {
-          const status = stageStatus(job, stage.index)
-          const isActive = activeIndex === stage.index
+        {PROCESS_RAIL.map((stage, position) => {
+          const status = stage.index === 7
+            ? (job?.status === 'complete' ? 'PASS' : job?.status === 'failed' ? 'FAIL' : job?.status === 'saving' ? 'running' : 'pending')
+            : stageStatus(job, stage.index)
+          const isActive = stage.index === 7 ? job?.status === 'saving' : activeIndex === stage.index
           return (
             <div key={stage.index} className={`shimadzu-flow-node state-${status}${isActive ? ' active' : ''}`} role="listitem" data-testid="workflow-node" aria-current={isActive ? 'step' : undefined}>
               <div className="shimadzu-flow-node-head">
@@ -310,7 +313,7 @@ function WorkflowMap({ job }) {
               </div>
               <strong>{stage.short}</strong>
               <small>{stage.description}</small>
-              {position < WORKFLOW.length - 1 && <ChevronRight className="shimadzu-flow-arrow" aria-hidden="true" />}
+              {position < PROCESS_RAIL.length - 1 && <ChevronRight className="shimadzu-flow-arrow" aria-hidden="true" />}
             </div>
           )
         })}
@@ -325,9 +328,11 @@ function StageRail({ job }) {
     <aside className={'shimadzu-stage-rail' + (expanded ? ' expanded' : '')} aria-label="当前任务步骤导航">
       <button type="button" className="shimadzu-stage-rail-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}><ChevronRight aria-hidden="true" /><span>{expanded ? '收起步骤' : '展开步骤'}</span></button>
       <ol>
-        {WORKFLOW.map(stage => {
+        {PROCESS_RAIL.map(stage => {
           const runtime = job?.stages?.[stage.index] || {}
-          const status = runtime.status || 'pending'
+          const status = stage.index === 7
+            ? (job?.status === 'complete' ? 'PASS' : job?.status === 'failed' ? 'FAIL' : job?.status === 'saving' ? 'running' : 'pending')
+            : runtime.status || 'pending'
           return <li key={stage.index} className={'state-' + status} aria-label={stage.label + '：' + (STATUS_LABELS[status] || status)}><span className="shimadzu-stage-rail-marker"><StageMark status={status} /></span><span className="shimadzu-stage-rail-index">{String(stage.index).padStart(2, '0')}</span><span className="shimadzu-stage-rail-label">{stage.short}</span></li>
         })}
       </ol>
@@ -393,10 +398,10 @@ function LiveMonitor({ job, capabilities, engine: engineOverride }) {
   )
 }
 
-export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
+export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh', theme: controlledTheme, onNavigate, onHome }) {
   const api = useMemo(() => createShimadzuApi(API_BASE), [])
   const cloud = useMemo(() => createShimadzuCloud(supabase), [])
-  const taskStore = useMemo(() => createShimadzuTaskStore(), [])
+  const taskStore = useMemo(() => typeof document === 'undefined' ? null : createShimadzuTaskStore(), [])
   const pageRef = useRef(null)
   const rawInputRef = useRef(null)
   const samplesInputRef = useRef(null)
@@ -411,20 +416,21 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
   const resumeFromStageRef = useRef(0)
   const restoreScopeRef = useRef('')
   const [reducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  const [theme, setTheme] = useState(() => {
+  const [standaloneTheme, setTheme] = useState(() => {
     try {
       return window.localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'
     } catch {
       return 'dark'
     }
   })
+  const theme = controlledTheme ?? standaloneTheme
   const [rawFile, setRawFile] = useState(null)
   const [samplesFile, setSamplesFile] = useState(null)
   const [name, setName] = useState('岛津气质分析')
   const [mode, setMode] = useState('continuous')
   const [enableCvScreening, setEnableCvScreening] = useState(false)
   const [cvThreshold, setCvThreshold] = useState('30')
-  const [enableClassification, setEnableClassification] = useState(false)
+  const [enableClassification, setEnableClassification] = useState(true)
   const [job, setJob] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -436,6 +442,10 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
   const [activeTaskId, setActiveTaskId] = useState('')
   const [recoveryChecked, setRecoveryChecked] = useState(false)
   const [recoveryNotice, setRecoveryNotice] = useState('')
+  const goHome = () => {
+    if (onNavigate) onNavigate?.('home')
+    else onHome?.()
+  }
 
   useEffect(() => {
     try {
@@ -918,8 +928,10 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
     if (samplesInputRef.current) samplesInputRef.current.value = ''
   }
 
+  const ContentElement = embedded ? 'div' : 'main'
+
   return (
-    <div ref={pageRef} className="shimadzu-page" data-ui-revision="data-control-deck-v4" data-design-seed="888a79f2" data-theme={theme} data-motion={reducedMotion ? 'reduced' : 'full'}>
+    <div ref={pageRef} className={`shimadzu-page${embedded ? ' is-embedded' : ''}`} data-ui-revision="data-control-deck-v4" data-design-seed="888a79f2" data-theme={theme} data-language={language} data-motion={reducedMotion ? 'reduced' : 'full'}>
       {/*
         THESIS: 科研分析控制舱，以任务、状态和证据为首屏主角，拒绝全站导航挤占工作区。
         OWN-WORLD: 深海军蓝操作面、冷蓝动作、青绿通过、红色失败，边框承担层级。
@@ -928,6 +940,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
         FORM: 用户锁定 C 数据控制舱；Operate 模式；seed 888a79f2。
         FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
       */}
+      {!embedded && (
       <header className="shimadzu-header">
         <div className="shimadzu-deck-topbar">
           <div className="shimadzu-deck-brand" aria-label="HXQLab 岛津分析">
@@ -945,7 +958,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
               {theme === 'dark' ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
               <span>{theme === 'dark' ? '浅色' : '深色'}</span>
             </button>
-            <button type="button" className="shimadzu-home-link" onClick={onHome}><ChevronRight aria-hidden="true" />返回首页</button>
+            <button type="button" className="shimadzu-home-link" onClick={goHome}><ChevronRight aria-hidden="true" />返回首页</button>
           </div>
         </div>
         <div className="shimadzu-hero">
@@ -965,57 +978,98 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
           </div>
         </div>
       </header>
+      )}
 
-      <main className="shimadzu-main">
+      <ContentElement className="shimadzu-main">
+        {embedded && (
+          <div className="shimadzu-embedded-intro">
+            <span className="shimadzu-product-kicker">GC–MS FLAVOR PROCESSING / BROWSER WORKER</span>
+            <h1>{language === 'en' ? 'Instrument data processing' : '仪器数据处理平台'}</h1>
+            <p>{language === 'en' ? 'Configure, validate, monitor and export a traceable Shimadzu GC–MS processing task.' : '配置、预检、监控并导出可追溯的岛津 GC–MS 处理任务。'}</p>
+          </div>
+        )}
         {error && <div className="shimadzu-alert" role="alert"><AlertCircle /><span><strong>当前操作未完成</strong>{error}</span></div>}
         {cloudError && <div className="shimadzu-alert cloud" role="alert"><AlertCircle /><span><strong>云端服务提示</strong>{cloudError}</span></div>}
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>浏览器任务恢复</strong>{recoveryNotice}</span></div>}
-        {!job ? (
-          <>
+        <section className="shimadzu-workbench-region shimadzu-configuration-region" aria-labelledby="analysis-output-configuration-title">
+          <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">01</span><h2 id="analysis-output-configuration-title">分析流程与数据导出配置</h2><p>确认当前可运行的分析边界、执行位置与结果字段。</p></div><span>{job ? '任务参数已锁定' : '连续执行 · 本地优先'}</span></div>
+          <details className="shimadzu-configuration-details" open={!job}>
+            <summary>{job ? '配置已折叠，展开查看本次任务参数' : '配置当前处理任务'}</summary>
+            <div className="shimadzu-configuration-grid">
+              <div className="shimadzu-capability-grid" role="list" aria-label="当前分析能力">
+                <div role="listitem"><span>分析类型</span><strong>GC–MS</strong><small>当前可用 · GC-O、GC-IMS、GC×GC-MS 规划中</small></div>
+                <div role="listitem"><span>仪器</span><strong>岛津 Shimadzu</strong><small>当前可运行 · 其他厂商适配规划中</small></div>
+                <div role="listitem"><span>执行与留存</span><strong>浏览器本地连续执行</strong><small>{cloud.configured ? '原始文件不上传；结果可选云端留存' : '本地模式；完成后立即下载结果'}</small></div>
+              </div>
+              <div className="shimadzu-settings" aria-labelledby="settings-title">
+                <div className="shimadzu-region-heading"><div><h3 id="settings-title">数据导出</h3><p>分析参数依据已确认的科研规则执行。</p></div></div>
+                {!job && <label className="shimadzu-field"><span>任务名称</span><input value={name} maxLength={120} onChange={event => setName(event.target.value)} /></label>}
+                {!job && (
+                  <fieldset className="shimadzu-cv-field" aria-describedby="classification-help">
+                    <legend>身份信息与结构分类</legend>
+                    <label className="shimadzu-cv-toggle">
+                      <input type="checkbox" checked={enableClassification} onChange={event => setEnableClassification(event.target.checked)} />
+                      <span><strong>启用 CAS 结构分类</strong><small>默认开启；按 CAS 查询 PubChem SMILES，并以 SMARTS 规则写入结构分类。</small></span>
+                    </label>
+                    <p id="classification-help" className="shimadzu-cv-help">{enableClassification ? '将联网补充身份与结构；无可用结构或无 SMARTS 匹配时写入 NA。' : '未启用；不会执行联网结构分类。'}</p>
+                  </fieldset>
+                )}
+                {!job && (
+                  <fieldset className="shimadzu-cv-field" aria-describedby="cv-screening-help">
+                    <legend>CV 筛查</legend>
+                    <label className="shimadzu-cv-toggle">
+                      <input type="checkbox" checked={enableCvScreening} onChange={event => setEnableCvScreening(event.target.checked)} />
+                      <span><strong>启用 CV 筛查</strong><small>默认关闭；仍计算 Mean、SD 和 CV，但不筛查结果。</small></span>
+                    </label>
+                    <label className="shimadzu-field shimadzu-cv-threshold"><span>CV 阈值 (%)</span><input type="number" min="0" max="1000" step="1" inputMode="decimal" value={cvThreshold} disabled={!enableCvScreening} onChange={event => setCvThreshold(event.target.value)} aria-describedby="cv-screening-help" /></label>
+                    <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>
+                  </fieldset>
+                )}
+                <dl className="shimadzu-parameter-list"><div><dt>身份与结构</dt><dd>{enableClassification ? '开启（PubChem + SMARTS）' : '关闭'}</dd></div><div><dt>水中觉察阈值</dt><dd>开启（本地证据库）</dd></div><div><dt>估算参考 OAV</dt><dd>关闭</dd></div><div><dt>CV 筛查</dt><dd>{enableCvScreening ? `启用（${cvReadiness.threshold ?? '—'}%）` : '关闭'}</dd></div><div><dt>响应因子</dt><dd>1</dd></div><div><dt>内标参数</dt><dd>按样品表</dd></div></dl>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section className="shimadzu-workbench-region shimadzu-import-region" aria-labelledby="data-import-preflight-title">
+          <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">02</span><h2 id="data-import-preflight-title">数据导入与运行前检查</h2><p>导入两个工作簿，并在运行前确认文件、字段、Worker 与联网补充条件。</p></div><span>2 个 Excel 文件</span></div>
+          {!job ? (
             <form className="shimadzu-setup" onSubmit={submit}>
-              <section className="shimadzu-input-region" aria-labelledby="input-title">
-                <div className="shimadzu-region-heading"><div><h2 id="input-title">准备输入文件</h2><p>正式文件和示例模板采用相同的字段结构。建议先下载示例核对内容。</p></div><span>2 个 Excel 文件</span></div>
+              <div className="shimadzu-input-region" aria-labelledby="input-title">
+                <div className="shimadzu-region-heading"><div><h3 id="input-title">输入文件与模板</h3><p>正式文件和示例模板采用相同字段结构；阶段 00 将核对工作表、样品映射、平行、矩阵、内标与参数。</p></div></div>
                 <div className="shimadzu-upload-grid">
                   <FilePicker inputRef={rawInputRef} label="岛津原始工作簿" hint="包含 Peak Table、Similarity Search Results 与 Hit #" file={rawFile} onChange={setRawFile} templateHref={api.templateUrl('raw-example')} templateLabel="下载原始工作簿示例" />
                   <FilePicker inputRef={samplesInputRef} label="样品与内标信息表" hint="包含样品分组、形态、内标浓度、添加量与体系" file={samplesFile} onChange={setSamplesFile} templateHref={api.templateUrl('sample-info')} templateLabel="下载样品信息模板" />
                 </div>
                 <div className="shimadzu-upload-note"><Upload /><span>仅接受 .xlsx，每个文件不超过 50 MB。原始文件不上传云端；活动任务会临时保存在当前浏览器，刷新或重新打开后自动恢复。页面关闭期间不会继续计算。</span></div>
-              </section>
-
-              <aside className="shimadzu-settings" aria-labelledby="settings-title">
-                <div className="shimadzu-region-heading"><div><h2 id="settings-title">运行设置</h2><p>分析参数依据已确认的科研规则执行。</p></div></div>
-                <label className="shimadzu-field"><span>任务名称</span><input value={name} maxLength={120} onChange={event => setName(event.target.value)} /></label>
-                <fieldset className="shimadzu-mode-field">
-                  <legend>执行方式</legend>
-                  <label className={mode === 'continuous' ? 'selected' : ''}><input type="radio" name="mode" checked={mode === 'continuous'} onChange={() => setMode('continuous')} /><span><strong>连续执行</strong><small>自动完成全部七步。</small></span></label>
-                  <label className={mode === 'step' ? 'selected' : ''}><input type="radio" name="mode" checked={mode === 'step'} onChange={() => setMode('step')} /><span><strong>逐步复核</strong><small>每完成一步暂停确认。</small></span></label>
-                </fieldset>
-                <fieldset className="shimadzu-cv-field" aria-describedby="cv-screening-help">
-                  <legend>CV 筛查</legend>
-                  <label className="shimadzu-cv-toggle">
-                    <input type="checkbox" checked={enableCvScreening} onChange={event => setEnableCvScreening(event.target.checked)} />
-                    <span><strong>启用 CV 筛查</strong><small>未启用时仍计算 Mean、SD 和 CV，但不筛查结果。</small></span>
-                  </label>
-                  <label className="shimadzu-field shimadzu-cv-threshold"><span>CV 阈值 (%)</span><input type="number" min="0" max="1000" step="1" inputMode="decimal" value={cvThreshold} disabled={!enableCvScreening} onChange={event => setCvThreshold(event.target.value)} aria-describedby="cv-screening-help" /></label>
-                  <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>
-                </fieldset>
-                <fieldset className="shimadzu-cv-field" aria-describedby="classification-help">
-                  <legend>结构分类</legend>
-                  <label className="shimadzu-cv-toggle">
-                    <input type="checkbox" checked={enableClassification} onChange={event => setEnableClassification(event.target.checked)} />
-                    <span><strong>启用 CAS 结构分类</strong><small>分析前按 CAS 查询 PubChem SMILES，并以 SMARTS 规则写入官能团名称和主要化合物类别。</small></span>
-                  </label>
-                  <p id="classification-help" className="shimadzu-cv-help">{enableClassification ? '将联网查询 PubChem；无可用结构或无 SMARTS 匹配时写入 NA。' : '未启用；不会执行联网结构分类。'}</p>
-                </fieldset>
-                <dl className="shimadzu-parameter-list"><div><dt>CV 筛查</dt><dd>{enableCvScreening ? `启用（${cvReadiness.threshold ?? '—'}%）` : '未启用'}</dd></div><div><dt>结构分类</dt><dd>{enableClassification ? '启用（PubChem + SMARTS）' : '未启用'}</dd></div><div><dt>响应因子</dt><dd>1</dd></div><div><dt>内标参数</dt><dd>按样品表</dd></div><div><dt>OAV</dt><dd>关闭</dd></div></dl>
+              </div>
+              <aside className="shimadzu-settings shimadzu-preflight-panel" aria-labelledby="preflight-title">
+                <div className="shimadzu-region-heading"><div><h3 id="preflight-title">运行前检查</h3><p>门禁未通过时不会创建任务。</p></div></div>
+                <div className="shimadzu-runtime-status" role="list" aria-label="处理运行时状态">
+                  <div role="listitem"><span className={engine.state}><ShieldCheck aria-hidden="true" /></span><div><strong>浏览器 Worker</strong><small>{engine.title} · {engine.detail}</small></div></div>
+                  <div role="listitem"><span className="standby"><CloudDownload aria-hidden="true" /></span><div><strong>本地联网代理</strong><small>按需连接 {API_BASE}，用于模板与结构补充</small></div></div>
+                </div>
+                <AnalysisReadinessStrip fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} />
                 <button className="shimadzu-run-button" type="submit" disabled={!canStart}>{submitting ? <Loader2 className="spin" /> : <Play />}{startFeedback.buttonLabel}</button>
                 <p className={`shimadzu-run-readiness${fileReadiness.ready && cvReadiness.valid && canAnalyze ? ' ready' : ''}`} role="status" aria-live="polite">{startFeedback.message}</p>
                 {cloud.configured && !canAnalyze && <p className="shimadzu-run-gate"><ShieldCheck />登录且通过管理员审批后开放计算。</p>}
               </aside>
             </form>
-          </>
-        ) : (
-          <>
+          ) : (
+            <div className="shimadzu-import-summary"><FileCheck2 aria-hidden="true" /><div><strong>输入已锁定并进入处理流程</strong><p>{rawFile?.name || '岛津原始工作簿'} · {samplesFile?.name || '样品与内标信息表'}。任务恢复时会重新验证已完成步骤。</p></div></div>
+          )}
+        </section>
+
+        <section className="shimadzu-workbench-region shimadzu-monitor-results-region" aria-labelledby="process-monitor-results-title">
+          <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">03</span><h2 id="process-monitor-results-title">过程监控与结果</h2><p>沿 00–07 流程查看总体进度、联网补充、门禁状态、错误证据和结果包。</p></div><div className="shimadzu-status-legend" aria-label="状态图例"><span className="PASS">PASS</span><span className="WARN">WARN</span><span className="REVIEW">REVIEW</span><span className="FAIL">FAIL</span></div></div>
+          <WorkflowMap job={job} />
+          {!job ? (
+            <div className="shimadzu-overview-grid">
+              <LiveMonitor job={null} capabilities={null} engine={engine} />
+              <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
+            </div>
+          ) : (
+            <>
             <div className={'shimadzu-job-workspace state-' + job.status}>
               <StageRail job={job} />
               <section className="shimadzu-job-bar shimadzu-reveal">
@@ -1045,19 +1099,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, onHome }) {
                 </ol>
               </section>
             </div>
-          </>
-        )}
-        <WorkflowMap job={job} />
-        {!job && <AnalysisReadinessStrip fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} />}
-        {!job && (
-          <div className="shimadzu-overview-grid">
-            <LiveMonitor job={null} capabilities={null} engine={engine} />
             <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
-          </div>
-        )}
-        {job && <HistoryPanel jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDownloadInput={downloadCloudInput} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />}
-        <AccountPanel cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
-      </main>
+            </>
+          )}
+          <AccountPanel cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
+        </section>
+      </ContentElement>
     </div>
   )
 }

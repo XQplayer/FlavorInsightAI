@@ -14,7 +14,7 @@ import {
 } from './platformRoutes.js';
 
 const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.jsx'));
-const ShimadzuAnalysisPage = lazy(() => import('../components/shimadzu/ShimadzuAnalysisPage.jsx'));
+const DataProcessingPage = lazy(() => import('../pages/DataProcessingPage.jsx'));
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
 const PLATFORM_ROUTE_TITLES = Object.freeze({
@@ -136,7 +136,7 @@ function PlannedRoute({ route, onNavigate }) {
 }
 
 function PlatformRoute({ route, onNavigate }) {
-  const { language, setLanguage } = usePlatformPreferences();
+  const { language, resolvedTheme, setLanguage } = usePlatformPreferences();
 
   useEffect(() => {
     document.title = PLATFORM_ROUTE_TITLES[language]?.[route]
@@ -168,15 +168,10 @@ function PlatformRoute({ route, onNavigate }) {
     return (
       <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}>
         <Suspense fallback={<RouteLoading />}>
-          <ShimadzuAnalysisPage
-            embedded
+          <DataProcessingPage
             language={language}
-            onLanguageChange={setLanguage}
+            theme={resolvedTheme}
             onNavigate={onNavigate}
-            isEnglish={language === 'en'}
-            setInterfaceLanguage={setLanguage}
-            onHome={() => onNavigate('home')}
-            onThresholds={() => onNavigate('search')}
           />
         </Suspense>
       </RouteErrorBoundary>

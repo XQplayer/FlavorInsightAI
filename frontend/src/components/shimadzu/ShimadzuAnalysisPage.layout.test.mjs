@@ -18,10 +18,37 @@ test('keeps the live browser engine status in the hero', () => {
 })
 
 test('yields document title ownership only when embedded without skipping the worker lifecycle', () => {
-  assert.match(source, /function ShimadzuAnalysisPage\(\{ embedded = false, onHome \}\)/)
+  assert.match(source, /function ShimadzuAnalysisPage\(\{ embedded = false, language = 'zh', theme: controlledTheme, onNavigate, onHome \}\)/)
   assert.match(source, /useEffect\(\(\) => \{\s*if \(!embedded\) \{\s*document\.title = '岛津气质分析 \| HXQLab'\s*\}\s*workerClientRef\.current = createShimadzuWorkerClient\(\)/)
   assert.match(source, /workerClientRef\.current\?\.dispose\(\)/)
   assert.match(source, /\}, \[api, embedded\]\)/)
+})
+
+test('lets the platform own theme, language and navigation when embedded', () => {
+  assert.match(source, /const theme = controlledTheme \?\? standaloneTheme/)
+  assert.match(source, /data-language=\{language\}/)
+  assert.match(source, /\{!embedded && \(/)
+  assert.match(source, /onNavigate\?\.\('home'\)/)
+})
+
+test('exposes the processing workbench as three explicitly labelled regions', () => {
+  assert.match(source, /<section[^>]+aria-labelledby="analysis-output-configuration-title"/)
+  assert.match(source, /id="analysis-output-configuration-title"[^>]*>分析流程与数据导出配置</)
+  assert.match(source, /<section[^>]+aria-labelledby="data-import-preflight-title"/)
+  assert.match(source, /id="data-import-preflight-title"[^>]*>数据导入与运行前检查</)
+  assert.match(source, /<section[^>]+aria-labelledby="process-monitor-results-title"/)
+  assert.match(source, /id="process-monitor-results-title"[^>]*>过程监控与结果</)
+})
+
+test('does not offer step-by-step execution in the integrated workbench', () => {
+  assert.doesNotMatch(source, /分步运行|单步运行|逐步运行|逐步复核|step[- ]by[- ]step/i)
+  assert.doesNotMatch(source, /mode === 'step'|setMode\('step'\)/)
+})
+
+test('presents a 00 to 07 process rail without changing the seven worker stages', () => {
+  assert.match(source, /const PROCESS_RAIL = \[\.\.\.WORKFLOW, \{ index: 7,/)
+  assert.match(source, /PROCESS_RAIL\.map/)
+  assert.match(source, /PASS: '通过', WARN: '警告', REVIEW: '需复核', FAIL: '失败'/)
 })
 
 test('uses the approved Shimadzu data control deck shell', () => {
@@ -216,4 +243,13 @@ test('keeps the account entry and both example downloads visible in the compact 
 test('uses compact desktop upload cards without hiding template links', () => {
   assert.match(styles, /\.shimadzu-file-picker \{[\s\S]*?min-height: 96px;/)
   assert.match(styles, /\.shimadzu-template-link \{[\s\S]*?display: flex;/)
+})
+
+test('maps workbench colors to platform tokens and contains horizontal overflow locally', () => {
+  assert.match(styles, /--sz-page:\s*var\(--platform-canvas/)
+  assert.match(styles, /--sz-surface:\s*var\(--platform-surface/)
+  assert.match(styles, /\.shimadzu-page\s*\{[\s\S]*overflow-x:\s*clip/)
+  assert.match(styles, /\.shimadzu-stage-rail[\s\S]*overflow-x:\s*auto/)
+  assert.match(styles, /\.shimadzu-history-table[\s\S]*overflow-x:\s*auto/)
+  assert.match(styles, /\.shimadzu-page\[data-theme='light'\] \.shimadzu-monitor/)
 })
