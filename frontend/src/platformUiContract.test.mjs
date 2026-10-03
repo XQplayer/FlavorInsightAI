@@ -30,6 +30,21 @@ const platformAppSource = await readFile(
   new URL('./app/PlatformApp.jsx', import.meta.url),
   'utf8',
 );
+const loginSource = await readFile(
+  new URL('./pages/PlatformLoginPage.jsx', import.meta.url),
+  'utf8',
+).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const preferenceSource = await readFile(new URL('./app/platformPreferences.js', import.meta.url), 'utf8');
+
+test('defaults to English and provides an honest account-status route', () => {
+  assert.match(preferenceSource, /DEFAULT_LANGUAGE = 'en'/);
+  assert.match(platformAppSource, /login: 'Account access \| FlavorInsight AI'/);
+  assert.match(platformAppSource, /route === 'login'/);
+  assert.match(source, /routeHref\('login', PLATFORM_BASE_PATH\)/);
+  assert.match(loginSource, /Continue locally/);
+  assert.match(loginSource, /继续本地使用/);
+  assert.doesNotMatch(loginSource, /<input|type="submit"|type="password"/);
+});
 
 test('provides a skip link and a labelled main landmark', () => {
   assert.match(source, /href="#main-content"/);
@@ -74,13 +89,13 @@ test('drives the theme control from the provider resolved theme', () => {
   assert.doesNotMatch(source, /darkThemeActive = theme === 'dark'/);
 });
 
-test('uses an operable mobile disclosure and dismissible account explanation', () => {
+test('uses an operable mobile disclosure and account route', () => {
   assert.match(source, /aria-expanded=\{mobileMenuOpen\}/);
   assert.match(source, /dismissTopDisclosureOnEscape/);
   assert.match(source, /isOutsideDisclosure/);
   assert.match(source, /setMobileMenuOpen\(false\)/);
   assert.match(source, /本地模式/);
-  assert.match(source, /可选云端留存正在规划中/);
+  assert.match(source, /routeHref\('login', PLATFORM_BASE_PATH\)/);
 });
 
 test('places the mobile menu trigger before its controlled navigation and tracks separate boundaries', () => {
@@ -92,8 +107,6 @@ test('places the mobile menu trigger before its controlled navigation and tracks
   assert.ok(menuTriggerIndex < navigationIndex);
   assert.match(source, /ref=\{menuButtonRef\}/);
   assert.match(source, /ref=\{navigationRegionRef\}/);
-  assert.match(source, /ref=\{accountButtonRef\}/);
-  assert.match(source, /ref=\{accountPopoverRef\}/);
 });
 
 test('keeps the fixed shell accessible and responsive', () => {
@@ -123,8 +136,7 @@ test('keeps fixed-header compensation inside the shell height budget', () => {
 
 test('presents the approved bilingual evidence-led platform identity', () => {
   assert.match(homeSource, /usePlatformPreferences/);
-  assert.match(homeSource, /FlavorInsight AI 食品风味信息学智能分析平台/);
-  assert.match(homeSource, /FlavorInsight AI Food Flavor Informatics Platform/);
+  assert.match(homeSource, /title: 'FlavorInsight AI'/);
   assert.match(homeSource, /从仪器信号到可解释的风味证据/);
   assert.match(homeSource, /From instrumental signals to interpretable flavor evidence/);
   assert.match(homeSource, /可追溯/);
@@ -151,15 +163,18 @@ test('renders the real capability preview and complete honest research chain', (
   assert.match(homeSource, /风味数据库/);
   assert.match(homeSource, /风味贡献评价/);
   assert.match(homeSource, /数据分析与 AI/);
-  assert.match(homeSource, /风味贡献评价[^\n]+statuses:\s*\['building'\]/);
+  assert.match(homeSource, /风味贡献评价[^\n]+statuses:\s*\['beta'\]/);
   assert.doesNotMatch(homeSource, /半定量[^\n]+OAV/);
   assert.doesNotMatch(homeSource, /<img\b/i);
 });
 
 test('labels capability status without claiming deployed AI', () => {
   assert.match(homeSource, /已上线/);
+  assert.match(homeSource, /测试中/);
   assert.match(homeSource, /开发中/);
   assert.match(homeSource, /规划中/);
+  assert.match(homeSource, /Available/);
+  assert.match(homeSource, /Beta/);
   assert.match(homeSource, /当前未部署生产级 AI 模型/);
   assert.match(homeSource, /No production AI model is deployed/);
   assert.doesNotMatch(homeSource, /AI(?:模型)?已上线|AI (?:prediction|model) is (?:live|available)/i);

@@ -239,6 +239,8 @@ body {
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
+  color: var(--text-secondary);
+  text-decoration: none;
 }
 
 .platform-shell__account-button::after {
@@ -246,8 +248,8 @@ body {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--status-success);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-success) 15%, transparent);
+  background: var(--status-warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-warning) 15%, transparent);
 }
 
 .platform-shell__account-popover {

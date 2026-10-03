@@ -29,6 +29,7 @@ const ROUTES = Object.freeze([
   { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
   { name: 'analysis', segment: 'data-analysis/', heading: /^数据分析平台$/u, title: /^数据分析 \|/u, lightweight: true },
   { name: 'resources', segment: 'resources/', heading: /^资源中心$/u, title: /^资源中心 \|/u, lightweight: true },
+  { name: 'login', segment: 'login/', heading: /^FlavorInsight AI$/u, title: /^账号访问 \|/u, lightweight: true },
 ]);
 
 const VIEWPORTS = Object.freeze([
@@ -130,7 +131,7 @@ async function startStaticServer(port) {
   return startHttpServer(port, 'static', async (request, response) => {
     const url = new URL(request.url || '/', `http://127.0.0.1:${port}`);
     const decoded = decodeURIComponent(url.pathname);
-    const deploymentPrefix = '/FlavorThresholdDB/';
+    const deploymentPrefix = '/FlavorInsightAI/';
     if (!decoded.startsWith(deploymentPrefix)) {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       response.end(`Not found outside deployment base: ${url.pathname}`);
@@ -348,6 +349,20 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
 }
 
 async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
+  const freshContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const freshPage = await freshContext.newPage();
+    await freshPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+    await freshPage.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+    assert.equal(await freshPage.locator('html').getAttribute('lang'), 'en', 'fresh visitors start in English');
+    await freshPage.getByRole('link', { name: 'Account status' }).click();
+    await freshPage.getByRole('heading', { name: 'Work locally today.' }).waitFor();
+    assert.equal(await freshPage.locator('input[type="email"], input[type="password"]').count(), 0, 'account status never requests credentials');
+    await freshPage.getByRole('link', { name: 'Continue locally' }).click();
+    await freshPage.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+  } finally {
+    await freshContext.close();
+  }
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await context.addInitScript(() => {
     if (!localStorage.getItem('flavorinsight:language')) localStorage.setItem('flavorinsight:language', 'zh');
@@ -380,27 +395,27 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.equal(await page.locator('#main-content').evaluate(element => document.activeElement === element), true, 'skip link focuses main content');
 
     await page.locator('button[data-language="en"]').click();
-    await page.getByRole('heading', { name: /Food Flavor Informatics Platform/ }).waitFor();
+    await page.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Theme toggle' }).click();
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: /Food Flavor Informatics Platform/ }).waitFor();
+    await page.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
     await waitForStableRoute(page, observed);
     assert.equal(await page.locator('html').getAttribute('lang'), 'en', 'language preference survives refresh');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark', 'theme preference survives refresh');
     await page.getByRole('link', { name: 'Data processing', exact: true }).click();
     await page.getByRole('heading', { name: 'Instrument data processing' }).waitFor({ timeout: 45_000 });
     await waitForStableRoute(page, observed);
-    assert.match(page.url(), /\/FlavorThresholdDB\/data-processing\/$/);
+    assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assert.equal(await page.getByRole('link', { name: 'Data processing', exact: true }).getAttribute('aria-current'), 'page', 'active desktop route is announced');
     await page.goBack({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: /Food Flavor Informatics Platform/ }).waitFor();
+    await page.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
     await waitForStableRoute(page, observed);
-    assert.equal(new URL(page.url()).pathname, '/FlavorThresholdDB/');
+    assert.equal(new URL(page.url()).pathname, '/FlavorInsightAI/');
     assert.ok(['', '#main-content'].includes(new URL(page.url()).hash), 'history preserves only the intentional skip-link anchor');
     await page.goForward({ waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Instrument data processing' }).waitFor({ timeout: 45_000 });
     await waitForStableRoute(page, observed);
-    assert.match(page.url(), /\/FlavorThresholdDB\/data-processing\/$/);
+    assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assertClean('desktop shell interactions', observed);
   } finally {
     await context.close();
@@ -440,7 +455,7 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     await resourcesLink.click();
     await page.getByRole('heading', { name: '资源中心', exact: true }).waitFor({ state: 'visible' });
     await waitForStableRoute(page, observed);
-    assert.match(page.url(), /\/FlavorThresholdDB\/resources\/$/);
+    assert.match(page.url(), /\/FlavorInsightAI\/resources\/$/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'mobile navigation does not cause page overflow');
     assertClean('mobile shell interactions', observed);
   } finally {
@@ -473,7 +488,7 @@ await fs.mkdir(screenshotRoot, { recursive: true });
 const proxyPort = await choosePort(18787);
 const staticPort = await choosePort(5175, new Set([proxyPort]));
 const proxyOrigin = `http://127.0.0.1:${proxyPort}`;
-const baseUrl = `http://127.0.0.1:${staticPort}/FlavorThresholdDB/`;
+const baseUrl = `http://127.0.0.1:${staticPort}/FlavorInsightAI/`;
 let browser;
 let result;
 let runError;

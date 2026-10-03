@@ -16,7 +16,7 @@ class LocalRuntimeScriptTests(unittest.TestCase):
         self.assertIn("8787", script)
         self.assertIn("--strictPort", script)
         self.assertIn("-WindowStyle Hidden", script)
-        self.assertIn("/FlavorThresholdDB/aroma-threshold/", script)
+        self.assertIn("/FlavorInsightAI/", script)
         self.assertIn("/health", script)
 
     def test_runtime_controller_validates_project_ownership(self):

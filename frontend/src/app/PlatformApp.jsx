@@ -4,6 +4,7 @@ import PlatformShell from '../components/platform/PlatformShell.jsx';
 import DataAnalysisPage from '../pages/DataAnalysisPage.jsx';
 import PlatformHomePage from '../pages/PlatformHomePage.jsx';
 import ResourcesPage from '../pages/ResourcesPage.jsx';
+import PlatformLoginPage from '../pages/PlatformLoginPage.jsx';
 import {
   PlatformPreferencesProvider,
   usePlatformPreferences,
@@ -27,6 +28,7 @@ const PLATFORM_ROUTE_TITLES = Object.freeze({
     processing: '数据处理 | FlavorInsight AI',
     analysis: '数据分析 | FlavorInsight AI',
     resources: '资源中心 | FlavorInsight AI',
+    login: '账号访问 | FlavorInsight AI',
   },
   en: {
     home: 'FlavorInsight AI | Food Flavor Informatics Platform',
@@ -35,6 +37,7 @@ const PLATFORM_ROUTE_TITLES = Object.freeze({
     processing: 'Data Processing | FlavorInsight AI',
     analysis: 'Data Analysis | FlavorInsight AI',
     resources: 'Resources | FlavorInsight AI',
+    login: 'Account access | FlavorInsight AI',
   },
 });
 
@@ -162,6 +165,10 @@ function PlatformRoute({ route, onNavigate }) {
 
   if (route === 'resources') {
     return <ResourcesPage />;
+  }
+
+  if (route === 'login') {
+    return <PlatformLoginPage onNavigate={onNavigate} />;
   }
 
   return <PlatformHomePage onNavigate={onNavigate} />;

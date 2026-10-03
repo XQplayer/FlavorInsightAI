@@ -64,7 +64,7 @@ test('the production route error boundary renders and operates its recovery cont
 
   const homeLink = findElement(fallback, element => element.type === 'a');
   assert.ok(homeLink);
-  assert.equal(homeLink.props.href, '/FlavorThresholdDB/');
+  assert.equal(homeLink.props.href, '/FlavorInsightAI/');
   let prevented = false;
   homeLink.props.onClick({ preventDefault: () => { prevented = true; } });
   assert.equal(prevented, true);

@@ -12,12 +12,12 @@ import {
 
 test('builds a canonical Shimadzu auth callback without query or hash state', () => {
   assert.equal(
-    shimadzuAuthRedirect('https://xqplayer.github.io', '/FlavorThresholdDB/'),
-    'https://xqplayer.github.io/FlavorThresholdDB/shimadzu-analysis/',
+    shimadzuAuthRedirect('https://xqplayer.github.io', '/FlavorInsightAI/'),
+    'https://xqplayer.github.io/FlavorInsightAI/shimadzu-analysis/',
   )
   assert.equal(
-    shimadzuAuthRedirect('http://127.0.0.1:5174', '/FlavorThresholdDB/'),
-    'http://127.0.0.1:5174/FlavorThresholdDB/shimadzu-analysis/',
+    shimadzuAuthRedirect('http://127.0.0.1:5174', '/FlavorInsightAI/'),
+    'http://127.0.0.1:5174/FlavorInsightAI/shimadzu-analysis/',
   )
 })
 

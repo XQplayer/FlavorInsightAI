@@ -78,7 +78,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
 
   const address = vite.httpServer.address();
   assert.equal(typeof address, 'object');
-  const baseUrl = `http://127.0.0.1:${address.port}/FlavorThresholdDB/`;
+  const baseUrl = `http://127.0.0.1:${address.port}/FlavorInsightAI/`;
   const browser = await chromium.launch({
     executablePath: edgePath,
     headless: true,
@@ -87,6 +87,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
 
   const page = await browser.newPage();
   await page.addInitScript(() => {
+    localStorage.setItem('flavorinsight:language', 'zh');
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input.url;
@@ -139,25 +140,25 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
 
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', {
-    name: 'FlavorInsight AI 食品风味信息学智能分析平台',
+    name: 'FlavorInsight AI',
   }).waitFor();
   assert.equal(await page.title(), 'FlavorInsight AI | 食品风味信息学智能分析平台');
   await assertSinglePlatformLandmarks(page);
   const platformNavigation = page.getByRole('navigation', { name: '平台主导航' });
   await platformNavigation.getByRole('link', { name: '数据处理', exact: true }).click();
-  await page.waitForURL('**/FlavorThresholdDB/data-processing/');
+  await page.waitForURL('**/FlavorInsightAI/data-processing/');
   await page.getByRole('heading', { name: '仪器数据处理平台', exact: true }).waitFor();
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal(await page.title(), '数据处理 | FlavorInsight AI');
   await platformNavigation.getByRole('link', { name: '首页', exact: true }).click();
   await page.waitForURL(baseUrl);
   await page.getByRole('heading', {
-    name: 'FlavorInsight AI 食品风味信息学智能分析平台',
+    name: 'FlavorInsight AI',
   }).waitFor();
   assert.equal(await page.title(), 'FlavorInsight AI | 食品风味信息学智能分析平台');
 
   await page.getByRole('link', { name: /进入数据库/ }).first().click();
-  await page.waitForURL('**/FlavorThresholdDB/database/');
+  await page.waitForURL('**/FlavorInsightAI/database/');
   await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
   assert.equal(await page.title(), 'FlavorThresholdDB 数据库 | FlavorInsight AI');
   await assertSinglePlatformLandmarks(page);
@@ -170,7 +171,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   const insight = page.getByRole('button', { name: /Ethyl acetate/ });
   await insight.waitFor();
   await insight.click();
-  await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
+  await page.waitForURL('**/FlavorInsightAI/aroma-threshold/');
   const compoundSearch = page.locator('#compound-search');
   await compoundSearch.waitFor();
   assert.equal(await compoundSearch.inputValue(), '141-78-6');
@@ -179,23 +180,23 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await assertSinglePlatformLandmarks(page);
 
   await platformNavigation.getByRole('link', { name: 'FlavorThresholdDB', exact: true }).click();
-  await page.waitForURL('**/FlavorThresholdDB/database/');
+  await page.waitForURL('**/FlavorInsightAI/database/');
   await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
   await assertSinglePlatformLandmarks(page);
   await page.getByRole('button', { name: '开启风味探索之旅' }).click();
-  await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
+  await page.waitForURL('**/FlavorInsightAI/aroma-threshold/');
   assert.equal(await page.locator('#compound-search').inputValue(), '141-78-6');
   await assertSinglePlatformLandmarks(page);
 
   await page.goBack();
-  await page.waitForURL('**/FlavorThresholdDB/database/');
+  await page.waitForURL('**/FlavorInsightAI/database/');
   await page.goBack();
-  await page.waitForURL('**/FlavorThresholdDB/aroma-threshold/');
+  await page.waitForURL('**/FlavorInsightAI/aroma-threshold/');
   await page.goBack();
-  await page.waitForURL('**/FlavorThresholdDB/database/');
+  await page.waitForURL('**/FlavorInsightAI/database/');
   await page.goBack();
   await page.waitForURL(baseUrl);
-  await page.getByRole('heading', { name: 'FlavorInsight AI 食品风味信息学智能分析平台' }).waitFor();
+  await page.getByRole('heading', { name: 'FlavorInsight AI' }).waitFor();
   assert.equal(await page.title(), 'FlavorInsight AI | 食品风味信息学智能分析平台');
   await assertSinglePlatformLandmarks(page);
 
@@ -209,15 +210,16 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   assert.ok(listenerState.removed >= 1);
 
   const standalonePage = await browser.newPage();
+  await standalonePage.addInitScript(() => localStorage.setItem('flavorinsight:language', 'zh'));
   await standalonePage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await standalonePage.getByRole('heading', {
-    name: 'FlavorInsight AI 食品风味信息学智能分析平台',
+    name: 'FlavorInsight AI',
   }).waitFor();
   await standalonePage.evaluate(async () => {
     const [React, ReactDom, shimadzuModule] = await Promise.all([
-      import('/FlavorThresholdDB/node_modules/.vite/deps/react.js'),
-      import('/FlavorThresholdDB/node_modules/.vite/deps/react-dom_client.js'),
-      import('/FlavorThresholdDB/src/components/shimadzu/ShimadzuAnalysisPage.jsx'),
+      import('/FlavorInsightAI/node_modules/.vite/deps/react.js'),
+      import('/FlavorInsightAI/node_modules/.vite/deps/react-dom_client.js'),
+      import('/FlavorInsightAI/src/components/shimadzu/ShimadzuAnalysisPage.jsx'),
     ]);
     const standaloneRoot = document.createElement('div');
     standaloneRoot.id = 'standalone-root';
@@ -235,6 +237,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   assert.equal(await standalonePage.title(), '岛津气质分析 | HXQLab');
 
   const rejectionPage = await browser.newPage();
+  await rejectionPage.addInitScript(() => localStorage.setItem('flavorinsight:language', 'zh'));
   let rejectedImports = 0;
   await rejectionPage.route('**/src/App.jsx*', async route => {
     rejectedImports += 1;
@@ -242,13 +245,13 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   });
   await rejectionPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await rejectionPage.getByRole('link', { name: /进入数据库/ }).first().click();
-  await rejectionPage.waitForURL('**/FlavorThresholdDB/database/');
+  await rejectionPage.waitForURL('**/FlavorInsightAI/database/');
 
   const alert = rejectionPage.getByRole('alert');
   await alert.waitFor();
   await rejectionPage.getByRole('navigation', { name: '平台主导航' }).waitFor();
   const homeLink = alert.getByRole('link', { name: '返回首页' });
-  assert.equal(await homeLink.getAttribute('href'), '/FlavorThresholdDB/');
+  assert.equal(await homeLink.getAttribute('href'), '/FlavorInsightAI/');
   assert.ok(rejectedImports >= 1);
 
   const reloadNavigation = rejectionPage.waitForEvent('framenavigated');
@@ -258,6 +261,6 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await rejectionPage.getByRole('alert').getByRole('link', { name: '返回首页' }).click();
   await rejectionPage.waitForURL(baseUrl);
   await rejectionPage.getByRole('heading', {
-    name: 'FlavorInsight AI 食品风味信息学智能分析平台',
+    name: 'FlavorInsight AI',
   }).waitFor();
 });

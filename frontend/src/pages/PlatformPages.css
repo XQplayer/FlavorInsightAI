@@ -7,6 +7,109 @@
     var(--surface-workbench);
 }
 
+.platform-home {
+  background:
+    radial-gradient(ellipse 46% 25% at 84% 5%, color-mix(in srgb, var(--brand-blue-gray) 48%, transparent), transparent 88%),
+    radial-gradient(ellipse 40% 24% at 20% 3%, color-mix(in srgb, var(--brand-warm-white) 76%, transparent), transparent 92%),
+    var(--surface-workbench);
+}
+
+.platform-home__capability-preview {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, #fff 72%, var(--border-default));
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  box-shadow: 0 28px 68px rgba(38, 49, 57, .13), inset 0 2px 0 rgba(255, 255, 255, .95);
+  backdrop-filter: blur(12px);
+}
+
+.platform-home__capability-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .96) 46%, transparent);
+  pointer-events: none;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .platform-home__capability-preview { background: var(--surface-panel); }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .platform-home__capability-preview { background: var(--surface-panel); backdrop-filter: none; }
+}
+
+:root[data-theme='dark'] .platform-home {
+  background:
+    radial-gradient(ellipse 46% 25% at 84% 5%, rgba(87, 111, 130, .18), transparent 88%),
+    var(--surface-workbench);
+}
+:root[data-theme='dark'] .platform-home__capability-preview {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-panel), inset 0 1px 0 rgba(255, 255, 255, .1);
+}
+
+.platform-login {
+  min-height: calc(100dvh - var(--navbar-height, 70px));
+  display: grid;
+  align-items: center;
+  padding: clamp(24px, 5vw, 72px);
+  color: #fff;
+  background:
+    linear-gradient(115deg, rgba(30, 38, 48, .82), rgba(38, 43, 49, .69) 58%, rgba(29, 36, 43, .75)),
+    radial-gradient(ellipse at 16% 18%, var(--brand-blue-gray), transparent 48%),
+    radial-gradient(ellipse at 85% 83%, var(--brand-violet-gray), transparent 54%),
+    var(--brand-mist);
+}
+
+.platform-login__layout {
+  width: min(100%, 1280px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
+  align-items: center;
+  gap: clamp(40px, 7vw, 110px);
+  margin: auto;
+}
+
+.platform-login__story { max-width: 740px; }
+.platform-login__eyebrow, .platform-login__provenance, .platform-login__card-kicker { display: inline-flex; align-items: center; gap: 10px; }
+.platform-login__eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.platform-login__eyebrow svg, .platform-login__provenance svg { width: 20px; }
+.platform-login__story h1 { margin: 26px 0 18px; font-size: clamp(52px, 7vw, 100px); letter-spacing: -.06em; line-height: .98; }
+.platform-login__statement { max-width: 620px; margin: 0; font-size: clamp(23px, 2.8vw, 38px); font-weight: 620; line-height: 1.2; }
+.platform-login__detail { max-width: 570px; margin: 26px 0 0; color: #f0f1f1; font-size: 17px; line-height: 1.7; }
+.platform-login__provenance { margin: 42px 0 0; color: #f0f1f1; font-size: 15px; }
+.platform-login__card {
+  position: relative;
+  padding: clamp(30px, 4vw, 54px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 30px;
+  color: #252729;
+  background: rgba(250, 250, 249, .97);
+  box-shadow: 0 30px 85px rgba(10, 20, 25, .28), inset 0 2px 0 rgba(255, 255, 255, .95);
+}
+.platform-login__card::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); }
+.platform-login__card-kicker { color: #315fce; font-size: 13px; font-weight: 800; letter-spacing: .1em; }
+.platform-login__card-kicker svg { width: 20px; }
+.platform-login__card h2 { margin: 38px 0 18px; font-size: clamp(30px, 3vw, 42px); letter-spacing: -.04em; line-height: 1.12; }
+.platform-login__card p { font-size: 16px; line-height: 1.7; }
+.platform-login__status { margin: 0 0 16px; padding: 14px 16px; border-left: 3px solid #9a630c; border-radius: 8px; color: #4f3d17; background: #faf2e3; font-weight: 700; }
+.platform-login__continue { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; padding: 0 20px; border-radius: 12px; color: #fff; background: #315fce; font-weight: 750; text-decoration: none; }
+.platform-login__continue:hover { background: #244da9; }
+.platform-login__continue:focus-visible { outline: 3px solid #315fce; outline-offset: 4px; }
+.platform-login__continue svg { width: 20px; }
+.platform-login__note { margin: 20px 0 0; color: #586064; font-size: 14px !important; }
+@media (max-width: 800px) {
+  .platform-login__layout { grid-template-columns: 1fr; gap: 32px; }
+  .platform-login__story h1 { font-size: clamp(50px, 10vw, 78px); }
+  .platform-login__provenance { margin-top: 24px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .platform-login__card { background: #fff; }
+}
+
 .platform-home > section,
 .platform-home__footer {
   width: min(100%, calc(var(--container-max, 1200px) + (var(--container-gutter, 24px) * 2)));
@@ -117,10 +220,10 @@
 .platform-home__capability-preview {
   min-width: 0;
   padding: 24px;
-  border: 1px solid var(--border-default);
+  border: 1px solid color-mix(in srgb, #fff 72%, var(--border-default));
   border-radius: var(--radius-xl, 24px);
-  background: color-mix(in srgb, var(--surface-panel) 94%, transparent);
-  box-shadow: var(--shadow-panel);
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  box-shadow: 0 28px 68px rgba(38, 49, 57, .13), inset 0 2px 0 rgba(255, 255, 255, .95);
 }
 
 .platform-home__preview-header,
@@ -148,10 +251,12 @@
 }
 
 .platform-status--live { color: #087a55; background: color-mix(in srgb, var(--status-success) 10%, transparent); }
+.platform-status--beta { color: #315fce; background: var(--accent-100); }
 .platform-status--building { color: #9a4b0e; background: color-mix(in srgb, var(--status-warning) 10%, transparent); }
 .platform-status--planned { color: #475569; background: var(--surface-muted); }
 
 :root[data-theme='dark'] .platform-status--live { color: #6ee7b7; }
+:root[data-theme='dark'] .platform-status--beta { color: #a9c5ff; background: #1d3354; }
 :root[data-theme='dark'] .platform-status--building { color: #fbbf24; }
 :root[data-theme='dark'] .platform-status--planned { color: #cbd5e1; }
 

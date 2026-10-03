@@ -1,8 +1,8 @@
-# FlavorThresholdDB
+# FlavorInsight AI
 
-[Public website](https://xqplayer.github.io/FlavorThresholdDB/) | [Search](https://xqplayer.github.io/FlavorThresholdDB/aroma-threshold/) | [Project history](PROJECT_HISTORY.md)
+[Public website](https://xqplayer.github.io/FlavorInsightAI/) | [Search](https://xqplayer.github.io/FlavorInsightAI/aroma-threshold/) | [Project history](PROJECT_HISTORY.md)
 
-FlavorThresholdDB is a bilingual research database for traceable odor-threshold and flavor-descriptor retrieval. It supports exact and fuzzy searches by CAS number, Chinese name, or English name, plus batch matching and filter-aware CSV export.
+FlavorInsight AI is a bilingual, local-first food-flavor research platform. Its FlavorThresholdDB database provides traceable odor-threshold and flavor-descriptor retrieval by CAS number or compound name; the Shimadzu workspace processes GC–MS workbooks with quality gates and auditable exports. Statistical analysis and AI prediction remain in development or planned, not deployed capabilities.
 
 ## Version 1.5.0
 
@@ -70,7 +70,7 @@ The repository variable `FEMA_API_URL` points to that service. The same API supp
 
 When deploying a fork, create a new Render service with the included Blueprint and set the fork's GitHub Actions variable `FEMA_API_URL` to the generated HTTPS URL:
 
-[Deploy the API to Render](https://render.com/deploy?repo=https://github.com/XQplayer/FlavorThresholdDB)
+[Deploy the API to Render](https://render.com/deploy?repo=https://github.com/XQplayer/FlavorInsightAI)
 
 ## Local development
 
@@ -89,10 +89,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\local_runtime.ps1 
 The controller uses one hidden project-owned process per service and checks both endpoints:
 
 ```text
-http://127.0.0.1:5174/FlavorThresholdDB/aroma-threshold/
-http://127.0.0.1:5174/FlavorThresholdDB/shimadzu-analysis/
+http://127.0.0.1:5174/FlavorInsightAI/
+http://127.0.0.1:5174/FlavorInsightAI/aroma-threshold/
+http://127.0.0.1:5174/FlavorInsightAI/shimadzu-analysis/
+http://127.0.0.1:5174/FlavorInsightAI/login/
 http://127.0.0.1:8787/health
 ```
+
+The first visit defaults to English. Use the header language control to switch to Chinese and back; a saved preference takes precedence. The platform account page is informational in this local deployment and does not request credentials. Its “Continue locally” action returns to the live homepage.
 
 The local Shimadzu GC-MS workbench accepts one raw `.xlsx` workbook and one sample/internal-standard `.xlsx` workbook. Matching example workbooks can be downloaded beside each upload control. It runs the verified Stage 0-6 workflow in continuous mode, maps the seven scientific stages to a persistent process diagram, streams the current command log into a 1.5-second monitor, and exposes the result ZIP only after completeness verification passes. Estimated reference OAV is off by default; when enabled, it uses the retained water detection-threshold evidence and is exported after Stage 6. Raw workbooks remain in the current browser and are never uploaded to cloud storage.
 

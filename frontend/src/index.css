@@ -9,7 +9,7 @@ body {
   margin: 0;
   min-width: 320px;
   background-color: var(--surface-brand);
-  font-family: "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

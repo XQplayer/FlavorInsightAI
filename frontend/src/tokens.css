@@ -20,17 +20,25 @@
   --color-white: #ffffff;
 
   /* Platform semantic contract */
-  --platform-brand: #3385ff;
-  --platform-brand-hover: #1e6fe8;
-  --platform-action: #1d4ed8;
-  --platform-action-hover: #1e40af;
+  --accent-600: #315fce;
+  --accent-500: #4477df;
+  --accent-100: #e9effc;
+  --brand-mist: #d9ddd9;
+  --brand-blue-gray: #aeb9bd;
+  --brand-violet-gray: #b7b1bd;
+  --brand-warm-white: #eceae5;
+  --platform-brand: var(--accent-500);
+  --platform-brand-hover: var(--accent-600);
+  --platform-action: var(--accent-600);
+  --platform-action-hover: #244da9;
   --platform-action-text: #ffffff;
-  --platform-ink: #17233d;
-  --platform-text: #64748b;
-  --platform-canvas: #f7f9fc;
+  --platform-ink: #252729;
+  --platform-text: #4c565b;
+  --platform-canvas: #f7f8f7;
   --platform-surface: #ffffff;
-  --platform-border: #e2e8f0;
-  --platform-focus: rgba(51, 133, 255, 0.42);
+  --platform-secondary-surface: #f1f3f2;
+  --platform-border: #dde1e0;
+  --platform-focus: rgba(49, 95, 206, 0.48);
   --platform-success: #07be84;
   --platform-warning: #d97706;
   --platform-danger: #ed4014;
@@ -88,7 +96,7 @@
   --surface-panel: var(--platform-surface);
   --surface-primary: var(--platform-surface);
   --surface-subtle: var(--platform-canvas);
-  --surface-muted: var(--color-slate-100);
+  --surface-muted: var(--platform-secondary-surface);
   --text-on-brand: var(--platform-action-text);
   --text-on-brand-muted: #a9b8cf;
   --text-primary: var(--platform-ink);

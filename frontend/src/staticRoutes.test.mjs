@@ -12,7 +12,13 @@ const EXPECTED_STATIC_ROUTES = [
   'shimadzu-analysis',
   'data-analysis',
   'resources',
+  'login',
 ]
+
+test('Vite uses the FlavorInsightAI project base', async () => {
+  const viteConfig = await readFile(path.resolve('vite.config.js'), 'utf8')
+  assert.match(viteConfig, /base:\s*'\/FlavorInsightAI\/'/)
+})
 
 test('static route generator creates index entries for public application routes', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'flavorthresholddb-routes-'))

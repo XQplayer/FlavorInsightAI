@@ -190,7 +190,10 @@ async function search(page, baseUrl) {
 
 async function runViewport(browser, name, viewport, baseUrl, proxyOrigin) {
   const context = await browser.newContext({ viewport });
-  await context.addInitScript(() => localStorage.setItem('ftdb:result-view', 'new'));
+  await context.addInitScript(() => {
+    localStorage.setItem('ftdb:result-view', 'new');
+    localStorage.setItem('flavorinsight:language', 'zh');
+  });
   let payloadTimer;
   try {
     const page = await context.newPage();
@@ -318,7 +321,10 @@ async function runViewport(browser, name, viewport, baseUrl, proxyOrigin) {
 
 async function runFailureIsolation(browser, baseUrl, proxyOrigin) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await context.addInitScript(() => localStorage.setItem('ftdb:result-view', 'new'));
+  await context.addInitScript(() => {
+    localStorage.setItem('ftdb:result-view', 'new');
+    localStorage.setItem('flavorinsight:language', 'zh');
+  });
   try {
     const page = await context.newPage();
     const observed = installObservers(page, proxyOrigin);
@@ -353,7 +359,7 @@ await fs.mkdir(screenshotsDir, { recursive: true });
 const proxyPort = await choosePort(18787);
 const vitePort = await choosePort(5175, new Set([proxyPort]));
 const proxyOrigin = `http://127.0.0.1:${proxyPort}`;
-const baseUrl = `http://127.0.0.1:${vitePort}/FlavorThresholdDB/aroma-threshold/`;
+const baseUrl = `http://127.0.0.1:${vitePort}/FlavorInsightAI/aroma-threshold/`;
 let browser;
 let result;
 let runError;

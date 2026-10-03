@@ -1,9 +1,9 @@
 export const LANGUAGE_STORAGE_KEY = 'flavorinsight:language';
 export const THEME_STORAGE_KEY = 'flavorinsight:theme';
 
-const DEFAULT_LANGUAGE = 'zh';
+const DEFAULT_LANGUAGE = 'en';
 const DEFAULT_THEME = 'system';
-const VALID_LANGUAGES = new Set([DEFAULT_LANGUAGE, 'en']);
+const VALID_LANGUAGES = new Set(['en', 'zh']);
 const VALID_THEMES = new Set(['light', 'dark', DEFAULT_THEME]);
 
 export function normalizeLanguage(language) {

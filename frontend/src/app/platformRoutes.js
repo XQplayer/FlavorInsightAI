@@ -5,6 +5,7 @@ export const PLATFORM_ROUTE_SEGMENTS = Object.freeze({
   processing: 'data-processing',
   analysis: 'data-analysis',
   resources: 'resources',
+  login: 'login',
 });
 
 const PLATFORM_ROUTE_BY_SEGMENT = Object.freeze({
@@ -14,6 +15,7 @@ const PLATFORM_ROUTE_BY_SEGMENT = Object.freeze({
   'shimadzu-analysis': 'processing',
   'data-analysis': 'analysis',
   resources: 'resources',
+  login: 'login',
 });
 
 export function parsePlatformRoute(pathname) {

@@ -61,10 +61,15 @@ body {
 .app-shell.embedded .science-metrics,
 .app-shell.embedded .search-insights,
 .app-shell.embedded .science-citation-panel,
-.app-shell.embedded .search-shell-content,
-.app-shell.embedded .search-control-panel {
+.app-shell.embedded .search-shell-content {
   border-color: var(--platform-border);
   background: color-mix(in srgb, var(--platform-surface) 94%, transparent);
+}
+
+.app-shell.embedded .search-control-panel {
+  border-color: var(--platform-border);
+  background: var(--platform-surface);
+  backdrop-filter: none;
 }
 
 button:focus-visible,
@@ -407,7 +412,7 @@ select:focus-visible,
 .science-subtitle,
 .search-shell-content h1,
 .search-insights h2 {
-  font-family: "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
   font-weight: 650;
 }
 

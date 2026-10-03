@@ -23,7 +23,7 @@ const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 const COPY = Object.freeze({
   zh: {
     eyebrow: '食品风味化学 · 风味组学 · 化学信息学',
-    title: 'FlavorInsight AI 食品风味信息学智能分析平台',
+    title: 'FlavorInsight AI',
     lead: '从仪器信号到可解释的风味证据',
     description: '以 FlavorThresholdDB 为数据基础，连接可追溯的化合物检索、GC–MS 标准化处理与风味贡献评价，为研究过程保留来源、规则和质量门禁。',
     databaseAction: '进入数据库',
@@ -46,7 +46,7 @@ const COPY = Object.freeze({
   },
   en: {
     eyebrow: 'Flavor chemistry · Flavoromics · Cheminformatics',
-    title: 'FlavorInsight AI Food Flavor Informatics Platform',
+    title: 'FlavorInsight AI',
     lead: 'From instrumental signals to interpretable flavor evidence',
     description: 'Built on FlavorThresholdDB, the platform connects traceable compound search, standardized GC–MS processing, and flavor-contribution assessment while preserving sources, rules, and quality gates.',
     databaseAction: 'Open database',
@@ -70,7 +70,8 @@ const COPY = Object.freeze({
 });
 
 const STATUS = Object.freeze({
-  live: { zh: '已上线', en: 'Live', icon: CheckCircle2 },
+  live: { zh: '已上线', en: 'Available', icon: CheckCircle2 },
+  beta: { zh: '测试中', en: 'Beta', icon: FlaskConical },
   building: { zh: '开发中', en: 'In development', icon: Sparkles },
   planned: { zh: '规划中', en: 'Planned', icon: CircleDashed },
 });
@@ -79,7 +80,7 @@ const WORKFLOW = Object.freeze([
   { icon: Activity, zh: '仪器数据', en: 'Instrument data', statuses: ['live'] },
   { icon: FlaskConical, zh: '化合物鉴定', en: 'Compound identification', statuses: ['live'] },
   { icon: Database, zh: '风味数据库', en: 'Flavor database', statuses: ['live'] },
-  { icon: ShieldCheck, zh: '风味贡献评价', en: 'Flavor contribution', statuses: ['building'] },
+  { icon: ShieldCheck, zh: '风味贡献评价', en: 'Flavor contribution', statuses: ['beta'] },
   { icon: Bot, zh: '数据分析与 AI', en: 'Data analysis and AI', statuses: ['building', 'planned'] },
 ]);
 
@@ -105,7 +106,7 @@ const MODULES = Object.freeze([
   {
     icon: Activity,
     status: 'building',
-    route: 'analysis',
+    route: null,
     zh: '数据分析平台',
     en: 'Data analysis platform',
     zhBody: '规划承接标准化结果包的统计分析、差异解析与可视化。',
@@ -119,6 +120,15 @@ const MODULES = Object.freeze([
     en: 'Multi-instrument and AI',
     zhBody: 'GC–O、GC–IMS、GC×GC–MS 适配，以及结构—气味关系、未知物辅助鉴定和风味预测均处于规划阶段。',
     enBody: 'GC–O, GC–IMS, GC×GC–MS support, structure–odor analysis, unknown identification, and flavor prediction remain planned.',
+  },
+  {
+    icon: FileCheck2,
+    status: 'live',
+    route: 'resources',
+    zh: '资源中心',
+    en: 'Resources',
+    zhBody: '获取已核验的模板和项目说明，规划资源不提供虚假下载入口。',
+    enBody: 'Access verified templates and documentation; planned resources have no fake download links.',
   },
 ]);
 

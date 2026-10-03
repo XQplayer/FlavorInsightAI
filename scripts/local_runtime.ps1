@@ -10,7 +10,7 @@ $FrontendRoot = Join-Path $ProjectRoot 'frontend'
 $RuntimeRoot = Join-Path $ProjectRoot '_local\runtime'
 $FrontendPort = 5174
 $ProxyPort = 8787
-$FrontendUrl = "http://127.0.0.1:$FrontendPort/FlavorThresholdDB/aroma-threshold/"
+$FrontendUrl = "http://127.0.0.1:$FrontendPort/FlavorInsightAI/"
 $ProxyHealthUrl = "http://127.0.0.1:$ProxyPort/health"
 
 function Resolve-RuntimeExecutable {

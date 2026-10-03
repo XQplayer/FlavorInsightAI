@@ -12,8 +12,8 @@ import {
 import { usePlatformPreferences } from '../app/PlatformPreferences.jsx';
 import './PlatformPages.css';
 
-const REPOSITORY_BASE = 'https://github.com/XQplayer/FlavorThresholdDB/blob/main';
-const RAW_REPOSITORY_BASE = 'https://raw.githubusercontent.com/XQplayer/FlavorThresholdDB/main';
+const REPOSITORY_BASE = 'https://github.com/XQplayer/FlavorInsightAI/blob/main';
+const RAW_REPOSITORY_BASE = 'https://raw.githubusercontent.com/XQplayer/FlavorInsightAI/main';
 
 const COPY = Object.freeze({
   zh: {

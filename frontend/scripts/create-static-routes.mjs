@@ -12,6 +12,7 @@ export const STATIC_ROUTE_SEGMENTS = Object.freeze([
   'shimadzu-analysis',
   'data-analysis',
   'resources',
+  'login',
 ])
 
 for (const route of STATIC_ROUTE_SEGMENTS) {

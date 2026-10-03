@@ -107,8 +107,8 @@ async function stop(record) {
 const proxyPort = await choosePort(18789);
 const vitePort = await choosePort(5177, new Set([proxyPort]));
 const proxyOrigin = `http://127.0.0.1:${proxyPort}`;
-const appRootUrl = `http://127.0.0.1:${vitePort}/FlavorThresholdDB/`;
-const baseUrl = `http://127.0.0.1:${vitePort}/FlavorThresholdDB/aroma-threshold/`;
+const appRootUrl = `http://127.0.0.1:${vitePort}/FlavorInsightAI/`;
+const baseUrl = `http://127.0.0.1:${vitePort}/FlavorInsightAI/aroma-threshold/`;
 const classicEndpointPrefixes = [
   '/spectra/',
   '/nist-webbook',
@@ -337,7 +337,7 @@ async function inspectContrast(page) {
   });
   const ratios = Object.fromEntries(Object.entries(tokens).map(([key, value]) => [key, contrastRatio(value.color, value.backgroundLayers)]));
   assert.ok(ratios.body >= 4.5, `body text contrast is ${ratios.body.toFixed(2)}:1`);
-  assert.ok(ratios.label >= 4.5, `label contrast is ${ratios.label.toFixed(2)}:1`);
+  assert.ok(ratios.label >= 4.5, `label contrast is ${ratios.label.toFixed(2)}:1 (${JSON.stringify(tokens.label)})`);
   assert.ok(ratios.placeholder >= 4.5, `placeholder contrast is ${ratios.placeholder.toFixed(2)}:1`);
   assert.ok(ratios.focus >= 3, `focus indicator contrast is ${ratios.focus.toFixed(2)}:1`);
   return { tokens, ratios };
@@ -365,6 +365,7 @@ const successfulCompound = {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await context.newPage();
     await page.addInitScript(() => {
+      localStorage.setItem('flavorinsight:language', 'zh');
       window.requestIdleCallback = callback => window.setTimeout(
         () => callback({ didTimeout: false, timeRemaining: () => 50 }),
         2_000,
@@ -729,7 +730,7 @@ const successfulCompound = {
   let bookAttempt = 0;
   const bookScenario = await openScenario({
     name: 'book-retry',
-    expected503: [{ endpoint: '/FlavorThresholdDB/book_flavor_chemistry_index.json', count: 1 }],
+    expected503: [{ endpoint: '/FlavorInsightAI/book_flavor_chemistry_index.json', count: 1 }],
     bookHandler: async (route) => {
       bookAttempt += 1;
       if (bookAttempt === 1) return route.fulfill({ status: 503, body: 'fixture book failure' });
@@ -759,7 +760,7 @@ const successfulCompound = {
   let coreAttempt = 0;
   const coreScenario = await openScenario({
     name: 'core-retry',
-    expected503: [{ endpoint: '/FlavorThresholdDB/aroma_data_merged.json', count: 1 }],
+    expected503: [{ endpoint: '/FlavorInsightAI/aroma_data_merged.json', count: 1 }],
     coreHandler: async (route) => {
       coreAttempt += 1;
       if (coreAttempt === 1) await new Promise(resolve => setTimeout(resolve, 500));
@@ -1061,6 +1062,7 @@ try {
   await page.route('**/structures/resolve?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(structureFixture) }));
 
   await page.addInitScript(() => {
+    localStorage.setItem('flavorinsight:language', 'zh');
     window.requestIdleCallback = callback => window.setTimeout(
       () => callback({ didTimeout: false, timeRemaining: () => 50 }),
       2_000,
@@ -1070,7 +1072,7 @@ try {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => document.activeElement?.blur());
   await page.keyboard.press('Tab');
-  const skipLink = page.getByRole('link', { name: '跳到检索区域' });
+  const skipLink = page.getByRole('link', { name: '跳至主要内容' });
   assert.equal(await skipLink.evaluate(element => document.activeElement === element), true, 'first Tab reaches the skip link');
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#main-content').evaluate(element => document.activeElement === element || location.hash === '#main-content'), true, 'skip link targets the search main region');
@@ -1933,7 +1935,7 @@ try {
   finalQa.screenshots.push('search-workbench-batch-mobile.png');
 
   await page.goto(appRootUrl, { waitUntil: 'domcontentloaded' });
-  const homeHeading = page.getByRole('heading', { name: 'FlavorThresholdDB', level: 1 });
+  const homeHeading = page.getByRole('heading', { name: 'FlavorInsight AI', level: 1 });
   await homeHeading.waitFor();
   const homeTitleMetrics = await homeHeading.evaluate(element => {
     const rect = element.getBoundingClientRect();
@@ -1951,9 +1953,9 @@ try {
 
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto(`${appRootUrl}shimadzu-analysis/`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('heading', { name: '岛津 GC–MS 风味数据分析工作台' }).waitFor();
-  await page.locator('.shimadzu-settings').scrollIntoViewIfNeeded();
-  await page.locator('.shimadzu-settings').waitFor({ state: 'visible' });
+  await page.getByRole('heading', { name: '仪器数据处理平台' }).waitFor();
+  await page.locator('.shimadzu-settings').first().scrollIntoViewIfNeeded();
+  await page.locator('.shimadzu-settings').first().waitFor({ state: 'visible' });
   finalQa.regressions.shimadzu = { heading: true, settings: true };
 
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });

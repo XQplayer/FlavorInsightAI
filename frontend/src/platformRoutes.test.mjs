@@ -10,7 +10,8 @@ const {
 } = platformRoutes;
 
 test('parsePlatformRoute recognizes canonical and compatibility routes', () => {
-  assert.equal(parsePlatformRoute('/FlavorThresholdDB/'), 'home');
+  assert.equal(parsePlatformRoute('/FlavorInsightAI/'), 'home');
+  assert.equal(parsePlatformRoute('/FlavorInsightAI/login/'), 'login');
   assert.equal(parsePlatformRoute('/database/'), 'database');
   assert.equal(parsePlatformRoute('/aroma-threshold/'), 'search');
   assert.equal(parsePlatformRoute('/data-processing/'), 'processing');
@@ -26,13 +27,14 @@ test('parsePlatformRoute treats unknown and prototype-named paths as home', () =
 });
 
 test('routeHref emits canonical paths under the configured base path', () => {
-  assert.equal(routeHref('resources', '/FlavorThresholdDB'), '/FlavorThresholdDB/resources/');
-  assert.equal(routeHref('processing', '/FlavorThresholdDB'), '/FlavorThresholdDB/data-processing/');
+  assert.equal(routeHref('resources', '/FlavorInsightAI'), '/FlavorInsightAI/resources/');
+  assert.equal(routeHref('processing', '/FlavorInsightAI'), '/FlavorInsightAI/data-processing/');
+  assert.equal(routeHref('login', '/FlavorInsightAI'), '/FlavorInsightAI/login/');
 });
 
 test('routeHref treats prototype-named route keys as home', () => {
   for (const route of ['toString', 'constructor', '__proto__']) {
-    assert.equal(routeHref(route, '/FlavorThresholdDB'), '/FlavorThresholdDB/');
+    assert.equal(routeHref(route, '/FlavorInsightAI'), '/FlavorInsightAI/');
   }
 });
 
@@ -50,14 +52,14 @@ test('navigatePlatformRoute pushes canonical history state', () => {
   };
 
   platformRoutes.navigatePlatformRoute('processing', {
-    basePath: '/FlavorThresholdDB',
+    basePath: '/FlavorInsightAI',
     history,
   });
 
   assert.deepEqual(calls, [[
     { route: 'processing' },
     '',
-    '/FlavorThresholdDB/data-processing/',
+    '/FlavorInsightAI/data-processing/',
   ]]);
 });
 
@@ -65,7 +67,7 @@ test('subscribeToPlatformPopstate reports routes and removes its listener', () =
   assert.equal(typeof platformRoutes.subscribeToPlatformPopstate, 'function');
   const listeners = new Map();
   const target = {
-    location: { pathname: '/FlavorThresholdDB/aroma-threshold/' },
+    location: { pathname: '/FlavorInsightAI/aroma-threshold/' },
     addEventListener(type, listener) {
       listeners.set(type, listener);
     },
@@ -77,7 +79,7 @@ test('subscribeToPlatformPopstate reports routes and removes its listener', () =
 
   const unsubscribe = platformRoutes.subscribeToPlatformPopstate(route => routes.push(route), target);
   listeners.get('popstate')();
-  target.location.pathname = '/FlavorThresholdDB/shimadzu-analysis/';
+  target.location.pathname = '/FlavorInsightAI/shimadzu-analysis/';
   listeners.get('popstate')();
   unsubscribe();
 

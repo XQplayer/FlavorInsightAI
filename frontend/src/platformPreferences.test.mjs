@@ -46,14 +46,15 @@ const contrastRatio = (foreground, background) => {
   return (lighter + 0.05) / (darker + 0.05);
 };
 
-test('language preferences normalize to zh or en and default to zh', () => {
+test('language preferences normalize to zh or en and default to en', () => {
   assert.equal(normalizeLanguage('zh'), 'zh');
   assert.equal(normalizeLanguage('en'), 'en');
-  assert.equal(normalizeLanguage('en-US'), 'zh');
-  assert.equal(normalizeLanguage(null), 'zh');
+  assert.equal(normalizeLanguage('en-US'), 'en');
+  assert.equal(normalizeLanguage(null), 'en');
 
   assert.equal(loadLanguagePreference(memoryStorage({ [LANGUAGE_STORAGE_KEY]: 'en' })), 'en');
-  assert.equal(loadLanguagePreference(memoryStorage({ [LANGUAGE_STORAGE_KEY]: 'invalid' })), 'zh');
+  assert.equal(loadLanguagePreference(memoryStorage({ [LANGUAGE_STORAGE_KEY]: 'zh' })), 'zh');
+  assert.equal(loadLanguagePreference(memoryStorage({ [LANGUAGE_STORAGE_KEY]: 'invalid' })), 'en');
 });
 
 test('theme preferences normalize to light, dark, or system and default to system', () => {
@@ -74,7 +75,7 @@ test('preference loading keeps safe defaults when storage access throws', () => 
     },
   };
 
-  assert.equal(loadLanguagePreference(throwingStorage), 'zh');
+  assert.equal(loadLanguagePreference(throwingStorage), 'en');
   assert.equal(loadThemePreference(throwingStorage), 'system');
 });
 
@@ -170,10 +171,17 @@ test('system theme subscriptions deliver live changes and clean up safely', () =
 test('platform tokens expose the product palette, sizing, radii, and dark mappings', () => {
   const tokens = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
   const requiredTokens = [
-    '--platform-brand: #3385ff;',
-    '--platform-ink: #17233d;',
-    '--platform-canvas: #f7f9fc;',
-    '--platform-action: #1d4ed8;',
+    '--accent-600: #315fce;',
+    '--accent-500: #4477df;',
+    '--accent-100: #e9effc;',
+    '--brand-mist: #d9ddd9;',
+    '--brand-blue-gray: #aeb9bd;',
+    '--brand-violet-gray: #b7b1bd;',
+    '--brand-warm-white: #eceae5;',
+    '--platform-brand: var(--accent-500);',
+    '--platform-ink: #252729;',
+    '--platform-canvas: #f7f8f7;',
+    '--platform-action: var(--accent-600);',
     '--platform-action-text: #ffffff;',
     '--platform-monitor: #111827;',
     '--color-primary: var(--platform-brand);',
@@ -221,6 +229,10 @@ test('platform tokens expose the product palette, sizing, radii, and dark mappin
     ...rootProperties,
     ...readCustomProperties(darkTheme),
   ]);
+  const resolveColor = value => {
+    const token = /^var\((--[\w-]+)\)$/.exec(value)?.[1];
+    return token ? resolveColor(rootProperties.get(token)) : value;
+  };
   assert.equal(rootProperties.get('--action-primary'), 'var(--platform-action)');
   assert.equal(rootProperties.get('--text-on-brand'), 'var(--platform-action-text)');
   assert.ok(
@@ -232,7 +244,7 @@ test('platform tokens expose the product palette, sizing, radii, and dark mappin
     'dark danger text must remain readable on the dark canvas',
   );
   assert.ok(
-    contrastRatio(darkProperties.get('--platform-action-text'), darkProperties.get('--platform-action')) >= 4.5,
+    contrastRatio(resolveColor(darkProperties.get('--platform-action-text')), resolveColor(darkProperties.get('--platform-action'))) >= 4.5,
     'primary action text must meet WCAG AA contrast',
   );
 

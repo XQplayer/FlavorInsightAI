@@ -73,27 +73,18 @@ export default function PlatformShell({ route, onNavigate, children }) {
     setTheme,
   } = usePlatformPreferences();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const menuButtonRef = useRef(null);
   const navigationRegionRef = useRef(null);
-  const accountButtonRef = useRef(null);
-  const accountPopoverRef = useRef(null);
   const copy = COPY[language] ?? COPY.zh;
   const activeRoute = route === 'search' ? 'database' : route;
   const darkThemeActive = resolvedTheme === 'dark';
 
   useEffect(() => {
-    if (!mobileMenuOpen && !accountOpen) {
+    if (!mobileMenuOpen) {
       return undefined;
     }
 
     const dismissOnOutsidePointer = event => {
-      if (accountOpen && isOutsideDisclosure(event.target, {
-        trigger: accountButtonRef.current,
-        panel: accountPopoverRef.current,
-      })) {
-        setAccountOpen(false);
-      }
       if (mobileMenuOpen && isOutsideDisclosure(event.target, {
         trigger: menuButtonRef.current,
         panel: navigationRegionRef.current,
@@ -103,11 +94,6 @@ export default function PlatformShell({ route, onNavigate, children }) {
     };
     const dismissOnEscape = event => {
       dismissTopDisclosureOnEscape(event, [
-        {
-          open: accountOpen,
-          close: () => setAccountOpen(false),
-          trigger: accountButtonRef.current,
-        },
         {
           open: mobileMenuOpen,
           close: () => setMobileMenuOpen(false),
@@ -123,11 +109,10 @@ export default function PlatformShell({ route, onNavigate, children }) {
       document.removeEventListener('pointerdown', dismissOnOutsidePointer);
       document.removeEventListener('keydown', dismissOnEscape);
     };
-  }, [accountOpen, mobileMenuOpen]);
+  }, [mobileMenuOpen]);
 
   const handleRouteClick = (event, destination) => {
     setMobileMenuOpen(false);
-    setAccountOpen(false);
 
     if (!isNormalLeftClick(event) || typeof onNavigate !== 'function') {
       return;
@@ -163,7 +148,6 @@ export default function PlatformShell({ route, onNavigate, children }) {
             aria-controls="platform-navigation"
             onClick={() => {
               setMobileMenuOpen(open => !open);
-              setAccountOpen(false);
             }}
           >
             {mobileMenuOpen
@@ -233,33 +217,16 @@ export default function PlatformShell({ route, onNavigate, children }) {
               </button>
 
               <div className="platform-shell__account">
-                <button
-                  ref={accountButtonRef}
+                <a
                   className="platform-shell__account-button"
-                  type="button"
+                  href={routeHref('login', PLATFORM_BASE_PATH)}
                   aria-label={copy.accountControl}
-                  aria-expanded={accountOpen}
-                  aria-controls="platform-account-popover"
-                  aria-haspopup="dialog"
-                  onClick={() => setAccountOpen(open => !open)}
+                  aria-current={route === 'login' ? 'page' : undefined}
+                  onClick={event => handleRouteClick(event, 'login')}
                 >
                   <UserRound aria-hidden="true" size={20} strokeWidth={1.8} />
                   <span>{copy.localStatus}</span>
-                </button>
-
-                {accountOpen ? (
-                  <div
-                    ref={accountPopoverRef}
-                    className="platform-shell__account-popover"
-                    id="platform-account-popover"
-                    role="dialog"
-                    aria-label={copy.accountTitle}
-                  >
-                    <strong>{copy.accountTitle}</strong>
-                    <p>{copy.accountDescription}</p>
-                    <p>{copy.accountCloud}</p>
-                  </div>
-                ) : null}
+                </a>
               </div>
             </div>
           </div>
