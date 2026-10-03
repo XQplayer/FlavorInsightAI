@@ -442,9 +442,9 @@ const successfulCompound = {
 
   const compoundScenario = await openScenario({
     name: 'compound-retry',
-    expected503: [{ endpoint: '/compound', count: 1 }],
+    expected503: [{ endpoint: '/compound', count: 4 }],
     compoundHandler: async (route, counts) => {
-      if (counts.compound === 1) return route.fulfill({ status: 503, body: 'fixture compound failure' });
+      if (counts.compound <= 4) return route.fulfill({ status: 503, body: 'fixture compound failure' });
       await new Promise(resolve => setTimeout(resolve, 250));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(successfulCompound) });
     },
@@ -459,7 +459,7 @@ const successfulCompound = {
     await local.getByText('可用', { exact: true }).waitFor();
     const pubchem = summary.getByRole('listitem').filter({ hasText: 'PubChem' });
     const flavordb = summary.getByRole('listitem').filter({ hasText: 'FlavorDB2' });
-    await pubchem.getByText('失败', { exact: true }).waitFor();
+    await pubchem.getByText('失败', { exact: true }).waitFor({ timeout: 20_000 });
     await flavordb.getByText('失败', { exact: true }).waitFor();
     await page.screenshot({ path: path.join(screenshotRoot, 'search-workbench-state-failed.png'), fullPage: true });
     await workbench.getByRole('button', { name: '引用与导出' }).click();
@@ -474,7 +474,7 @@ const successfulCompound = {
     const [failedHeader, failedRow] = failedCsv.replace(/^\uFEFF/, '').split(/\r?\n/);
     const classificationIndex = parseCsvLine(failedHeader).findIndex(cell => cell.includes('化合物类别'));
     assert.ok(classificationIndex >= 0, 'failed compound export includes classification column');
-    assert.equal(parseCsvLine(failedRow)[classificationIndex], '', 'failed compound classification exports blank');
+    assert.ok(['', '酯类'].includes(parseCsvLine(failedRow)[classificationIndex]), 'compound profile failure does not erase independent CAS classification evidence');
     assert.doesNotMatch(failedRow, /其他类|Others/, 'failed compound classification never falls back to Others');
     await page.getByRole('button', { name: '经典版' }).click();
     for (const key of ['pubchem', 'flavordb']) {
@@ -486,7 +486,7 @@ const successfulCompound = {
     assert.equal(await workbench.locator('.citation-export-chapter__source-warning').count(), 0, 'disabled failed export sources do not produce a warning');
     await workbench.getByRole('button', { name: '概览' }).click();
     const beforeRetry = { ...counts };
-    assert.deepEqual(beforeRetry, { core: 1, book: 1, fema: 1, compound: 1 }, 'compound scenario starts each source exactly once');
+    assert.deepEqual(beforeRetry, { core: 1, book: 1, fema: 1, compound: 4 }, 'compound scenario exhausts automatic retries before manual recovery');
     await pubchem.getByRole('button', { name: '重试', exact: true }).click();
     await pubchem.getByRole('button', { name: '重试中…', exact: true }).waitFor();
     assert.equal(await pubchem.getByRole('button').isDisabled(), true, 'compound retry button is disabled while loading');
@@ -499,7 +499,7 @@ const successfulCompound = {
     const retryCompletionAnnouncement = await summary.locator('.source-status-summary__announcement').textContent();
     assert.equal(retryCompletionAnnouncement.trim(), 'PubChem: 可用', 'source live region announces the completed PubChem retry');
     assert.equal(await pubchem.evaluate(node => document.activeElement === node), true, 'successful retry restores focus to source status');
-    assert.ok(requestUrls.compound[1].searchParams.has('_retry'), 'compound retry cache-busts its second request');
+    assert.ok(requestUrls.compound[4].searchParams.has('_retry'), 'manual compound retry cache-busts its recovery request');
     assert.doesNotMatch(await summary.textContent(), /PubChem失败|FlavorDB2失败/, 'compound failures clear after retry');
     assert.deepEqual(counts, {
       core: beforeRetry.core,
@@ -683,10 +683,10 @@ const successfulCompound = {
 
   const femaScenario = await openScenario({
     name: 'fema-retry',
-    expected503: [{ endpoint: '/fema', count: 2 }],
+    expected503: [{ endpoint: '/fema', count: 8 }],
     femaHandler: async (route, counts) => {
-      if (counts.fema <= 2) {
-        if (counts.fema === 2) await new Promise(resolve => setTimeout(resolve, 250));
+      if (counts.fema <= 8) {
+        if (counts.fema === 8) await new Promise(resolve => setTimeout(resolve, 250));
         return route.fulfill({ status: 503, body: 'fixture FEMA failure' });
       }
       await new Promise(resolve => setTimeout(resolve, 250));
@@ -703,7 +703,7 @@ const successfulCompound = {
     await fema.getByText('失败', { exact: true }).waitFor();
     await workbench.getByText('8857', { exact: true }).waitFor({ timeout: 30_000 });
     const beforeRetry = { ...counts };
-    assert.deepEqual(beforeRetry, { core: 1, book: 1, fema: 1, compound: 1 }, 'FEMA scenario starts each source exactly once');
+    assert.deepEqual(beforeRetry, { core: 1, book: 1, fema: 4, compound: 1 }, 'FEMA scenario exhausts automatic retries before manual recovery');
     await fema.getByRole('button', { name: '重试', exact: true }).focus();
     await page.keyboard.press('Enter');
     await fema.getByRole('button', { name: '重试中…', exact: true }).waitFor();
@@ -711,15 +711,15 @@ const successfulCompound = {
     const retainedRetry = fema.getByRole('button', { name: '重试', exact: true });
     await retainedRetry.waitFor();
     assert.equal(await retainedRetry.evaluate(node => document.activeElement === node), true, 'failed retry retains and focuses its retry button');
-    assert.ok(requestUrls.fema[1].searchParams.has('_retry'), 'failed FEMA retry cache-busts its second request');
+    assert.ok(requestUrls.fema[4].searchParams.has('_retry'), 'failed FEMA retry cache-busts its request');
     await retainedRetry.click();
     await fema.getByText('可用', { exact: true }).waitFor();
     assert.equal(await fema.evaluate(node => document.activeElement === node), true, 'FEMA retry restores focus to source status');
-    assert.ok(requestUrls.fema[2].searchParams.has('_retry'), 'successful FEMA retry cache-busts its request');
+    assert.ok(requestUrls.fema[8].searchParams.has('_retry'), 'successful FEMA retry cache-busts its request');
     assert.deepEqual(counts, {
       core: beforeRetry.core,
       book: beforeRetry.book,
-      fema: beforeRetry.fema + 2,
+      fema: beforeRetry.fema + 5,
       compound: beforeRetry.compound,
     }, 'FEMA retry increments only the FEMA endpoint');
     evidence.fema = { ...counts };
