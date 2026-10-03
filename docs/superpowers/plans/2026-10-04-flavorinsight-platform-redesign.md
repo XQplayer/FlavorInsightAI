@@ -61,3 +61,10 @@
 ## Review gates
 
 Do not publish if any scientific regression or route/build check fails. Do not describe GitHub Pages or the new account page as deployed until live checks pass. Keep the user-owned dirty `main` worktree untouched; bring the verified branch back to local `main` only after explicit integration review.
+
+## Implementation record (2026-10-04)
+
+- Implemented on `codex/flavorinsight-redesign`, fast-forwarded to local `main`, and published without changing package version `1.5.0`.
+- Platform route/browser checks, 203 scientific/search/Shimadzu Node tests, 8 local routes across 4 viewport widths, and the complete search-results browser regression passed. The Pages workflow and 8 public direct-load/refresh routes passed; English-first language switching and local account return passed online.
+- The optional release-candidate browser script timed out on an external spectrum/mirror-plot request; it is not counted as passed. No scientific computation or export schema was changed by the UI migration.
+- User-owned uncommitted cache, root `DESIGN.md`, and other unrelated files were preserved.

@@ -1,7 +1,7 @@
 # FlavorInsight AI 全站设计与网址迁移
 
 日期：2026-10-04
-状态：已确认设计；2026-10-04 按《FlavorInsight AI 全站设计修订要求》补充，待实施计划与代码实施
+状态：已确认设计；2026-10-04 按《FlavorInsight AI 全站设计修订要求》补充并实施。实施验证见同日实施计划及 GitHub Pages 工作流。
 适用仓库：当前 `XQplayer/FlavorThresholdDB`，计划改名为 `XQplayer/FlavorInsightAI`
 
 ## 1. 决策与边界

@@ -4,7 +4,7 @@ FlavorThresholdDB 使用教程：香气阈值、风味描述与可追溯数据�
 【视频简介】
 FlavorThresholdDB 是面向风味化学研究的中英文检索平台，整合香气阈值、风味描述、化学身份及来源记录。本视频以乙酸乙酯为例，完整演示单物质检索、介质与阈值类型筛选、2D/3D 结构查看、来源核验、批量匹配，以及精简版和详细版 CSV 导出。
 
-在线访问：https://xqplayer.github.io/FlavorThresholdDB/
+在线访问：https://xqplayer.github.io/FlavorInsightAI/
 
 数据来源包括 Van Gemert (2011)、范文来与徐岩 (2020)、FEMA Flavor Ingredient Library、PubChem 和 FlavorDB。平台仅供个人学习与学术交流，阈值、单位和来源请以原始文献或数据库记录为准。
 
