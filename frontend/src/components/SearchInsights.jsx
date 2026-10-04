@@ -78,19 +78,23 @@ export default function SearchInsights({ isEnglish, onSelect }) {
       <div className="search-insights-heading">
         <div>
           <span className="search-insights-kicker"><Activity size={15} /> {isEnglish ? 'Live database activity' : '数据库实时动态'}</span>
-          <h2 id="search-insights-title">{isEnglish ? 'Most searched compounds' : '热门检索化合物'}</h2>
-          <p>{isEnglish ? 'Tile area represents verified searches. Select a compound to view its records.' : '矩形面积代表有效检索次数，点击化合物可直接查看记录。'}</p>
+          <h2 id="search-insights-title">{analyticsEnabled
+            ? (isEnglish ? 'Most searched compounds' : '热门检索化合物')
+            : (isEnglish ? 'Activity statistics' : '访问统计')}</h2>
+          <p>{analyticsEnabled
+            ? (isEnglish ? 'Tile area represents verified searches. Select a compound to view its records.' : '矩形面积代表有效检索次数，点击化合物可直接查看记录。')
+            : (isEnglish ? 'Live activity depends on an optional statistics service.' : '实时动态依赖可选的统计服务。')}</p>
         </div>
-        <div className="search-insights-counters">
+        {analyticsEnabled && <div className="search-insights-counters">
           <span><Eye size={16} /><strong>{summary.total_visits}</strong>{isEnglish ? 'visits' : '累计访问'}</span>
           <span><Users size={16} /><strong>{onlineCount}</strong>{isEnglish ? 'online' : '人在线'}</span>
           <span><BarChart3 size={16} /><strong>{summary.total_searches}</strong>{isEnglish ? 'searches' : '累计检索'}</span>
           <span><CalendarDays size={16} /><strong>{summary.today_searches}</strong>{isEnglish ? 'today' : '今日检索'}</span>
-        </div>
+        </div>}
       </div>
 
-      <div ref={panelRef} className="compound-treemap" aria-live="polite">
-        {!analyticsEnabled && <p className="treemap-empty">{isEnglish ? 'Analytics is not configured.' : '统计服务尚未配置。'}</p>}
+      <div ref={panelRef} className={`compound-treemap${analyticsEnabled ? '' : ' compound-treemap--unavailable'}`} aria-live="polite">
+        {!analyticsEnabled && <p className="treemap-empty">{isEnglish ? 'Activity statistics are unavailable in this deployment. Compound search remains available above.' : '当前部署未启用访问统计；上方的化合物检索仍可正常使用。'}</p>}
         {analyticsEnabled && !leaves.length && <p className="treemap-empty">{isEnglish ? 'Search activity will appear here after the first query.' : '首次检索后，热门化合物将在这里显示。'}</p>}
         {leaves.map(leaf => {
           const item = leaf.data;

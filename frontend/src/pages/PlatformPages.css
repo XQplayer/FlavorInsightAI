@@ -905,3 +905,125 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Evidence in Motion: the brand's scientific illustration is deliberately
+   separate from the opaque, readable compound evidence below it. */
+.platform-home__trajectory {
+  position: relative;
+  margin: -22px -22px 25px;
+  padding: 18px 22px 15px;
+  overflow: hidden;
+  color: #dce5e7;
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
+  background:
+    radial-gradient(ellipse 65% 90% at 85% 18%, rgba(174, 185, 189, .27), transparent 75%),
+    linear-gradient(145deg, #222b33, #39444c 69%, #303940);
+}
+.platform-home__trajectory-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  color: #e7ebea;
+  font: 700 10px/1.4 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: .11em;
+}
+.platform-home__trajectory svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 205px;
+  margin: 7px 0 0;
+  overflow: visible;
+}
+.platform-home__trajectory-grid {
+  fill: none;
+  stroke: rgba(240, 247, 247, .11);
+  stroke-width: 1;
+}
+.platform-home__trajectory-wave {
+  fill: none;
+  stroke: url(#trajectory-line);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 7px rgba(141, 179, 244, .32));
+}
+.platform-home__trajectory-arc {
+  fill: none;
+  stroke: rgba(231, 238, 240, .43);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 8;
+}
+.platform-home__trajectory circle {
+  fill: #e9f0f4;
+  stroke: #315fce;
+  stroke-width: 4;
+}
+.platform-home__trajectory ol {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  margin: -5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.platform-home__trajectory li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #e6ebed;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.platform-home__trajectory li span {
+  color: #bcd2fa;
+  font: 700 10px 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+}
+.platform-home__hero {
+  min-height: clamp(680px, 82vh, 790px);
+}
+.platform-home .platform-home__capability-preview {
+  padding: 22px;
+  transform: none;
+  border-radius: 20px;
+}
+.platform-home .platform-home__capability-preview:hover { transform: none; }
+.platform-home__preview-header { gap: 12px; }
+.platform-home__hero .platform-home__lead {
+  max-width: 570px;
+  font-weight: 580;
+  letter-spacing: -.035em;
+}
+.platform-home__hero .platform-home__description { max-width: 530px; }
+.platform-home__module-card--1 {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.platform-home__module-card--1::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 420px;
+  height: 420px;
+  right: -155px;
+  bottom: -170px;
+  border: 1px solid color-mix(in srgb, var(--platform-brand) 23%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 55px color-mix(in srgb, var(--platform-brand) 3%, transparent), 0 0 0 112px color-mix(in srgb, var(--platform-brand) 2%, transparent);
+  pointer-events: none;
+}
+@media (max-width: 1024px) {
+  .platform-home__hero { min-height: 0; }
+  .platform-home__capability-preview { width: min(100%, 720px); }
+}
+@media (max-width: 420px) {
+  .platform-home .platform-home__capability-preview { padding: 17px; }
+  .platform-home__trajectory { margin: -17px -17px 20px; padding: 14px 16px; }
+  .platform-home__trajectory li { font-size: 9px; }
+  .platform-home__trajectory-topline { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .platform-home__trajectory-pulse { animation: none; }
+}

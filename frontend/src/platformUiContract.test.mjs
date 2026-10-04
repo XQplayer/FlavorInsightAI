@@ -153,6 +153,14 @@ test('gives the homepage a distinct immersive brand layer without changing scien
   assert.match(pageStyles, /@media \(prefers-reduced-transparency: reduce\)/);
 });
 
+test('frames the hero with an evidence trajectory rather than decorative metrics', () => {
+  assert.match(homeSource, /platform-home__trajectory/);
+  assert.match(homeSource, /aria-label=\{copy\.trajectoryLabel\}/);
+  assert.match(homeSource, /<svg[\s\S]*?viewBox="0 0 640 260"/);
+  assert.match(pageStyles, /\.platform-home__trajectory\s*\{/);
+  assert.match(pageStyles, /prefers-reduced-motion: reduce/);
+});
+
 test('limits floating navigation treatment to brand pages', () => {
   assert.match(source, /route === 'home' \|\| route === 'login'/);
   assert.match(source, /platform-shell--brand/);
