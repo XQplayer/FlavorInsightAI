@@ -1027,3 +1027,60 @@
 @media (prefers-reduced-motion: reduce) {
   .platform-home__trajectory-pulse { animation: none; }
 }
+
+/* Editorial module wall: one primary database entry, one working instrument
+   entry, and a quieter row of honestly labelled future/supporting modules. */
+.platform-home .platform-section {
+  padding-top: clamp(54px, 6vw, 90px);
+  padding-bottom: clamp(54px, 6vw, 90px);
+}
+.platform-home__module-card {
+  transition: transform var(--motion-base) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard);
+}
+.platform-home__module-card:has(> a):hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-panel);
+}
+.platform-home__module-card--1 {
+  color: #f5f7f6;
+  background: linear-gradient(135deg, #28343d, #3c4850 68%, #303b44);
+  border-color: #59656b;
+}
+.platform-home__module-card--1 h3 { max-width: 500px; }
+.platform-home__module-card--1 p,
+.platform-home__module-card--1 .platform-home__planned-note { color: #e3e9e8; }
+.platform-home__module-card--1 > a { color: #c7dafd; }
+.platform-home__module-card--1 > a:hover { color: #fff; }
+.platform-home__module-card--1 .platform-home__module-icon {
+  color: #d7e4ff;
+  background: rgba(255, 255, 255, .14);
+}
+.platform-home__module-card--1 .platform-status--live {
+  color: #087a55;
+  background: #e5f6ee;
+}
+.platform-home__module-card--1::before {
+  border-color: rgba(221, 234, 242, .31);
+  box-shadow: 0 0 0 55px rgba(221, 234, 242, .045), 0 0 0 112px rgba(221, 234, 242, .025);
+}
+.platform-home__module-card--2 {
+  background: color-mix(in srgb, var(--brand-warm-white) 42%, var(--surface-panel));
+}
+:root[data-theme='dark'] .platform-home__module-card--2 { background: var(--surface-panel); }
+@media (min-width: 769px) {
+  .platform-home__module-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+  .platform-home__module-card { min-height: 238px; padding: clamp(23px, 2.2vw, 32px); }
+  .platform-home__module-card--1 { grid-column: span 7; grid-row: auto; min-height: 340px; }
+  .platform-home__module-card--2 { grid-column: span 5; min-height: 340px; }
+  .platform-home__module-card--3,
+  .platform-home__module-card--4,
+  .platform-home__module-card--5 { grid-column: span 4; }
+  .platform-home__module-card h3 { margin-top: 28px; }
+  .platform-home__module-card--1 h3 { font-size: clamp(27px, 2.6vw, 37px); }
+}
+@media (max-width: 768px) {
+  .platform-home__module-card--1 { min-height: 320px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .platform-home__module-card:has(> a):hover { transform: none; }
+}
