@@ -77,7 +77,9 @@ export default function SearchInsights({ isEnglish, onSelect }) {
     <section className="search-insights" aria-labelledby="search-insights-title">
       <div className="search-insights-heading">
         <div>
-          <span className="search-insights-kicker"><Activity size={15} /> {isEnglish ? 'Live database activity' : '数据库实时动态'}</span>
+          <span className="search-insights-kicker"><Activity size={15} /> {analyticsEnabled
+            ? (isEnglish ? 'Live database activity' : '数据库实时动态')
+            : (isEnglish ? 'Database activity' : '数据库动态')}</span>
           <h2 id="search-insights-title">{analyticsEnabled
             ? (isEnglish ? 'Most searched compounds' : '热门检索化合物')
             : (isEnglish ? 'Activity statistics' : '访问统计')}</h2>
