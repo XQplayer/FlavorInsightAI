@@ -143,6 +143,22 @@ test('presents the approved bilingual evidence-led platform identity', () => {
   assert.match(homeSource, /traceable/i);
 });
 
+test('gives the homepage a distinct immersive brand layer without changing scientific workbenches', () => {
+  assert.match(homeSource, /platform-home__hero-rail/);
+  assert.match(homeSource, /platform-home__hero-index/);
+  assert.match(homeSource, /platform-home__evidence-line/);
+  assert.match(pageStyles, /\.platform-home__hero\s*\{[^}]*background:/s);
+  assert.match(pageStyles, /\.platform-home__hero\s*\{[^}]*border-radius:/s);
+  assert.match(pageStyles, /\.platform-home__capability-preview\s*\{[^}]*backdrop-filter:/s);
+  assert.match(pageStyles, /@media \(prefers-reduced-transparency: reduce\)/);
+});
+
+test('limits floating navigation treatment to brand pages', () => {
+  assert.match(source, /route === 'home' \|\| route === 'login'/);
+  assert.match(source, /platform-shell--brand/);
+  assert.match(styles, /\.platform-shell--brand \.platform-shell__header/);
+});
+
 test('exposes real database, search, and processing destinations', () => {
   for (const route of ['database', 'search', 'processing']) {
     assert.match(homeSource, new RegExp(`routeHref\\('${route}',`));
@@ -207,7 +223,7 @@ test('keeps the homepage responsive and motion restrained', () => {
   assert.match(pageStyles, /min-height:\s*clamp\(520px,[^;]+650px\)/);
   assert.match(pageStyles, /animation-duration:\s*(?:[34]\d{2}|500)ms/);
   assert.match(pageStyles, /font-size:\s*clamp\([^;]+56px\)/);
-  assert.match(pageStyles, /font-size:\s*32px/);
+  assert.match(pageStyles, /font-size:\s*clamp\(42px,\s*11vw,\s*54px\)/);
   assert.match(pageStyles, /@media \(max-width:\s*1024px\)/);
   assert.match(pageStyles, /@media \(max-width:\s*768px\)/);
   assert.match(pageStyles, /@media \(max-width:\s*420px\)/);

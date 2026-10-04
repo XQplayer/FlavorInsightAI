@@ -32,6 +32,8 @@ const COPY = Object.freeze({
     previewLabel: '已上线能力预览',
     previewTitle: '一条 CAS，连接身份、结构与风味证据',
     previewNote: '示例仅展示平台已支持的信息组织方式；结果仍以实际检索来源为准。',
+    heroIndex: '食品风味信息学 / 研究工作台',
+    evidenceLine: ['CAS 为锚点', '来源可追溯', '本地优先'],
     chainEyebrow: '研究工作链',
     chainTitle: '从原始峰表到可复核结论',
     chainDescription: '已上线模块直接进入真实工作台；后续能力以明确状态展示，不将规划功能描述为可用结果。',
@@ -55,6 +57,8 @@ const COPY = Object.freeze({
     previewLabel: 'Live capability preview',
     previewTitle: 'One CAS connects identity, structure, and flavor evidence',
     previewNote: 'This example shows the supported information structure; actual results remain tied to their retrieved sources.',
+    heroIndex: 'FOOD FLAVOR INFORMATICS / RESEARCH WORKSPACE',
+    evidenceLine: ['CAS anchored', 'Source linked', 'Local first'],
     chainEyebrow: 'Research workflow',
     chainTitle: 'From raw peak tables to reviewable conclusions',
     chainDescription: 'Live modules open real workbenches. Future capabilities carry explicit status labels and are never presented as available results.',
@@ -196,6 +200,10 @@ export default function PlatformHomePage({ onNavigate }) {
   return (
     <div className="platform-page platform-home">
       <section className="platform-home__hero" aria-labelledby="platform-home-title">
+        <div className="platform-home__hero-rail" aria-hidden="true">
+          <span>FLAVORINSIGHT / 01</span>
+          <span>{copy.heroIndex}</span>
+        </div>
         <div className="platform-home__hero-copy platform-home__reveal">
           <p className="platform-page__eyebrow">{copy.eyebrow}</p>
           <h1 id="platform-home-title">{copy.title}</h1>
@@ -226,11 +234,17 @@ export default function PlatformHomePage({ onNavigate }) {
             <Search aria-hidden="true" size={17} />
             {copy.searchAction}
           </a>
+          <div className="platform-home__evidence-line" aria-label={language === 'zh' ? '平台原则' : 'Platform principles'}>
+            {copy.evidenceLine.map((item, index) => (
+              <span key={item}><b>{String(index + 1).padStart(2, '0')}</b>{item}</span>
+            ))}
+          </div>
         </div>
 
         <div className="platform-home__capability-preview platform-home__reveal" aria-label={copy.previewLabel}>
           <div className="platform-home__preview-header">
             <div>
+              <span className="platform-home__hero-index">FLAVORTHRESHOLDDB / CAS 141-78-6</span>
               <span>{copy.previewLabel}</span>
               <h2>{copy.previewTitle}</h2>
             </div>

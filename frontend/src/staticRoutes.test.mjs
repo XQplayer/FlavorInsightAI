@@ -63,6 +63,8 @@ test('homepage metadata and package scripts identify FlavorInsight AI without ch
   assert.match(html, /<meta name="description" content="FlavorInsight AI /)
   assert.match(html, /<meta property="og:title" content="FlavorInsight AI \| 食品风味信息学智能分析平台"/)
   assert.match(html, /<meta property="og:description" content="FlavorInsight AI /)
+  assert.doesNotMatch(html, /%BASE_URL%favicon/)
+  assert.match(html, /href="\/favicon\.svg"/)
   assert.equal(packageJson.version, '1.5.0')
   assert.equal(
     packageJson.scripts['test:platform'],

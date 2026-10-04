@@ -83,15 +83,15 @@ test('production shell renders the resolved system theme through its provider', 
   );
 
   assert.match(markup, /FlavorInsight AI/);
-  assert.match(markup, /href="\/FlavorThresholdDB\/"/);
-  assert.match(markup, /<main[^>]*id="main-content"[^>]*>[\s\S]*食品风味信息学智能分析平台/);
-  assert.match(markup, /href="\/FlavorThresholdDB\/database\/"/);
-  assert.match(markup, /href="\/FlavorThresholdDB\/aroma-threshold\/"/);
-  assert.match(markup, /href="\/FlavorThresholdDB\/data-processing\/"/);
+  assert.match(markup, /href="\/FlavorInsightAI\/"/);
+  assert.match(markup, /<main[^>]*id="main-content"[^>]*>[\s\S]*FlavorInsight AI/);
+  assert.match(markup, /href="\/FlavorInsightAI\/database\/"/);
+  assert.match(markup, /href="\/FlavorInsightAI\/aroma-threshold\/"/);
+  assert.match(markup, /href="\/FlavorInsightAI\/data-processing\/"/);
   assert.equal((markup.match(/<details/g) ?? []).length, 4);
-  assert.match(markup, /当前未部署生产级 AI 模型/);
+  assert.match(markup, /No production AI model is deployed/);
   assert.match(markup, /data-preference-theme="system"/);
   assert.match(markup, /data-resolved-theme="dark"/);
-  assert.match(markup, /aria-label="主题切换"[^>]*aria-pressed="true"[^>]*title="切换至浅色主题"/);
+  assert.match(markup, /aria-label="Theme toggle"[^>]*aria-pressed="true"[^>]*title="Switch to light theme"/);
   assert.match(markup, /lucide-sun/);
 });

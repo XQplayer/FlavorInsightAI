@@ -58,6 +58,25 @@ body {
   backdrop-filter: blur(18px);
 }
 
+.platform-shell--brand .platform-shell__header {
+  inset: 12px 24px auto;
+  height: 64px;
+  max-width: 1320px;
+  margin: 0 auto;
+  border: 1px solid color-mix(in srgb, #fff 75%, var(--border-default));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-panel) 91%, transparent);
+  box-shadow: 0 16px 44px rgba(31, 42, 49, .13), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .platform-shell--brand .platform-shell__header { background: var(--surface-panel); }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .platform-shell--brand .platform-shell__header { background: var(--surface-panel); backdrop-filter: none; }
+}
+
 .platform-shell__header-inner {
   position: relative;
   width: 100%;
@@ -333,6 +352,11 @@ body {
   }
 
   .platform-shell__header {
+    height: 60px;
+  }
+
+  .platform-shell--brand .platform-shell__header {
+    inset: 8px 12px auto;
     height: 60px;
   }
 

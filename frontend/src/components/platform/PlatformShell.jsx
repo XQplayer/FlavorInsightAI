@@ -123,7 +123,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
   };
 
   return (
-    <div className="platform-shell">
+    <div className={`platform-shell${route === 'home' || route === 'login' ? ' platform-shell--brand' : ''}`}>
       <a className="platform-shell__skip-link" href="#main-content">
         {copy.skipLink}
       </a>
