@@ -3,9 +3,18 @@ import { DataTable, Select } from './Controls.jsx';
 import { isRunStale } from '../../analysis/workbench.mjs';
 import { downloadFile } from '../../analysis/download.mjs';
 import { serviceError } from '../../analysis/client.mjs';
+import { resultTable } from '../../analysis/resultTables.mjs';
+function ArrayTable({value,name,context,t}) {
+  const table=resultTable(value,{name,context});
+  return <>
+    {table.columnAxis&&<p>{t('Rows','行')}: {table.rowAxis}; {t('Columns','列')}: {table.columnAxis}; {value.length} × {table.width}. {t('Every matrix cell is accessible through row/column paging.','所有矩阵单元格均可通过行/列分页访问。')}</p>}
+    <DataTable {...table} caption={name} t={t}/>
+  </>;
+}
 function JsonBranch({
   value,
   name,
+  context = {},
   t
 }) {
   const [open, setOpen] = useState(false);
@@ -18,10 +27,7 @@ function JsonBranch({
   <button aria-expanded={open} onClick={() => setOpen(!open)}>
     {open ? '−' : '+'} {name} {Array.isArray(value) ? `(${value.length})` : ''}
   </button>
-  {open && (Array.isArray(value) ? <DataTable rows={value.map((v, i) => v !== null && typeof v === 'object' && !Array.isArray(v) ? v : {
-      index: i + 1,
-      value: v
-    })} caption={name} t={t} /> : Object.entries(value).map(([key, entry]) => <JsonBranch key={key} name={key} value={entry} t={t} />))}
+  {open && (Array.isArray(value) ? <ArrayTable value={value} name={name} context={context} t={t} /> : Object.entries(value).map(([key, entry]) => <JsonBranch key={key} name={key} value={entry} context={{...context,...value}} t={t} />))}
 </div>;
 }
 export default function ResultsPanel({
@@ -88,7 +94,7 @@ export default function ResultsPanel({
         <JsonBranch name="validation" value={run.result.data.validation} t={t} />
         <JsonBranch name="permutation" value={run.result.data.permutation} t={t} />
       </section>}
-      {Object.entries(run.result.data || {}).filter(([key]) => !['fullFit', 'validation', 'permutation'].includes(key)).map(([key, value]) => <JsonBranch key={key} name={key} value={value} t={t} />)}
+      {Object.entries(run.result.data || {}).filter(([key]) => !['fullFit', 'validation', 'permutation'].includes(key)).map(([key, value]) => <JsonBranch key={key} name={key} value={value} context={run.result.data} t={t} />)}
       <JsonBranch name={t('Preprocessing & audit', '预处理与审计')} value={run.result.preprocessing} t={t} />
     </>}
   </>}

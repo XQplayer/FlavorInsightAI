@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { textPage } from '../../analysis/resultTables.mjs';
 export function Field({
   label,
   children
@@ -71,22 +72,33 @@ export function TextField({
   <input value={value ?? ''} onChange={e => onChange(e.target.value)} />
 </Field>;
 }
+function CellValue({value,t}) {
+  const [expanded,setExpanded]=useState(false),[page,setPage]=useState(0);
+  const text=value===null||value===undefined?'NA':typeof value==='object'?JSON.stringify(value):String(value);
+  if(text.length<=500)return <span>{text}</span>;
+  const fragment=textPage(text,page);
+  return <div>
+    <span>{expanded?fragment.text:text.slice(0,500)}{!expanded?'…':''}</span>
+    <button aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?t('Close full value','收起完整值'):t('Read complete value (paged)','读取完整值（分页）')}</button>
+    {expanded&&<div className="analysis-toolbar"><button disabled={!fragment.page} onClick={()=>setPage(fragment.page-1)}>{t('Previous fragment','上一片段')}</button><span>{fragment.page+1}/{fragment.pages} · {text.length} {t('characters','字符')}</span><button disabled={fragment.page===fragment.pages-1} onClick={()=>setPage(fragment.page+1)}>{t('Next fragment','下一片段')}</button></div>}
+  </div>;
+}
 export function DataTable({
   rows,
   columns,
+  pinnedColumns = [],
   caption,
   t
 }) {
   const [page, setPage] = useState(0),
     [columnPage, setColumnPage] = useState(0),
     size = 20,
-    width = 8;
-  const keys = columns || [...new Set(rows.flatMap(r => Object.keys(r || {})))],
+    width = Math.max(1,8-pinnedColumns.length);
+  const keys = (columns || [...new Set(rows.flatMap(r => Object.keys(r || {})))]).filter(key=>!pinnedColumns.includes(key)),
     last = Math.max(0, Math.ceil(rows.length / size) - 1),
     current = Math.min(page, last),
     currentColumn = Math.min(columnPage, Math.max(0, Math.ceil(keys.length / width) - 1)),
-    visible = keys.slice(currentColumn * width, currentColumn * width + width);
-  const display = v => v === null || v === undefined ? 'NA' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    visible = [...pinnedColumns,...keys.slice(currentColumn * width, currentColumn * width + width)];
   return <div className="analysis-table">
   <div className="analysis-toolbar">
     <span>
@@ -101,6 +113,7 @@ export function DataTable({
       {t('Next rows', '下一页')}
     </button>
     {keys.length > width && <>
+      <span>{t('Columns','列')}: {currentColumn*width+1}–{Math.min((currentColumn+1)*width,keys.length)}/{keys.length}</span>
       <button disabled={!currentColumn} onClick={() => setColumnPage(currentColumn - 1)}>
         {t('Previous columns', '前列')}
       </button>
@@ -122,11 +135,9 @@ export function DataTable({
         </tr>
       </thead>
       <tbody>
-        {rows.slice(current * size, current * size + size).map((row, i) => <tr key={i}>
+        {rows.slice(current * size, current * size + size).map((row, i) => <tr key={current*size+i}>
           {visible.map(k => <td key={k}>
-            <span title={display(row[k]).slice(0, 500)}>
-              {display(row[k]).slice(0, 500)}
-            </span>
+            <CellValue value={row[k]} t={t}/>
           </td>)}
         </tr>)}
       </tbody>

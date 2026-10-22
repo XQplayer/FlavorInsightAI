@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Field, Select, NumberField, Check, TextField } from './Controls.jsx';
 import { defaultAnalysis, METHODS } from '../../analysis/workbench.mjs';
+import { pageGroups,toggleGroup } from '../../analysis/resultTables.mjs';
 export default function AnalysisPanel({
   dataset,
   analysis: a,
@@ -9,6 +11,7 @@ export default function AnalysisPanel({
   disabled,
   t
 }) {
+  const [groupQuery,setGroupQuery]=useState(''),[groupPage,setGroupPage]=useState(0);
   const set = (key, value) => onChange({
       ...a,
       [key]: value
@@ -17,12 +20,15 @@ export default function AnalysisPanel({
   const supervised = ['plsda', 'oplsda'].includes(a.method),
     observed = ['compare', 'correlation', 'distribution'].includes(a.method),
     multi = ['anova', 'welch-anova', 'kruskal'].includes(a.test);
+  const groupView=pageGroups(groups,groupQuery,groupPage);
   const groupSelect = <fieldset>
   <legend>
     {t('Explicit group scope', '明确分组范围')}
   </legend>
-  {groups.map(g => <Check key={g} label={g} value={a.groups?.includes(g)} onChange={v => {
-      const selected = v ? [...(a.groups || []), g] : (a.groups || []).filter(x => x !== g);
+  <TextField label={t('Search groups','搜索分组')} value={groupQuery} onChange={value=>{setGroupQuery(value);setGroupPage(0)}}/>
+  <div className="analysis-toolbar"><button disabled={!groupView.page} onClick={()=>setGroupPage(groupView.page-1)}>{t('Previous group page','上一页分组')}</button><span>{groupView.page+1}/{groupView.pages} · {groupView.total} {t('matching groups','匹配分组')} · {a.groups?.length||0} {t('selected (including other pages)','已选择（含其他页）')}</span><button disabled={groupView.page===groupView.pages-1} onClick={()=>setGroupPage(groupView.page+1)}>{t('Next group page','下一页分组')}</button></div>
+  {groupView.items.map(g => <Check key={g} label={g} value={a.groups?.includes(g)} onChange={v => {
+      const selected = toggleGroup(a.groups || [],g,v);
       onChange({
         ...a,
         groups: selected,
