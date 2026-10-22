@@ -181,7 +181,9 @@ source snapshots are unchanged.
 ## Analysis options and results
 
 Canonical method names only: preprocess, pca, heatmap, compare, correlation,
-distribution. Unknown names fail. Common result:
+distribution, plsda, oplsda. The two supervised methods additionally require a
+loadable ropls runtime and are advertised only when that capability is available.
+Unknown names fail. Common result:
 `{schemaVersion:1,method,data,preprocessing,provenance}`. preprocessing is the
 fit_recipe result for exploratory methods, null for observed-only methods.
 All matrices are samples × features, all exported orders are **one-based** R
