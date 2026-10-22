@@ -19,6 +19,7 @@ Verified through visible UI controls and actual service jobs:
 - Synthetic heatmap, correlation and distribution jobs completed from the UI. Synthetic three-class PLS-DA and two-class OPLS-DA jobs also completed, showing separate full-fit and held-out-validation sections. These two UI smoke runs explicitly used zero permutations; they do not constitute permutation validation. The separate engine/HTTP 200-permutation benchmark is documented in the execution plan.
 - An actual submitted 200-permutation PLS-DA job was cancelled through the UI. The terminal cancelled record remained present without a later polling error overwriting it.
 - Independent command-line checks: 21 Python service tests passed; R QC-priority and quality-regression suites passed.
+- Quality review found that deterministic archive IDs could overwrite a previous analysis context on repeated import/handoff. `85b51f5` now forks a new UI snapshot while retaining the verified source identity. Browser regression: import the same real HD ZIP again, save the new UUID snapshot, then restore the old archive snapshot; all three prior completed preprocessing/PCA runs remained available. The core verified adapter is unchanged.
 
 The test identified a real persistence-status race: the previous saved label stayed visible during the 150 ms debounce before saving the terminal result. Revision-aware save receipts now prevent that misleading label. A run lost during the pre-fix test correctly restores as interrupted; it is not retroactively presented as completed.
 
