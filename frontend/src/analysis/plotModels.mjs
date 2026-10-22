@@ -110,7 +110,31 @@ export function orderedMatrix(data, limit = 40) {
 }
 /** Coordinates are leaf position and actual hclust height. No fabricated branches. */
 export function treeSegments(tree, leafOrder) {
-  if (!tree?.merge?.length) return [];
+  if (tree === null || tree === undefined) return [];
+  const invalid = () => { throw new Error('Invalid hclust tree'); };
+  if (!Array.isArray(leafOrder) || leafOrder.length < 1) invalid();
+  const leafCount = leafOrder.length;
+  // Reject oversized/malformed imported trees before any drawable allocation.
+  if (!Array.isArray(tree.merge) || !Array.isArray(tree.height) ||
+      tree.merge.length !== leafCount - 1 || tree.height.length !== leafCount - 1) invalid();
+  if (new Set(leafOrder).size !== leafCount ||
+      leafOrder.some(leaf => !Number.isInteger(leaf) || leaf < 0 || leaf >= leafCount)) invalid();
+  const consumed = new Set(), sizes = [];
+  for (let i = 0; i < tree.merge.length; i++) {
+    const merge = tree.merge[i], height = tree.height[i];
+    if (!Array.isArray(merge) || merge.length !== 2 || !finite(height) || height < 0 ||
+        (i > 0 && height < tree.height[i - 1])) invalid();
+    let size = 0;
+    for (const ref of merge) {
+      if (!Number.isInteger(ref) || ref === 0 || ref < -leafCount || ref > i || consumed.has(ref)) invalid();
+      consumed.add(ref);
+      size += ref < 0 ? 1 : sizes[ref - 1];
+    }
+    sizes.push(size);
+  }
+  if (leafCount > 1 && (sizes.at(-1) !== leafCount ||
+      leafOrder.some(leaf => !consumed.has(-leaf - 1)) ||
+      sizes.slice(0, -1).some((_, i) => !consumed.has(i + 1)))) invalid();
   const nodes = [],
     segments = [],
     positions = new Map(leafOrder.map((leaf, i) => [leaf, i + .5]));

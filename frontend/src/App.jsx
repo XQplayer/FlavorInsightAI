@@ -153,7 +153,7 @@ export default function App({
   const [resultView, setResultView] = useState(() => loadResultView());
   
   const [searchMode, setSearchMode] = useState('single'); // 'single' or 'bulk'
-  const [singleQuery, setSingleQuery] = useState(() => casQuery(window.location.search));
+  const [singleQuery, setSingleQuery] = useState(() => casQuery(typeof window === 'undefined' ? '' : window.location.search));
   const [bulkQuery, setBulkQuery] = useState('');
   const [selectedMedia, setSelectedMedia] = useState(['空气', '水', '其他介质']);
   const [includeBookResults, setIncludeBookResults] = useState(true);

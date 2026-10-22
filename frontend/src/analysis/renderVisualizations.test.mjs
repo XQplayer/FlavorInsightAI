@@ -3,6 +3,28 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+test('CAS query initialization remains safe when search renders without window', async () => {
+  assert.equal(typeof globalThis.window, 'undefined');
+  const server = await createServer({server:{middlewareMode:true},appType:'custom'});
+  try {
+    const {default:App} = await server.ssrLoadModule('/src/App.jsx');
+    const markup = renderToStaticMarkup(React.createElement(App,{initialView:'search',language:'en'}));
+    assert.match(markup,/id="compound-search"/);
+    assert.match(markup,/value=""/);
+  } finally {await server.close();}
+});
+test('truncated matrix axes never read omitted untrusted tree heights', async () => {
+  const server = await createServer({server:{middlewareMode:true},appType:'custom'});
+  try {
+    const {default:MatrixPlot} = await server.ssrLoadModule('/src/components/analysis/MatrixPlot.jsx');
+    const omittedTree = {get height(){throw new Error('Omitted tree height was accessed');}};
+    const run = {id:'r',request:{dataset:{id:'d',name:'SYNTHETIC',features:[{id:'f1'},{id:'f2'}],samples:[{id:'s1'},{id:'s2'}]},recipe:{}},result:{data:{matrix:[[1,2],[3,4]],featureIds:['f1','f2'],displayScale:'none'}}};
+    const model = {rows:['s1'],columns:['f1'],values:[[1]],totalRows:2,totalColumns:2,rowIndices:[0,1],columnIndices:[0,1],scale:'none'};
+    const markup = renderToStaticMarkup(React.createElement(MatrixPlot,{run,model,rowTree:omittedTree,columnTree:omittedTree,title:'matrix',t:en=>en,onSelect:()=>{}}));
+    assert.match(markup,/<svg/);
+    assert.doesNotMatch(markup,/row h:|column h:/);
+  } finally {await server.close();}
+});
 test('actual SVG rendering preserves synthetic watermark and rank-one absence of PC2 without warnings', async () => {
   const server = await createServer({
     server: {

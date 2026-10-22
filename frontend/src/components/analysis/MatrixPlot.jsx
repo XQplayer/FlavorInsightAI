@@ -31,8 +31,8 @@ export default function MatrixPlot({
     colComplete = model.columns.length === model.totalColumns;
   const rs = rowTree && rowComplete ? treeSegments(rowTree, model.rowIndices) : [],
     cs = columnTree && colComplete ? treeSegments(columnTree, model.columnIndices) : [];
-  const rh = Math.max(...(rowTree?.height || [0]), 0) || 1,
-    cth = Math.max(...(columnTree?.height || [0]), 0) || 1;
+  const rh = rs.reduce((height, segment) => Math.max(height, segment.y1, segment.y2), 0) || 1,
+    cth = cs.reduce((height, segment) => Math.max(height, segment.y1, segment.y2), 0) || 1;
   const description = `${t('Displayed rows × columns', '显示行 × 列')}: ${model.rows.length} × ${model.columns.length} / ${model.totalRows} × ${model.totalColumns}. ${t('First ordered subset; full ordered matrix and original trees in exports. Trees omitted on a truncated axis; branch heights are original R hclust heights. Gray = missing, not zero.', '按排序显示首个子集；导出包含完整排序矩阵与原始树。截断轴不显示树；枝高是实际 R hclust 高度。灰色为缺失，不是零。')} ${model.scale}`;
   return <PlotFrame title={title} description={description} width={960} height={820} t={t} metadata={{
     ...plotBinding(run),

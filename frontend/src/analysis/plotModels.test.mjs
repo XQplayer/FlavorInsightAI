@@ -1,6 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const m = await import('./plotModels.mjs').catch(() => ({}));
+test('hclust validates counts and topology before allocating drawable segments', () => {
+  const oversized = { merge: Array.from({length:100000}, () => [-1,-2]), height: Array(100000).fill(1) };
+  assert.throws(() => m.treeSegments(oversized, [0,1]), /hclust/);
+  const malformed = [
+    [{merge:[[-1,-2]],height:[]}, [0,1]],
+    [{merge:[[-1,-2,-3]],height:[1]}, [0,1]],
+    [{merge:[[-1,-2],[-1,-3]],height:[1,2]}, [0,1,2]],
+    [{merge:[[-1,-2],[-3,-4],[1,1]],height:[1,2,3]}, [0,1,2,3]],
+    [{merge:[[1,-1],[-2,-3]],height:[1,2]}, [0,1,2]],
+    [{merge:[[-1,-2],[-3,-4],[-1,-2]],height:[1,2,3]}, [0,1,2,3]],
+    [{merge:[[0,-1]],height:[1]}, [0,1]],
+    [{merge:[[-1,-1.5]],height:[1]}, [0,1]],
+    [{merge:[[-1,-3]],height:[1]}, [0,1]],
+    [{merge:[[-1,-2]],height:[1]}, [0,0]],
+    [{merge:[[-1,-2]],height:[1]}, [0,2]],
+    [{merge:[[-1,-2]],height:[-1]}, [0,1]],
+    [{merge:[[-1,-2]],height:[Infinity]}, [0,1]],
+    [{merge:[[-1,-2],[1,-3]],height:[2,1]}, [0,1,2]],
+  ];
+  for (const [tree, order] of malformed) assert.throws(() => m.treeSegments(tree, order), /hclust/);
+  const valid = m.treeSegments({merge:[[-1,-2],[-3,-4],[1,2]],height:[2,3,7]}, [3,2,0,1]);
+  assert.equal(valid.length,9);
+  assert.equal(Math.max(...valid.flatMap(s => [s.y1,s.y2])),7);
+});
 test('scree displays numerical rank, retains raw spectrum, and is not limited to stored scores', () => {
   assert.equal(typeof m.screeModel, 'function');
   const rankOne = { rank: 1, scores: [[1], [2]], explained: [1, 0], cumulative: [1, 1], eigenvalues: [2, 0] };
