@@ -12,7 +12,7 @@ network access is needed. Do not upgrade packages silently.
 
 ## Start / stop
 
-Current verified fallback, from the repository root in PowerShell:
+Shipped startup entry point, from the repository root in PowerShell:
 
 ```powershell
 & 'D:/Apps/Python313/python.exe' services/analysis/server.py --port 8890 --rscript 'D:/R-4.6.0/bin/Rscript.exe' --rlibs 'E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library'
@@ -28,16 +28,19 @@ restart loses all history and does not claim old jobs are still running. A proce
 forcibly terminated outside the broker cannot clean up its temporary files;
 normal cancellation/shutdown removes each job's isolated temporary directory.
 
-**Launcher delivery blocker (2026-10-23):** the intended
+**Historical launcher incident (2026-10-23):** the initially intended
 `scripts/start_analysis_service.ps1` was written and its presence/hidden-launch
 contract passed a Python read test, but a subsequent PowerShell parser check
 reported access denied and the file then disappeared. No matching recent
 Defender detection or operational event was returned by read-only checks. Cause
 is unconfirmed; no security controls were disabled and the file was not
-recreated to bypass them. The dedicated hidden launcher is therefore **not
-delivered**. The launcher-presence regression test intentionally remains failing
-until the host issue is resolved. No persistent 8890 service was started during
-implementation. All execution tests use the implemented Python service directly.
+recreated to bypass them. The dedicated PS1 launcher is **not delivered**; the
+chosen delivery is the existing Python CLI above, with unchanged HTTP security
+checks. The obsolete PS1 presence check is replaced by a real CLI subprocess
+test covering `--help`, ephemeral-port startup, `/health`, and termination of
+that test-owned process. This is verification of the shipped startup path, not
+a claim that the historical PS1 issue was resolved. No persistent 8890 service
+was started during implementation.
 
 ## HTTP contract
 

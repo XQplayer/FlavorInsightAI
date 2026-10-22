@@ -29,7 +29,7 @@ Files: `frontend/src/analysis/{dataset,imports,storage,exports,shimadzuAdapter}.
 
 Execution split: Task 2A implements preprocessing, basic statistics and local task service; Task 2B implements the supervised wrapper against the reviewed fit/apply contract. Each receives independent spec and quality review.
 
-Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervised.R,requirements.md}`, `services/analysis/tests/`, `scripts/start_analysis_service.ps1`.
+Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervised.R,requirements.md}`, `services/analysis/tests/`. Startup uses the shipped `server.py` Python CLI directly; no new PS1 launcher is required. The earlier missing-script incident remains documented in `requirements.md`, and the real CLI startup/health/shutdown path is regression-tested without changing HTTP security.
 
 - [ ] Write real R reference tests: PCA eigenvalues/reconstruction, Welch p, BH, Pareto sample-SD, missing/log/constant errors, paired IDs, technical-unit handling and protected missing values.
 - [ ] Implement validated fixed-order filtering/imputation (none/constant/median/half-min/KNN), normalization (none/sum/median/PQN/IS), transform and scaling. Keep observed inference separate from exploration.

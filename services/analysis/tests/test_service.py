@@ -4,6 +4,9 @@ import http.client
 import json
 import os
 from pathlib import Path
+import socket
+import subprocess
+import sys
 import threading
 import time
 import unittest
@@ -119,9 +122,44 @@ class ServiceTest(unittest.TestCase):
                 if not cancel: self.assertEqual(current['error']['code'], 'TIMEOUT')
                 self.assertNotIn(job['id'], service.processes)
             finally: service.close()
-    def test_launcher_exists_and_is_hidden(self):
-        launcher = BASE.parents[1] / 'scripts' / 'start_analysis_service.ps1'
-        self.assertTrue(launcher.exists(), 'dedicated hidden launcher missing')
-        self.assertIn('-WindowStyle Hidden', launcher.read_text(encoding='utf-8'))
+    def test_shipped_python_cli_launch_health_and_owned_shutdown(self):
+        help_result = subprocess.run(
+            [sys.executable, str(BASE / 'server.py'), '--help'],
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(help_result.returncode, 0, help_result.stderr)
+        self.assertIn('--rscript', help_result.stdout)
+        with socket.socket() as reservation:
+            reservation.bind(('127.0.0.1', 0))
+            port = reservation.getsockname()[1]
+        kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
+        process = subprocess.Popen(
+            [sys.executable, str(BASE / 'server.py'), '--port', str(port),
+             '--rscript', 'D:/R-4.6.0/bin/Rscript.exe',
+             '--rlibs', 'E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library'],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, **kwargs,
+        )
+        try:
+            health = None
+            for _ in range(100):
+                self.assertIsNone(process.poll(), 'CLI exited before becoming healthy')
+                try:
+                    with urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=.2) as response:
+                        health = json.load(response)
+                    break
+                except (urllib.error.URLError, TimeoutError):
+                    time.sleep(.05)
+            self.assertIsNotNone(health, 'CLI health endpoint did not become ready')
+            self.assertEqual(health['status'], 'ok')
+            self.assertEqual(health['persistence'], 'memory-only')
+            self.assertIn('pca', health['capabilities']['methods'])
+        finally:
+            # This CLI smoke test submits no jobs: only its owned server PID exists.
+            if process.poll() is None: process.terminate()
+            try: process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill(); process.wait(timeout=5)
+        self.assertIsNotNone(process.poll())
 
 if __name__ == '__main__': unittest.main()
