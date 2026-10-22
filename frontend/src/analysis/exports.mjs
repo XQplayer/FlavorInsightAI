@@ -23,8 +23,13 @@ export function exportDatasetCsv(dataset) {
   return '\uFEFF' + tableRows(dataset).map(row => row.map(cell).join(',')).join('\r\n')
 }
 export function exportDatasetXlsx(dataset) {
+  const checked = createDataset(dataset)
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(tableRows(dataset)), 'Data')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dataset.samples), 'Samples')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(tableRows(checked)), 'Data')
+  // SheetJS interprets object values as cell descriptors. Only validated scalar
+  // contract fields belong in worksheets; full nested provenance stays in JSON.
+  const sampleColumns = ['id','name','group','biologicalUnitId','subjectId','batch','include']
+  const sampleRows = [sampleColumns, ...checked.samples.map(sample => sampleColumns.map(key => sample[key]))]
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(sampleRows), 'Samples')
   return new Uint8Array(XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }))
 }

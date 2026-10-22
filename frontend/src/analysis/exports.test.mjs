@@ -15,3 +15,15 @@ test('CSV escapes formula-like labels and keeps missing blank; XLSX never genera
   const csv = api.exportDatasetCsv(data()); assert.ok(csv.includes("'=2+2")); assert.ok(csv.includes("'@evil")); assert.ok(!csv.includes('null'))
   const wb = XLSX.read(api.exportDatasetXlsx(data()),{type:'array'}); assert.equal(wb.Sheets.Data.D1.v,'=2+2'); assert.equal(wb.Sheets.Data.D1.f,undefined)
 })
+test('portable-project nested sample metadata cannot inject workbook cells or formulas', () => {
+  const input = structuredClone(data())
+  input.samples[0].metadata = {t:'n',f:'1+1',v:2}
+  input.samples[0].sourceConfiguration = {t:'s',f:'HYPERLINK("https://example.invalid","click")',v:'click'}
+  const restored = api.importProject(api.exportProject(input)).dataset
+  const workbook = XLSX.read(api.exportDatasetXlsx(restored),{type:'array',cellFormula:true})
+  for(const name of workbook.SheetNames) for(const [address,cell] of Object.entries(workbook.Sheets[name])) {
+    if(!address.startsWith('!')) assert.equal(cell.f,undefined,`${name}!${address} must not contain a formula`)
+  }
+  const headers = XLSX.utils.sheet_to_json(workbook.Sheets.Samples,{header:1})[0]
+  assert.deepEqual(headers,['id','name','group','biologicalUnitId','subjectId','batch','include'])
+})
