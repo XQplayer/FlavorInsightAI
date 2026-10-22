@@ -1,4 +1,5 @@
 import { importShimadzuArchive } from './shimadzuAdapter.mjs';
+import { importArchiveSnapshot } from './archiveImport.mjs';
 export async function handoffCompletedArchive({
   job,
   ownedUrl,
@@ -17,9 +18,9 @@ export async function handoffCompletedArchive({
   guard();
   const response = await fetch(ownedUrl);
   if (!response.ok) throw new Error('ARCHIVE_BLOB_UNAVAILABLE');
-  const dataset = await adapter(await response.arrayBuffer(), {
+  const dataset = await importArchiveSnapshot(await response.arrayBuffer(), {
     selection
-  });
+  }, adapter);
   guard();
   await store.save(dataset);
   guard();

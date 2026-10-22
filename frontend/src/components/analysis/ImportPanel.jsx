@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { readImportFile, previewTable, IMPORT_LIMITS } from '../../analysis/imports.mjs';
 import { importProject } from '../../analysis/exports.mjs';
-import { importShimadzuArchive } from '../../analysis/shimadzuAdapter.mjs';
+import { importArchiveSnapshot } from '../../analysis/archiveImport.mjs';
 import { restoreSettings } from '../../analysis/workbench.mjs';
 import { Field, Select, NumberField, TextField, Check, DataTable } from './Controls.jsx';
 export default function ImportPanel({
@@ -65,7 +65,7 @@ export default function ImportPanel({
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'zip') {
       setCandidate({
-        dataset: await importShimadzuArchive(await file.arrayBuffer(), {
+        dataset: await importArchiveSnapshot(await file.arrayBuffer(), {
           selection
         })
       });
@@ -111,7 +111,7 @@ export default function ImportPanel({
       {t('Import data', '导入数据')}
     </h2>
     <p>
-      {t('Files stay on this device. Preview and explicitly confirm replacement; generic values initially have unknown lineage. Maximum file/project size: 32 MiB.', '文件保留在本机。预览后明确确认替换；通用数据初始来源为未知。文件/项目上限 32 MiB。')}
+      {t('Files stay on this device. Preview and explicitly confirm replacement; generic values initially have unknown lineage. Each ZIP import creates a new snapshot and keeps previously saved history. Project JSON explicitly restores its saved context. Maximum file/project size: 32 MiB.', '文件保留在本机。预览后明确确认替换；通用数据初始来源为未知。每次 ZIP 导入建立新快照，保留之前已保存的历史；项目 JSON 则明确恢复其保存的上下文。文件/项目上限 32 MiB。')}
     </p>
     <div className="analysis-grid">
       <Select label={t('Delimiter', '分隔符')} value={delimiter} onChange={setDelimiter} options={[{
