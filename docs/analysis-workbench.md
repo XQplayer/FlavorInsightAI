@@ -16,6 +16,14 @@ From `frontend`, the isolated development preview is:
 pnpm run dev --host 127.0.0.1 --port 5180
 ```
 
+If the local Codex shell's package-manager fallback cannot resolve Vite on PATH, use the direct Node entry point from `frontend` instead (with dependencies already installed):
+
+```text
+node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5180
+```
+
+This is an alternative launch command, not an additional service; reuse the healthy 5180 instance rather than running both commands.
+
 The frontend compute endpoint is deliberately fixed to `http://127.0.0.1:8890`. The local service uses its normal session-token and origin checks; do not bypass them. R/package availability is reported by `/health`; the request/recipe schema is version 1 and current engine provenance reports engine 1.0.0. Actual R and package versions are recorded per result, not inferred from this document. A missing R package makes its capability unavailable. There are no model credentials, model calls, automatic database lookups, or data uploads from the local evidence/report features.
 
 ## Workflow
@@ -42,7 +50,7 @@ The Python service has in-memory job history; restarting it loses that service h
 
 Result tables are paged (20 rows / up to eight displayed columns, long text in 500-character pages). Graph subsets/labels have explicit limits; complete tables remain accessible. Exports include CSV ZIP, XLSX, raw request/result JSON, SVG/PNG and reproduction bundles. XLSX cell/sheet limits cause a clear error; use complete CSV/JSON instead. Formula-like spreadsheet text is escaped. Reproduction uses the matching trusted local engine and recorded versions, never executes source strings as code, and does not bundle R/dependencies.
 
-The report ZIP contains safe `report.html`, `report.md`, exact `request.json`, full `result.json`, complete CSV tables and `table-manifest.json`. Links are relative and must stay together after extraction. Report preview is limited to 20 rows per table, 30 sections, 12,000 characters per section; complete attachments are not truncated. The UI uses bounded paged text. Invalid context or unsupported table shapes retain raw JSON and explain unavailable tables. No PDF or guaranteed publication-resolution claim is made. All user text is escaped, not executable HTML or model instructions.
+The report ZIP contains safe `report.html`, `report.md`, exact `request.json`, full `result.json`, complete CSV tables and `table-manifest.json`. Links are relative and must stay together after extraction. Report preview is limited to 20 rows per table, 30 sections, and 12,000 text characters per entire section, including the factual overview, headings, labels and clipping notices (headings are capped at 512 characters); complete attachments are not truncated. The UI uses bounded paged text. Invalid context or unsupported table shapes retain raw JSON and explain unavailable tables. No PDF or guaranteed publication-resolution claim is made. All user text is escaped, not executable HTML or model instructions.
 
 ## Repeatable acceptance
 

@@ -57,3 +57,25 @@ test('report citations list only existing source pointers and state CSV pointer 
   assert.doesNotMatch(report.citations,/\/result\/preprocessing/);
   assert.match(report.citations,/relative to \/result/);
 });
+test('every exported report section including overview budgets all text while JSON remains complete',async()=>{
+  const run=runFixture(),name='A'.repeat(20000),longKey='B'.repeat(20000);
+  run.request.dataset.name=name;
+  run.result.data[longKey]=[{text:'C'.repeat(20000)}];
+  const zip=await createReportBundle(run);
+  for(const filename of ['report.html','report.md']){
+    const report=await zip.file(filename).async('string');
+    const sections=[...report.matchAll(/<section>([\s\S]*?)<\/section>/g)];
+    assert.ok(sections.length>0);
+    for(const [,section] of sections){
+      const text=section.replace(/<[^>]*>/g,'').replaceAll('&lt;','<').replaceAll('&gt;','>').replaceAll('&quot;','"').replaceAll('&#39;',"'").replaceAll('&amp;','&');
+      assert.ok(text.length<=12000,`${filename}: section text length ${text.length}`);
+    }
+    const overview=sections.find(([,section])=>section.includes('Factual overview'))[1];
+    assert.match(overview,/Preview clipped/);
+    assert.match(overview,/totalSamples/);assert.match(overview,/24/);
+  }
+  assert.equal(JSON.parse(await zip.file('request.json').async('string')).dataset.name,name);
+  const full=JSON.parse(await zip.file('result.json').async('string'));
+  assert.equal(full.request.dataset.name,name);
+  assert.equal(full.result.data[longKey][0].text.length,20000);
+});
