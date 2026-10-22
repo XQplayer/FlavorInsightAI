@@ -9,6 +9,7 @@ export function createDataset(input) {
   const data = structuredClone(input)
   data.schemaVersion = 1
   data.id ||= crypto.randomUUID(); data.name ||= 'Untitled dataset'
+  if (typeof data.id !== 'string' || !data.id.trim() || typeof data.name !== 'string') throw new Error('INVALID_DATASET_ID_OR_NAME')
   if (!Array.isArray(data.samples) || !Array.isArray(data.features) || !data.samples.length || !data.features.length) throw new Error('EMPTY_DATASET')
   for (const [key, label] of [['samples', 'SAMPLE'], ['features', 'FEATURE']]) {
     const ids = new Set()

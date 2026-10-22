@@ -240,36 +240,17 @@ test('keeps the homepage responsive and motion restrained', () => {
   assert.match(pageStyles, /animation:\s*none\s*!important/);
 });
 
-test('presents data analysis as a bilingual future capability without fake controls', () => {
+test('offers a real bilingual local workbench while AI remains planned', () => {
   assert.match(analysisSource, /usePlatformPreferences/);
-  assert.match(analysisSource, /title: '数据分析平台'/);
-  assert.match(analysisSource, /title: 'Data analysis platform'/);
-  assert.match(analysisSource, /建设中/);
-  assert.match(analysisSource, /待开发/);
-  assert.match(analysisSource, /In development/);
-  assert.match(analysisSource, /标准数据包/);
-  assert.match(analysisSource, /standard data package/i);
-
-  for (const feature of [
-    '质量摘要',
-    'PCA',
-    'HCA',
-    '热图',
-    '差异化合物',
-    'OAV',
-    '风味类别',
-    '结构相似性',
-    '未知物辅助鉴定',
-    '风味预测',
-  ]) {
-    assert.match(analysisSource, new RegExp(feature));
-  }
-
-  assert.match(analysisSource, /status:\s*'building'/);
-  assert.match(analysisSource, /status:\s*'planned'/);
-  assert.match(analysisSource, /routeHref\('processing',\s*PLATFORM_BASE_PATH\)/);
+  for (const component of ['ImportPanel','GroupEditor','RecipePanel','AnalysisPanel','ResultsPanel']) assert.match(analysisSource,new RegExp(component));
+  assert.match(analysisSource, /Data & groups/);
+  assert.match(analysisSource, /数据与分组/);
+  assert.match(analysisSource, /SYNTHETIC example \(not scientific evidence\)/);
+  assert.match(analysisSource, /no production AI model is deployed/);
+  assert.match(analysisSource, /role="tablist"/);
+  assert.match(analysisSource, /ArrowLeft/);
+  assert.match(analysisSource, /Export portable project/);
   assert.doesNotMatch(analysisSource, /<main\b/i);
-  assert.doesNotMatch(analysisSource, /<input\b|type=['"]file['"]|<button\b/i);
   assert.doesNotMatch(analysisSource, /用户数量|使用次数|客户评价|production AI (?:is live|is available)/i);
 });
 
@@ -314,7 +295,7 @@ test('offers only verified resources and keeps pending resources non-interactive
 });
 
 test('routes analysis and resources through their real pages with owned titles', () => {
-  assert.match(platformAppSource, /import DataAnalysisPage from ['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]/);
+  assert.match(platformAppSource, /const DataAnalysisPage = lazy\(\(\) => import\(['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]\)\)/);
   assert.match(platformAppSource, /import ResourcesPage from ['"]\.\.\/pages\/ResourcesPage\.jsx['"]/);
   assert.match(platformAppSource, /route === 'analysis'[\s\S]*?<DataAnalysisPage\s+onNavigate=\{onNavigate\}/);
   assert.match(platformAppSource, /route === 'resources'[\s\S]*?<ResourcesPage\s*\/>/);

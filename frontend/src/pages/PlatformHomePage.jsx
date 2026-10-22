@@ -113,12 +113,12 @@ const MODULES = Object.freeze([
   },
   {
     icon: Activity,
-    status: 'building',
-    route: null,
+    status: 'beta',
+    route: 'analysis',
     zh: '数据分析平台',
     en: 'Data analysis platform',
-    zhBody: '规划承接标准化结果包的统计分析、差异解析与可视化。',
-    enBody: 'Being developed for statistical analysis, differential interpretation, and visualization of standardized result packages.',
+    zhBody: '本地数据导入、分组、预处理、统计分析与可追溯原始结果。',
+    enBody: 'Local data import, groups, preprocessing, statistical analysis, and traceable raw results.',
   },
   {
     icon: Bot,

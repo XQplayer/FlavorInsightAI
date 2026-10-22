@@ -115,7 +115,8 @@ Dataset schemaVersion 1 is the existing immutable samples-by-features contract
 in `frontend/src/analysis/dataset.mjs`. Only finite numbers and null are accepted.
 Samples are selected by `include !== false`, not by names. Internal standards
 are excluded by default. Quality masks override a cell state conservatively:
-original-imputed, then unknown-source, then QC-filtered. QC-filtered and missing
+original-imputed, then unknown-source, then QC-filtered. A raw QC-filtered state
+or QC mask is always protected, even when another mask also applies. QC-filtered and missing
 states are treated as missing even if a numeric payload is supplied. Never revive
 QC-filtered cells with any imputation.
 

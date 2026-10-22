@@ -2,7 +2,9 @@ import * as XLSX from 'xlsx'
 import { createDataset, deepFreeze } from './dataset.mjs'
 import { IMPORT_LIMITS } from './imports.mjs'
 export function exportProject(dataset, settings = {}) {
-  return JSON.stringify({ schemaVersion: 'flavor-analysis-project-1', dataset: createDataset(dataset), settings }, null, 2)
+  const text = JSON.stringify({ schemaVersion: 'flavor-analysis-project-1', dataset: createDataset(dataset), settings }, null, 2)
+  if (new TextEncoder().encode(text).length > IMPORT_LIMITS.maxBytes) throw new Error('PROJECT_EXCEEDS_32_MIB_EXPORT_RUNS_SEPARATELY')
+  return text
 }
 export function importProject(text) {
   if (new TextEncoder().encode(text).length > IMPORT_LIMITS.maxBytes) throw new Error('FILE_TOO_LARGE')

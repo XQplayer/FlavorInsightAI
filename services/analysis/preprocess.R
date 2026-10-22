@@ -16,10 +16,13 @@ read_dataset <- function(d) {
   qs<-d$quality$cellStates
   q<-if(is.null(qs))ifelse(is.na(x),'missing','unknown')else as_rows(qs,n,p,'character')
   if(any(!q %in% c('observed','missing','original-imputed','qc-filtered','unknown')))fail('QUALITY_VALUE')
+  protected_qc<-q=='qc-filtered'
   for(k in c('originalImputedMask','unknownSourceMask','qcFilteredMask')) if(!is.null(d$quality[[k]])) {
     z<-as_rows(d$quality[[k]],n,p,'logical');if(anyNA(z)||!is.logical(z))fail('QUALITY_VALUE')
     q[z]<-switch(k,originalImputedMask='original-imputed',unknownSourceMask='unknown',qcFilteredMask='qc-filtered')
+    if(k=='qcFilteredMask')protected_qc<-protected_qc|z
   }
+  q[protected_qc]<-'qc-filtered'
   x[q%in%c('qc-filtered','missing')]<-NA_real_
   list(x=x,q=q,samples=d$samples,features=d$features,sampleIds=si,featureIds=fi)
 }

@@ -2,6 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 const api = await import('./dataset.mjs').catch(() => ({}))
 export const example = () => ({ id: 'd1', name: 'Trial', samples: [{ id: 's1', name: 'A', group: 'G', biologicalUnitId: 'b1' }], features: [{ id: 'f1', name: 'A', cas: '64-17-5' }, { id: 'f2', name: 'B', cas: '64-17-5' }], matrix: [[1, null]] })
+test('untrusted project identity and name cannot become renderable objects',()=>{
+ assert.throws(()=>api.createDataset({...example(),name:{url:'https://example.invalid'}}),/INVALID_DATASET/)
+ assert.throws(()=>api.createDataset({...example(),id:123}),/INVALID_DATASET/)
+})
 test('dataset contract preserves duplicate CAS, normalizes metadata and freezes snapshots', () => {
   assert.equal(typeof api.createDataset, 'function')
   const source = example(); const data = api.createDataset(source)

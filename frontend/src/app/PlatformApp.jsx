@@ -1,7 +1,6 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useState } from 'react';
 
 import PlatformShell from '../components/platform/PlatformShell.jsx';
-import DataAnalysisPage from '../pages/DataAnalysisPage.jsx';
 import PlatformHomePage from '../pages/PlatformHomePage.jsx';
 import ResourcesPage from '../pages/ResourcesPage.jsx';
 import PlatformLoginPage from '../pages/PlatformLoginPage.jsx';
@@ -18,6 +17,7 @@ import {
 
 const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.jsx'));
 const DataProcessingPage = lazy(() => import('../pages/DataProcessingPage.jsx'));
+const DataAnalysisPage = lazy(() => import('../pages/DataAnalysisPage.jsx'));
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
 const PLATFORM_ROUTE_TITLES = Object.freeze({
@@ -160,7 +160,7 @@ function PlatformRoute({ route, onNavigate }) {
   }
 
   if (route === 'analysis') {
-    return <DataAnalysisPage onNavigate={onNavigate} />;
+    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><DataAnalysisPage onNavigate={onNavigate} /></Suspense></RouteErrorBoundary>;
   }
 
   if (route === 'resources') {

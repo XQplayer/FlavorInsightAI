@@ -105,6 +105,7 @@ export function previewTable(rows, config) {
     features = columns.map((c, i) => ({ id: `feature-${i + 1}`, name: String(header[c] ?? `Feature ${i + 1}`), unit: config.unit ?? '' }))
     matrix = body.map(({ row, sourceRow }) => columns.map(c => numeric(row[c], sourceRow, c)))
   }
-  const dataset = createDataset({ name: config.name || 'Imported dataset', samples, features, matrix, quality: { invalidCells }, provenance: { source: 'table-import', config: structuredClone(config) } })
+  const serializableConfig = Object.fromEntries(Object.entries(config).filter(([, value]) => value !== undefined))
+  const dataset = createDataset({ name: config.name || 'Imported dataset', samples, features, matrix, quality: { invalidCells }, provenance: { source: 'table-import', config: structuredClone(serializableConfig) } })
   return { dataset, invalidCells, header: [...header], sampleCount: samples.length, featureCount: features.length, requiresConfirmation: true }
 }

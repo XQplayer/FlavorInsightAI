@@ -36,6 +36,9 @@ import { authCallbackMessage, createShimadzuCloud, shimadzuAuthRedirect } from '
 import { createShimadzuTaskStore } from '../../lib/shimadzuTaskStore'
 import { prioritizeShimadzuIssues } from '../../lib/shimadzuIssues'
 import { analyticsEnabled, supabase } from '../../lib/supabase'
+import { handoffCompletedArchive } from '../../analysis/handoff.mjs'
+import { createDatasetStore } from '../../analysis/storage.mjs'
+import { serviceError } from '../../analysis/client.mjs'
 import './ShimadzuAnalysisPage.css'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
@@ -425,6 +428,8 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const samplesInputRef = useRef(null)
   const workerClientRef = useRef(null)
   const resultUrlRef = useRef('')
+  const [analysisSelection, setAnalysisSelection] = useState('')
+  const [analysisHandoffBusy, setAnalysisHandoffBusy] = useState(false)
   const partialResultUrlRef = useRef('')
   const activeJobIdRef = useRef('')
   const cloudSyncRef = useRef(Promise.resolve())
@@ -453,6 +458,18 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const [enableWaterDetectionThreshold, setEnableWaterDetectionThreshold] = useState(true)
   const [enableEstimatedReferenceOav, setEnableEstimatedReferenceOav] = useState(false)
   const [job, setJob] = useState(null)
+  async function enterDataAnalysis() {
+    if (analysisHandoffBusy || !onNavigate) return
+    const captured = job, url = resultUrlRef.current
+    const store = createDatasetStore()
+    setAnalysisHandoffBusy(true)
+    try {
+      await handoffCompletedArchive({ job: captured, ownedUrl: url, selection: analysisSelection,
+        isCurrent: () => resultUrlRef.current === url && activeJobIdRef.current === captured.id,
+        store, navigate: onNavigate })
+    } catch (value) { setError(serviceError(value, language)) }
+    finally { setAnalysisHandoffBusy(false); await store.close() }
+  }
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [session, setSession] = useState(null)
@@ -500,6 +517,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     return () => {
       workerClientRef.current?.dispose()
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current)
+      resultUrlRef.current = ''
       if (partialResultUrlRef.current) URL.revokeObjectURL(partialResultUrlRef.current)
     }
   }, [api, embedded])
@@ -1132,6 +1150,13 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                   {job.status === 'cancelled' && <button type="button" className="primary" onClick={retryJob}><RotateCcw />{textFor(language, '重新运行', 'Rerun')}</button>}
                   {job.status === 'saving' && <span className="shimadzu-saving"><Loader2 className="spin" />{textFor(language, '正在保存结果', 'Saving results')}</span>}
                   {job.status === 'complete' && <a className="primary" href={job.downloadUrl} download={job.resultFileName}><Download />{textFor(language, '下载结果包', 'Download result package')}</a>}
+                  {job.status === 'complete' && job.downloadUrl?.startsWith('blob:') && onNavigate && <div className="analysis-handoff">
+                    <label>{textFor(language, '进入分析的矩阵', 'Matrix for analysis')}<select aria-label={textFor(language, '进入分析的矩阵', 'Matrix for analysis')} value={analysisSelection} onChange={event => setAnalysisSelection(event.target.value)} disabled={analysisHandoffBusy}>
+                      <option value="">{textFor(language, '请明确选择', 'Choose explicitly')}</option><option value="before-cv">before-cv</option><option value="after-cv">after-cv</option>
+                    </select></label>
+                    <button type="button" className="primary" onClick={enterDataAnalysis} disabled={!analysisSelection || analysisHandoffBusy}>{textFor(language, '进入数据分析', 'Enter data analysis')}</button>
+                    <p>{textFor(language, '验证七阶段与哈希并保存后进入。也可下载 ZIP，在数据分析中上传。', 'Enter after seven-stage/hash verification and local save. ZIP upload in data analysis remains available.')}</p>
+                  </div>}
                   {job.status === 'cancelled' && job.partialDownloadUrl && <a className="primary" href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results')}</a>}
                   {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
                 </div>

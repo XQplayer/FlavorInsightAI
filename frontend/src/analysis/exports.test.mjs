@@ -10,6 +10,9 @@ test('portable project JSON round-trips complete dataset and analysis configurat
   const restored = api.importProject(text); assert.deepEqual(restored.dataset,original); assert.deepEqual(restored.settings,{normalization:'none'})
   assert.throws(()=>api.importProject('{"schemaVersion":999}'), /PROJECT_SCHEMA/)
 })
+test('portable export never emits a project larger than the import bound',()=>{
+ assert.throws(()=>api.exportProject(data(),{note:'x'.repeat(32*1024*1024)}),/PROJECT_EXCEEDS_32_MIB/)
+})
 test('CSV escapes formula-like labels and keeps missing blank; XLSX never generates formulas', () => {
   assert.equal(typeof api.exportDatasetCsv,'function')
   const csv = api.exportDatasetCsv(data()); assert.ok(csv.includes("'=2+2")); assert.ok(csv.includes("'@evil")); assert.ok(!csv.includes('null'))
