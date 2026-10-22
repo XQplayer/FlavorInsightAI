@@ -62,7 +62,13 @@ export async function importShimadzuArchive(input, options = {}) {
     })
   })
   const inherited = pre.inheritedLogs || {}; const statusIndex = new Map((pre.concentrationStatus || []).map(e => [`${e.sampleName}\u0000${e.cas}`, e]))
-  const originalImputedMask = samples.map((s, i) => features.map((f, j) => /Imputed/i.test(statusIndex.get(`${s.name}\u0000${f.cas}`)?.areaStatus || '') || (inherited.imputedTwoOfThree || []).some(e => e.cas === f.cas && e.targetSample === s.name) || (matrix[i][j] !== null && /Imputed/i.test(pre.sampleCalculations?.[s.name]?.internalStandardAreaStatus || ''))))
+  const originalImputedMask = samples.map(s => features.map((f, j) => {
+    const originalConcentration = pre.table?.rows?.[j]?.[`${s.name}（μg/mL）`]
+    const originalAvailable = typeof originalConcentration === 'number' && Number.isFinite(originalConcentration)
+    return /Imputed/i.test(statusIndex.get(`${s.name}\u0000${f.cas}`)?.areaStatus || '')
+      || (inherited.imputedTwoOfThree || []).some(e => e.cas === f.cas && e.targetSample === s.name)
+      || (originalAvailable && /Imputed/i.test(pre.sampleCalculations?.[s.name]?.internalStandardAreaStatus || ''))
+  }))
   const qcFilteredMask = samples.map(s => features.map(f => options.selection === 'after-cv' && (post.cvReport || []).some(e => e.cas === f.cas && e.sampleNames?.includes(s.name))))
   const cellStates = samples.map((s, i) => features.map((f, j) => {
     if (qcFilteredMask[i][j]) return 'qc-filtered'

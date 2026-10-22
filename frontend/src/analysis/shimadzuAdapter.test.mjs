@@ -52,3 +52,12 @@ test('measured analyte with absent denominator lineage remains unknown in correc
   assert.equal(d.quality.cellStates[0][0],'unknown')
   assert.equal(d.quality.unknownSourceMask[0][0],true)
 })
+test('CV-filtered cells retain original denominator imputation mask from Stage4', async () => {
+  const bytes = await fixture({imputedStandard:true})
+  const before = await api.importShimadzuArchive(bytes,{selection:'before-cv'})
+  const after = await api.importShimadzuArchive(bytes,{selection:'after-cv'})
+  assert.equal(before.matrix[0][0],2); assert.equal(before.quality.originalImputedMask[0][0],true)
+  assert.equal(after.matrix[0][0],null); assert.equal(after.quality.qcFilteredMask[0][0],true)
+  assert.equal(after.quality.originalImputedMask[0][0],true)
+  assert.equal(after.quality.cellStates[0][0],'qc-filtered')
+})
