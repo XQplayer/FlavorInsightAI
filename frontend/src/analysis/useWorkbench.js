@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createDatasetStore } from './storage.mjs';
 import { createAnalysisClient } from './client.mjs';
 import { defaultRecipe, defaultAnalysis, restoreSettings, validateRecipe, validateAnalysis } from './workbench.mjs';
 import { createDataset } from './dataset.mjs';
 import { mergeJobResponse } from './lifecycle.mjs';
+import { saveStatusForRevision } from './persistence.mjs';
 const terminal = status => ['completed', 'failed', 'cancelled'].includes(status);
 export default function useWorkbench() {
   const [dataset, setDataset] = useState(null),
@@ -15,9 +16,11 @@ export default function useWorkbench() {
     [dirty, setDirty] = useState(false),
     [active, setActive] = useState(null),
     [saved, setSaved] = useState([]),
-    [saveState, setSaveState] = useState(''),
+    [saveReceipt, setSaveReceipt] = useState(null),
     [clock, setClock] = useState(() => Date.now()),
     [contextId, setContextId] = useState(0);
+  const saveRevision = useMemo(() => ({dataset, recipe, analysis, runs}), [dataset, recipe, analysis, runs]);
+  const saveState = saveStatusForRevision(saveRevision, saveReceipt);
   const [store] = useState(() => createDatasetStore()),
     [client] = useState(() => createAnalysisClient()),
     scope = useRef(0),
@@ -86,6 +89,7 @@ export default function useWorkbench() {
     };
   }, [connect, refresh, load]);
   useEffect(() => {
+    const {dataset, recipe, analysis, runs} = saveRevision;
     if (!dataset) return;
     let live = true;
     const settings = {
@@ -95,16 +99,15 @@ export default function useWorkbench() {
       runs
     };
     const timer = setTimeout(() => {
-      setSaveState('saving');
       saving.current = saving.current.catch(() => {}).then(() => {
         validateRecipe(recipe);
         validateAnalysis(analysis);
         return store.save(dataset, settings);
       }).then(() => {
-        if (live) setSaveState('saved');
+        if (live) setSaveReceipt({revision: saveRevision, status: 'saved'});
       }).catch(e => {
         if (live) {
-          setSaveState('failed');
+          setSaveReceipt({revision: saveRevision, status: 'failed'});
           setError(e);
         }
       });
@@ -113,7 +116,7 @@ export default function useWorkbench() {
       live = false;
       clearTimeout(timer);
     };
-  }, [dataset, recipe, analysis, runs, store]);
+  }, [saveRevision, store]);
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => setClock(Date.now()), 1000);
