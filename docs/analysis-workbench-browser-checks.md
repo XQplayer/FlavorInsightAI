@@ -61,3 +61,46 @@ The exported portable project with this run is retained outside Git at
 `outputs/analysis-workbench-qa/synthetic-200-permutations-verified.json` in
 the main project directory. Review closure and Task 4 evidence/report acceptance
 remain separate gates; this checkpoint does not claim overall completion.
+
+## 2026-10-23 — Task 4 independent acceptance checks
+
+At implementation checkpoint `5b44082`, the coordinating agent independently
+reran the fresh-Chrome acceptance script against the existing 5180/8890 services.
+All 20 checks passed, with the optional real HD archive enabled and no uncaught
+page errors. Evidence is retained outside Git in the main project's
+`outputs/analysis-workbench-final-independent/acceptance.json` and its downloaded
+raw results, projects, tables and report bundles. This run does not use the
+user's browser profile and does not modify the HD source archive.
+
+- Verified explicit measured-value confirmation and independent-unit gates,
+  bulk metadata preview/apply, actual preprocessing, PCA, heatmap, comparisons,
+  multigroup ANOVA/posthoc, correlation and distributions.
+- PLS/OPLS used real nested-validation jobs with zero permutations for smoke
+  coverage. A separate real 200-permutation job was cancelled. This cancellation
+  check is not the completed 200-permutation run documented under Task 3B.
+- Verified stale markers and frozen-run evidence after setting edits, IndexedDB
+  reload/restore, portable imports and fresh-context isolation.
+- Offline evidence queries/report exports remained usable with zero network
+  requests during the checked query. Unsupported causal questions returned no
+  local evidence. No model is configured or represented as tested.
+- Independently downloaded the final comparison report: 16 files, all relative
+  HTML attachment links resolved within its ZIP, correct bound run ID, factual
+  overview, explicit synthetic warning, and no script element. The HTML was
+  visually inspected in a separate test page. Full attachments remain separate
+  from bounded previews.
+- Earlier direct desktop/mobile checks verified bilingual evidence controls,
+  actual citation excerpts and document width 390 px at viewport width 390 px.
+- Independent full frontend run: 416 tests passed, zero failed or skipped.
+  ESLint, Vite build and static-route generation passed. Because this host's
+  fallback package-manager executable did not resolve local binaries, the
+  equivalent local Node entry points were used directly. No dependency changed.
+- Independent service/numeric checks: 21 Python tests and all eight R test
+  entry points passed. Existing jsonlite build-version and RDKit/3Dmol/chunk
+  warnings remain; these passes do not constitute a security certification.
+- Original 5174 frontend / 8787 proxy and isolated 5180 frontend / 8890 service
+  all returned HTTP 200. The removed PS1 startup script remains absent. The
+  original main worktree changes, source workbooks and version were untouched.
+
+Independent specification/quality review and final whole-implementation review
+are separate completion gates. Any subsequent corrections require their own
+regression checks before the plan is marked complete.
