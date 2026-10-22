@@ -290,7 +290,15 @@ export function restoreSettings(settings = {}) {
       knownObject(run.error, ['code'], 'RUN');
       if (typeof run.error.code !== 'string') throw new Error('RUN');
     }
-    if (run.logs !== undefined && (!Array.isArray(run.logs) || run.logs.some(value => typeof value !== 'string'))) throw new Error('RUN');
+    if (run.logs !== undefined) {
+      if (!Array.isArray(run.logs)) throw new Error('RUN');
+      for (const value of run.logs) {
+        if (typeof value === 'string') continue; // Preserve legacy portable string logs.
+        knownObject(value, ['code'], 'RUN');
+        // The broker exposes only this safe code, never raw stderr, paths or secrets.
+        if (value.code !== 'TEMP_CLEANUP_FAILED') throw new Error('RUN');
+      }
+    }
     knownObject(run.request, ['dataset', 'recipe', 'analysis'], 'RUN');
     createDataset(run.request.dataset);
     validateRecipe(run.request.recipe);

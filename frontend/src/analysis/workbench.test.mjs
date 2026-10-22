@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { createDataset } from './dataset.mjs'
 import { previewTable } from './imports.mjs'
 import { effectiveState, confirmMeasured, metadataPreview, applyMetadata, restoreSettings, isRunStale, defaultRecipe } from './workbench.mjs'
+import { exportProject, importProject } from './exports.mjs'
+import { runFixture } from './evidenceFixture.mjs'
 const fixture = () => createDataset({ samples:[{id:'s1',name:'same'},{id:'s2',name:'same'}], features:[{id:'f'}], matrix:[[1],[2]], provenance:{source:'table-import'}, quality:{qcFilteredMask:[[true],[false]]} })
 test('quality masks dominate and measured confirmation cannot revive protected cells', () => {
  const d=fixture(), next=confirmMeasured(d)
@@ -54,4 +56,25 @@ test('preprocessing freshness depends on dataset and recipe, not selected downst
  assert.equal(isRunStale(run,d,{...recipe,scale:{method:'uv',axis:'feature'}},{method:'pca'}),true)
  const pca={request:{dataset:d,recipe,analysis:{method:'pca'}}}
  assert.equal(isRunStale(pca,d,recipe,{method:'pca',components:1}),true)
+})
+
+test('completed broker cleanup warning survives restore and portable export/import unchanged',()=>{
+ const run=runFixture();run.logs=['legacy status',{code:'TEMP_CLEANUP_FAILED'}]
+ const settings={schemaVersion:1,runs:[run]}
+ const restored=restoreSettings(settings)
+ assert.deepEqual(restored.runs[0].logs,run.logs)
+ assert.deepEqual(restored.runs[0].result,run.result)
+ assert.notEqual(restored.runs[0].logs[1],run.logs[1])
+ const project=importProject(exportProject(run.request.dataset,settings))
+ const portable=restoreSettings(project.settings)
+ assert.equal(portable.runs[0].status,'completed')
+ assert.deepEqual(portable.runs[0].logs,run.logs)
+ assert.deepEqual(portable.runs[0].result,run.result)
+})
+
+test('restoration rejects malformed log objects and raw or unrecognized code payloads',()=>{
+ for(const logs of [{},[null],[[]],[1],[{}],[{code:123}],[{code:'UNKNOWN_WARNING'}],[{code:'TEMP_CLEANUP_FAILED',message:'raw secret'}],[{code:'TEMP_CLEANUP_FAILED',path:'private-path'}],[{code:{raw:'secret'}}]]) {
+  const run=runFixture();run.logs=logs
+  assert.throws(()=>restoreSettings({runs:[run]}),/RUN/)
+ }
 })
