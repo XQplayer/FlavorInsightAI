@@ -46,3 +46,12 @@ test('unmapped import fields remain serializable through stored run requests',()
  assert.equal(Object.hasOwn(d.provenance.config,'casColumn'),false)
  assert.equal(restoreSettings({runs:[{id:'r',status:'failed',request:{dataset:d,recipe:defaultRecipe(),analysis:{method:'pca'}}}]}).runs.length,1)
 })
+test('preprocessing freshness depends on dataset and recipe, not selected downstream analysis',()=>{
+ const d=fixture(),recipe=defaultRecipe(),run={request:{dataset:d,recipe,analysis:{method:'preprocess'}}}
+ assert.equal(isRunStale(run,d,recipe,{method:'pca'}),false)
+ assert.equal(isRunStale(run,d,recipe,{method:'compare',test:'welch'}),false)
+ assert.equal(isRunStale(run,confirmMeasured(d),recipe,{method:'pca'}),true)
+ assert.equal(isRunStale(run,d,{...recipe,scale:{method:'uv',axis:'feature'}},{method:'pca'}),true)
+ const pca={request:{dataset:d,recipe,analysis:{method:'pca'}}}
+ assert.equal(isRunStale(pca,d,recipe,{method:'pca',components:1}),true)
+})

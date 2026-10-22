@@ -309,5 +309,5 @@ export function restoreSettings(settings = {}) {
   };
 }
 export function isRunStale(run, d, recipe, analysis) {
-  return run.request.dataset.id !== d.id || JSON.stringify(run.request.recipe) !== JSON.stringify(recipe) || JSON.stringify(run.request.analysis) !== JSON.stringify(analysis);
+  return run.request.dataset.id !== d.id || JSON.stringify(run.request.recipe) !== JSON.stringify(recipe) || (run.request.analysis.method !== 'preprocess' && JSON.stringify(run.request.analysis) !== JSON.stringify(analysis));
 }
