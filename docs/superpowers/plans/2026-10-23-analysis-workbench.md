@@ -62,15 +62,22 @@ verified archive adapter remains unchanged. Real browser checks covered actual
 basic and supervised service jobs, independence gates, HD archive exploration,
 offline controls, cancellation, portable projects and immediate reload after
 saving. Details and limitations are in `docs/analysis-workbench-browser-checks.md`.
-Task 3B is in progress; graphs and local evidence queries are not yet complete.
+Task 3B completed and independently reviewed through `3a04b977`: actual bound-run
+plots, full exports and public references are implemented. Review corrections
+cover numerical-rank scree limits, malformed clustering-tree size/topology,
+omitted-axis height handling and SSR-safe CAS initialization. Targeted frontend
+regressions passed 196 tests; actual browser/export checks include a complete
+200-permutation OPLS run. Task 4 is in progress. The broader root frontend suite
+also exposed legacy wording/release-boundary assertions, which must be reconciled
+against current approved behavior before final acceptance; it is not yet all green.
 
 Files: `frontend/src/pages/DataAnalysisPage.jsx`, `frontend/src/components/analysis/`, `frontend/src/analysis/client.mjs`, `frontend/src/styles/analysis.css`, `frontend/src/pages/ResourcesPage.jsx`, platform contracts.
 
 - [x] Add failing UI contracts for real import/group/preprocess/run controls and unavailable-service state.
 - [ ] Implement bilingual accessible data/group editor, preprocessing controls, versioned run list, analysis settings, cancel/retry, diagnostics and evidence inspector. Never rerun on style changes.
-- [ ] Render scores/loadings/scree/heatmap/volcano/box/correlation and supervised validation from real payloads; download SVG/PNG plus complete tables/recipe/methods and reproducible request/script.
+- [x] Render scores/loadings/scree/heatmap/volcano/box/correlation and supervised validation from real payloads; download SVG/PNG plus complete tables/recipe/methods and reproducible request/script.
 - [x] Connect completed Shimadzu handoff and portable snapshots; show stale runs after edits; preserve run errors without clearing source data.
-- [ ] Integrate only seven curated public reference links from the audited catalogue, new-tab/no automatic upload/no iframe, retain verification limits.
+- [x] Integrate only seven curated public reference links from the audited catalogue, new-tab/no automatic upload/no iframe, retain verification limits.
 - [ ] Run UI contracts, full frontend lint/build/regression tests, independent spec/quality review, scoped commit.
 
 ## Task 4 — Evidence assistant, reports and acceptance
