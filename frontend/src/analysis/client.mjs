@@ -82,6 +82,7 @@ export function serviceError(error, language = 'en') {
     ABORTED: ['Request interrupted.', '请求已中断。']
   };
   const guidance = {
+    AMBIGUOUS_COMPARISON_LABEL: ['Distinct requested contrasts or omnibus/posthoc pairs have the same display label. Review group names or remove duplicate contrasts before rerunning. No source values or names are changed automatically.', '不同对比或总体检验/事后比较产生相同显示标签。请核对分组名称或删除重复对比后重新运行；系统不会自动修改源值或名称。'],
     INDEPENDENCE_REQUIRED: ['Review biological units in Data & groups, explicitly confirm independence, then Apply metadata.', '在数据与分组中核对生物学单位，明确确认独立性并应用元数据。'],
     GROUP_AND_BIOLOGICAL_UNIT_REQUIRED: ['Assign a group and biological unit ID to every included sample; technical replicates share a unit ID.', '为每个纳入样品填写分组及生物学单位 ID；技术平行应共享单位 ID。'],
     GROUP_REQUIRED: ['Fill group labels or choose global missingness filtering.', '填写分组标签，或改选全局缺失过滤。'],

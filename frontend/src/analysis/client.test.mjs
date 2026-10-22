@@ -29,6 +29,8 @@ test('scientific failures retain codes and give actionable bilingual advice',()=
  assert.match(serviceError(new Error('INDEPENDENCE_REQUIRED'),'en'),/Apply metadata/)
  assert.match(serviceError(new Error('OUTER_FOLDS_INFEASIBLE'),'zh'),/不会自动减少/)
  assert.match(serviceError(new Error('SUPERVISED_CELL_FIT_BUDGET'),'en'),/budget/)
+ assert.match(serviceError(new Error('AMBIGUOUS_COMPARISON_LABEL'),'en'),/group names.*duplicate contrast/i)
+ assert.match(serviceError(new Error('AMBIGUOUS_COMPARISON_LABEL'),'zh'),/分组名称.*重复/)
 })
 test('poll and explicit cancellation reuse the in-memory session and do not submit another job',async()=>{
  const calls=[];const client=createAnalysisClient({fetch:async(url,options)=>{calls.push([url,options.method]);if(url.endsWith('/session'))return response({token:'secret'});return response({id:'job-1',status:options.method==='DELETE'?'cancelled':'running',requestHash:'hash'})}})

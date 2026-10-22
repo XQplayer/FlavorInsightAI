@@ -55,6 +55,12 @@ compare_data <- function(dataset,a) {
     for(cmp in comparisons)if(length(cmp$control)!=1||length(cmp$treatment)!=1||identical(cmp$control,cmp$treatment)||!all(c(cmp$control,cmp$treatment)%in%available))fail('EXPLICIT_COMPARISON_REQUIRED')
     selected<-unique(unlist(lapply(comparisons,function(cmp)c(cmp$control,cmp$treatment)),use.names=FALSE))
   }
+  # Adjustment families and UI selections use these exact display labels.
+  # Reject duplicate/ambiguous labels before aggregation or any statistical fit.
+  comparisonLabels<-vapply(comparisons,function(cmp)paste(cmp$treatment,'vs',cmp$control),character(1))
+  posthocPairs<-if(multi)combn(selected,2,simplify=FALSE)else list()
+  posthocLabels<-vapply(posthocPairs,function(pair)paste(pair[2],'vs',pair[1]),character(1))
+  if(anyDuplicated(c(comparisonLabels,posthocLabels)))fail('AMBIGUOUS_COMPARISON_LABEL')
   z<-prepare_independent(dataset,allow_mixed_matrix_types=isTRUE(a$allowMixedMatrixTypes),groups=selected)
   cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(a$includeInternalStandards),logical(1)))
   if(!length(cols))fail('NO_FEATURES')
@@ -80,8 +86,7 @@ compare_data <- function(dataset,a) {
       },error=function(e){row$naReason<<-conditionMessage(e);NULL})
       if(!is.null(fit)){row$p<-as.numeric(fit$p.value);if(!is.null(fit$conf.int)){row$ciLow<-fit$conf.int[1];row$ciHigh<-fit$conf.int[2]};if(!is.finite(row$p))row$naReason<-'UNDEFINED_TEST'}
       if(multi&&!is.null(fit)){
-        pairs<-combn(cmp$groups,2,simplify=FALSE)
-        for(pair in pairs){ii<-which(groups==pair[1]&is.finite(tx[,j]));jj<-which(groups==pair[2]&is.finite(tx[,j]));pv<-tryCatch({if(test=='anova'){df<-sum(is.finite(tx[,j])&groups%in%cmp$groups)-length(cmp$groups);mse<-sum(vapply(cmp$groups,function(g){w<-tx[groups==g,j];sum((w-mean(w,na.rm=TRUE))^2,na.rm=TRUE)},0))/df;tstat<-(mean(tx[jj,j])-mean(tx[ii,j]))/sqrt(mse*(1/length(ii)+1/length(jj)));2*pt(-abs(tstat),df)}else if(test=='welch-anova')t.test(tx[jj,j],tx[ii,j])$p.value else suppressWarnings(wilcox.test(tx[jj,j],tx[ii,j],exact=FALSE)$p.value)},error=function(e)NA_real_)
+        for(pair in posthocPairs){ii<-which(groups==pair[1]&is.finite(tx[,j]));jj<-which(groups==pair[2]&is.finite(tx[,j]));pv<-tryCatch({if(test=='anova'){df<-sum(is.finite(tx[,j])&groups%in%cmp$groups)-length(cmp$groups);mse<-sum(vapply(cmp$groups,function(g){w<-tx[groups==g,j];sum((w-mean(w,na.rm=TRUE))^2,na.rm=TRUE)},0))/df;tstat<-(mean(tx[jj,j])-mean(tx[ii,j]))/sqrt(mse*(1/length(ii)+1/length(jj)));2*pt(-abs(tstat),df)}else if(test=='welch-anova')t.test(tx[jj,j],tx[ii,j])$p.value else suppressWarnings(wilcox.test(tx[jj,j],tx[ii,j],exact=FALSE)$p.value)},error=function(e)NA_real_)
           posthoc[[length(posthoc)+1]]<-list(featureId=z$featureIds[j],comparison=paste(pair[2],'vs',pair[1]),method=switch(test,anova='pooled-variance-t','welch-anova'='pairwise-welch',kruskal='pairwise-wilcoxon'),p=pv,padj=NA_real_)
         }
       }
