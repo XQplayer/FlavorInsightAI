@@ -64,7 +64,14 @@ export async function importShimadzuArchive(input, options = {}) {
   const inherited = pre.inheritedLogs || {}; const statusIndex = new Map((pre.concentrationStatus || []).map(e => [`${e.sampleName}\u0000${e.cas}`, e]))
   const originalImputedMask = samples.map((s, i) => features.map((f, j) => /Imputed/i.test(statusIndex.get(`${s.name}\u0000${f.cas}`)?.areaStatus || '') || (inherited.imputedTwoOfThree || []).some(e => e.cas === f.cas && e.targetSample === s.name) || (matrix[i][j] !== null && /Imputed/i.test(pre.sampleCalculations?.[s.name]?.internalStandardAreaStatus || ''))))
   const qcFilteredMask = samples.map(s => features.map(f => options.selection === 'after-cv' && (post.cvReport || []).some(e => e.cas === f.cas && e.sampleNames?.includes(s.name))))
-  const cellStates = samples.map((s, i) => features.map((f, j) => qcFilteredMask[i][j] ? 'qc-filtered' : originalImputedMask[i][j] ? 'original-imputed' : matrix[i][j] === null ? 'missing' : /^Measured/.test(statusIndex.get(`${s.name}\u0000${f.cas}`)?.areaStatus || '') ? 'observed' : 'unknown'))
+  const cellStates = samples.map((s, i) => features.map((f, j) => {
+    if (qcFilteredMask[i][j]) return 'qc-filtered'
+    if (originalImputedMask[i][j]) return 'original-imputed'
+    if (matrix[i][j] === null) return 'missing'
+    const analyteMeasured = ['Measured', 'Measured_Internal_Standard'].includes(statusIndex.get(`${s.name}\u0000${f.cas}`)?.areaStatus)
+    const denominatorMeasured = pre.sampleCalculations?.[s.name]?.internalStandardAreaStatus === 'Measured_Internal_Standard'
+    return analyteMeasured && denominatorMeasured ? 'observed' : 'unknown'
+  }))
   const archiveSha256 = await sha256(bytes)
   return createDataset({ id: `shimadzu-${archiveSha256}-${options.selection}`, name: `${run.name || 'Shimadzu'} · ${options.selection}`, samples, features, matrix,
     quality: { originalImputedMask, qcFilteredMask, cellStates, unknownSourceMask: cellStates.map(row => row.map(s => s === 'unknown')), inheritedLogs: inherited, groupStatistics: post.groupStatistics || [], cvScreeningExecuted: post.cvScreeningExecuted === true, cvThreshold: post.cvThreshold ?? null, qcRows: [...(pre.qcRows || []), ...(post.qcRows || [])], issues: stages.flatMap(s => s.issues || []) },

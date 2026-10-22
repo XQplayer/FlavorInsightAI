@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 const api = await import('./shimadzuAdapter.mjs').catch(() => ({}))
 const dirs = ['00_输入配置与清单','01_Hit1整理','02_化合物筛查','03_平行峰面积处理','04_跨样品合并与半定量','05_统计_CV_CAS与QC','06_按矩阵拆分']
 const hash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2,'0')).join('')
-export async function fixture({ status = 'PASS', mutate, imputedStandard = false } = {}) {
+export async function fixture({ status = 'PASS', mutate, imputedStandard = false, measuredAnalyteUnknownStandard = false } = {}) {
   const zip = new JSZip(); const enc = new TextEncoder()
   async function signed(path, value) { const bytes = enc.encode(JSON.stringify(value)); zip.file(path, bytes); zip.file(path.replace(/\.json$/, '.sha256'), await hash(bytes)); return bytes }
   const sampleConfigs = [{sampleName:'S1',sampleGroup:'G',internalStandardCas:'123-96-6'}, {sampleName:'S2',sampleGroup:'G',internalStandardCas:'123-96-6'}]
@@ -14,6 +14,7 @@ export async function fixture({ status = 'PASS', mutate, imputedStandard = false
     const data = { schemaVersion:`shimadzu-v2-stage${i}-1`, stage:dirs[i], sampleOrder:['S1','S2'], sampleConfigs, issues:[], ...(i===4?{table:{columns,rows},inheritedLogs:{imputedTwoOfThree:[{cas:'64-17-5',targetSample:'S2'}]},concentrationStatus:[]}:{}), ...(i===5?{triplicateAfter:{columns,rows:rows.map(r=>({...r,'S1（μg/mL）': r.Name==='A'?'NA':1}))},cvScreeningExecuted:true,cvReport:[{cas:'64-17-5',sampleNames:['S1']}],groupStatistics:[]}: {}) }
     if (i === 6) data.schemaVersion = 'shimadzu-v2-stage6-split-1'
     if (i === 4 && imputedStandard) { data.sampleCalculations = { S1: {internalStandardAreaStatus:'Imputed_Internal_Standard_Area'} }; data.concentrationStatus = [{cas:'64-17-5',sampleName:'S1',areaStatus:'Measured'}] }
+    if (i === 4 && measuredAnalyteUnknownStandard) data.concentrationStatus = [{cas:'64-17-5',sampleName:'S1',areaStatus:'Measured'}]
     const bytes = enc.encode(JSON.stringify(data)); zip.file(`${dirs[i]}/data.json`, bytes)
     await signed(`${dirs[i]}/manifest.json`, {schemaVersion:'shimadzu-browser-manifest-1',stage:dirs[i],severity:'PASS',canAdvance:true,outputHashes:[{path:`${dirs[i]}/data.json`,sha256:await hash(bytes),size:bytes.length}]})
   }
@@ -45,4 +46,9 @@ test('imputed internal-standard denominator marks derived analyte concentration 
   const d = await api.importShimadzuArchive(await fixture({imputedStandard:true}),{selection:'before-cv'})
   assert.equal(d.quality.originalImputedMask[0][0],true)
   assert.equal(d.quality.cellStates[0][0],'original-imputed')
+})
+test('measured analyte with absent denominator lineage remains unknown in correctly hashed archive', async () => {
+  const d = await api.importShimadzuArchive(await fixture({measuredAnalyteUnknownStandard:true}),{selection:'before-cv'})
+  assert.equal(d.quality.cellStates[0][0],'unknown')
+  assert.equal(d.quality.unknownSourceMask[0][0],true)
 })
