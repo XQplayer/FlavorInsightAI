@@ -17,7 +17,7 @@ export function createEvidenceContext({run, dataset} = {}) {
     requestHashVerified: false, recipeSchemaVersion: source.request?.recipe?.schemaVersion ?? null,
     engineVersion: run?.result?.provenance?.engineVersion ?? null,
     rVersion: run?.result?.provenance?.rVersion ?? null,
-    packages: run?.result?.provenance?.packages ?? null,
+    packages: source.result?.provenance?.packages ?? null,
   }});
 }
 export function resolveCitation(ctx, citation) {

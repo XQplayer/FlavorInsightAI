@@ -6,7 +6,8 @@ import { DataTable, Field } from './Controls.jsx';
 export default function EvidenceAssistant({run,dataset,t}) {
   const ctx=useMemo(()=>createEvidenceContext({run,dataset}),[run,dataset]);
   const [query,setQuery]=useState('summary'),[draft,setDraft]=useState(''),[page,setPage]=useState(0),[citation,setCitation]=useState(null);
-  const answer=queryEvidence(ctx,query,{page}),excerpt=citation?resolveCitation(ctx,citation):undefined;
+  const answer=useMemo(()=>queryEvidence(ctx,query,{page}),[ctx,query,page]);
+  const excerpt=useMemo(()=>citation?resolveCitation(ctx,citation):undefined,[ctx,citation]);
   const ask=value=>{setQuery(value);setPage(0);setCitation(null);};
   return <section className="analysis-section" aria-label="Local evidence query">
     <h3>Local evidence query — not AI-generated / 本地证据查询（非AI生成）</h3>

@@ -60,4 +60,6 @@ Run from the worktree root while the existing 5180/8890 services are healthy:
 node scripts/e2e/verify_analysis_workbench.mjs
 ```
 
+For the separate real-component memoization regression (fresh headless Chrome, a temporary test-only frontend server, no compute jobs), run `node --test scripts/e2e/verify_evidence_memo.test.mjs` from the worktree root. It verifies that draft/citation updates reuse query results and immutable-cell serialization, while query/page/context/value changes refresh them. Its browser dependencies are intentionally kept outside the regular `frontend/src/**/*.test.mjs` suite.
+
 The script launches a fresh headless Chrome context, never the user's profile, and closes only its own browser. `ANALYSIS_BASE_URL`, `ANALYSIS_CHROME_PATH`, `ANALYSIS_PLAYWRIGHT_PACKAGE`, `ANALYSIS_QA_OUTPUT` and optional `ANALYSIS_HD_ARCHIVE` configure the runner; they do not change the frontend's fixed compute endpoint. No authentication bypass or service restart is performed. Without `ANALYSIS_HD_ARCHIVE`, the real-HD scenario is explicitly skipped. PLS/OPLS with zero permutations are smoke tests only, not permutation validation; the separate 200-permutation job tests real cancellation. Final acceptance requires the script's actual pass record, frontend tests/lint/build and the separately maintained Python/R engine tests. Model configuration remains deferred.

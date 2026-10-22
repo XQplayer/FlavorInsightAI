@@ -68,3 +68,13 @@ test('explicit feature prefix resolves command-name collisions and maps actual P
   assert.deepEqual(answer.entries.find(e=>e.kind==='matrix').value.values,[1,9]);
   for(const entry of answer.entries)assert.notEqual(resolveCitation(ctx,entry.citation),undefined);
 });
+test('context package metadata is cloned and never freezes the caller-owned run',()=>{
+  const run=runFixture();run.result.provenance.packages={stats:'4.6.0',nested:{version:'1.0'}};
+  const ctx=createEvidenceContext({run});
+  assert.notEqual(ctx.metadata.packages,run.result.provenance.packages);
+  assert.equal(Object.isFrozen(run.result.provenance.packages),false);
+  assert.equal(Object.isFrozen(run.result.provenance.packages.nested),false);
+  run.result.provenance.packages.nested.version='changed';
+  assert.equal(ctx.metadata.packages.nested.version,'1.0');
+  assert.equal(Object.isFrozen(ctx.metadata.packages),true);
+});

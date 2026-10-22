@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { textPage } from '../../analysis/resultTables.mjs';
 export function Field({
   label,
@@ -74,7 +74,7 @@ export function TextField({
 }
 function CellValue({value,t}) {
   const [expanded,setExpanded]=useState(false),[page,setPage]=useState(0);
-  const text=value===null||value===undefined?'NA':typeof value==='object'?JSON.stringify(value):String(value);
+  const text=useMemo(()=>value===null||value===undefined?'NA':typeof value==='object'?JSON.stringify(value):String(value),[value]);
   if(text.length<=500)return <span>{text}</span>;
   const fragment=textPage(text,page);
   return <div>
