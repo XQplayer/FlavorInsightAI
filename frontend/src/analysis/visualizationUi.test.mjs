@@ -28,6 +28,11 @@ test('native SVG charts offer title, description, keyboard and raw data alternat
   assert.match(chart, /serializeSvg/);
   assert.match(chart, /rasterizeSvg/);
 });
+test('scree renderer uses rank-bounded model, never the unrestricted spectrum', () => {
+  const view = read('../components/analysis/ResultVisualizations.jsx');
+  assert.match(view, /screeModel\(data\)/);
+  assert.doesNotMatch(view, /points=\{\(data\.explained/);
+});
 test('public-only bilingual directory contains precisely seven curated references', async () => {
   const m = await import('./externalTools.mjs').catch(() => ({}));
   assert.ok(Array.isArray(m.EXTERNAL_TOOLS));

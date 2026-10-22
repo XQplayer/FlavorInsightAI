@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { componentAxes, correlationModel, finite, identity, orderedMatrix, permutationModel, volcanoModel, plotBinding } from '../../analysis/plotModels.mjs';
+import { componentAxes, correlationModel, finite, identity, orderedMatrix, permutationModel, volcanoModel, plotBinding, screeModel } from '../../analysis/plotModels.mjs';
 import { collectTables, createCsvZip, createReproductionBundle, exportResultXlsx } from '../../analysis/resultExports.mjs';
 import { casHref } from '../../analysis/casLink.mjs';
 import { downloadFile } from '../../analysis/download.mjs';
@@ -143,17 +143,13 @@ function Visualizations({
   }
   let chart = null;
   if (multi) {
-    if (view === 'scree') chart = <ScatterPlot title={t('PCA scree — actual explained variance', 'PCA 碎石图——实际解释方差')} points={(data.explained || []).map((v, i) => ({
-      id: `PC${i + 1}`,
-      label: `PC${i + 1}`,
-      x: i + 1,
-      y: v,
-      raw: {
-        explained: v,
-        cumulative: data.cumulative?.[i],
-        eigenvalue: data.eigenvalues?.[i]
-      }
-    }))} xLabel={t('Component', '成分')} yLabel={t('Explained fraction (not percent)', '解释比例（非百分数）')} zeroY t={t} metadata={meta} />;else if (view === 'vip') chart = <ScatterPlot title={t('Full-fit VIP — descriptive, not p values', '全拟合 VIP——描述性，非 p 值')} points={(fit.VIP || []).map((row, i) => ({
+    if (view === 'scree') {
+      const scree = screeModel(data);
+      chart = <>
+        <p>{t('Scree components are bounded by numerical rank; the full returned spectrum remains in raw tables and exports.', '碎石图成分以数值秩为界；完整返回谱仍保留在原始表格与导出中。')} {scree.rank}/{scree.totalSpectrum}</p>
+        <ScatterPlot title={t('PCA scree — actual explained variance', 'PCA 碎石图——实际解释方差')} points={scree.points} xLabel={t('Component', '成分')} yLabel={t('Explained fraction (not percent)', '解释比例（非百分数）')} zeroY t={t} metadata={{...meta, rank: scree.rank, totalSpectrum: scree.totalSpectrum, componentScope: 'numerical rank; full spectrum retained in raw tables'}} />
+      </>;
+    } else if (view === 'vip') chart = <ScatterPlot title={t('Full-fit VIP — descriptive, not p values', '全拟合 VIP——描述性，非 p 值')} points={(fit.VIP || []).map((row, i) => ({
       id: row.featureId,
       label: identity(run, row.featureId).label,
       x: i + 1,

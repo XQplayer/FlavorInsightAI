@@ -145,6 +145,22 @@ export function treeSegments(tree, leafOrder) {
   }
   return segments;
 }
+export function screeModel(data) {
+  if (!Number.isInteger(data.rank) || data.rank < 1 || !Array.isArray(data.explained) || data.rank > data.explained.length) {
+    throw new Error('Invalid PCA numerical rank or explained spectrum');
+  }
+  return {
+    rank: data.rank,
+    totalSpectrum: data.explained.length,
+    points: data.explained.slice(0, data.rank).map((value, index) => ({
+      id: `PC${index + 1}`,
+      label: `PC${index + 1}`,
+      x: index + 1,
+      y: value,
+      raw: { explained: value, cumulative: data.cumulative?.[index], eigenvalue: data.eigenvalues?.[index] },
+    })),
+  };
+}
 export function componentAxes(fit, method) {
   if (fit.rank !== undefined && (!Number.isInteger(fit.rank) || fit.rank < 1)) throw new Error('Invalid component rank');
   if (fit.scores !== undefined && (!Array.isArray(fit.scores) || !fit.scores.every(Array.isArray))) throw new Error('Invalid score matrix');

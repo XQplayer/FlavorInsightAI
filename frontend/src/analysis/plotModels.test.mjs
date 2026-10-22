@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const m = await import('./plotModels.mjs').catch(() => ({}));
+test('scree displays numerical rank, retains raw spectrum, and is not limited to stored scores', () => {
+  assert.equal(typeof m.screeModel, 'function');
+  const rankOne = { rank: 1, scores: [[1], [2]], explained: [1, 0], cumulative: [1, 1], eigenvalues: [2, 0] };
+  const before = JSON.stringify(rankOne);
+  const result = m.screeModel(rankOne);
+  assert.deepEqual(result.points.map(point => point.id), ['PC1']);
+  assert.equal(result.totalSpectrum, 2);
+  assert.equal(JSON.stringify(rankOne), before);
+  const rankTwo = { ...rankOne, rank: 2, explained: [.8, .2], cumulative: [.8, 1], eigenvalues: [2, .5] };
+  assert.equal(m.screeModel(rankTwo).points.length, 2);
+  assert.throws(() => m.screeModel({ ...rankOne, rank: 3 }), /rank/i);
+});
 test('R orders convert once and hclust preserves actual merge heights', () => {
   assert.equal(typeof m.orderedMatrix, 'function');
   const data = {
