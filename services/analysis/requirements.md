@@ -45,8 +45,12 @@ The user explicitly chose to retain the existing Python CLI, with unchanged HTTP
 checks. The obsolete PS1 presence check is replaced by a real CLI subprocess
 test covering `--help`, ephemeral-port startup, `/health`, and termination of
 that test-owned process. This is verification of the shipped startup path, not
-a claim that the historical PS1 issue was resolved. No persistent 8890 service
-was started during implementation.
+a claim that the historical PS1 issue was resolved. After the user's explicit
+choice to retain Python startup, a hidden local Python CLI process was started
+on port 8890 for the isolated workbench preview, with `--timeout 1200` to allow
+longer supervised validation jobs. Its health response confirmed all eight
+methods and the selected R/package versions. This process is not an autostart
+installation; it must be started again after a restart.
 
 ## HTTP contract
 
