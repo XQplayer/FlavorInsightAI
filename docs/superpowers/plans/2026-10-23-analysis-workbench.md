@@ -31,6 +31,15 @@ Execution split: Task 2A implements preprocessing, basic statistics and local ta
 
 Task 2A completed at `51c114e`: independent specification and quality reviews passed, all R suites passed and HTTP/CLI/lifecycle tests passed 15/15. Quality review added mixed-matrix inference gates, selected-contrast scoping and cancellation/history race regressions. User confirmed retaining the Python startup approach after providing the security-software deletion log for the earlier PS1; do not restore that script or alter security settings.
 
+Task 2B implemented at `622bbce`, with API index corrected at `2e7ba5d`.
+Independent specification and quality reviews passed: seven R test entry points
+and 21 Python tests passed. The default-200 permutation benchmark completed all
+200 permutations through the real HTTP service in approximately 65 seconds.
+One non-blocking review suggestion adds lightweight supervised budget-boundary
+regressions before the UI task. The isolated Python preview service was started
+and verified at port 8890, with a 1200-second job timeout; the original 5174/8787
+services remain independent.
+
 Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervised.R,requirements.md}`, `services/analysis/tests/`. Startup uses the shipped `server.py` Python CLI directly; no new PS1 launcher is required. The earlier missing-script incident remains documented in `requirements.md`, and the real CLI startup/health/shutdown path is regression-tested without changing HTTP security.
 
 - [ ] Write real R reference tests: PCA eigenvalues/reconstruction, Welch p, BH, Pareto sample-SD, missing/log/constant errors, paired IDs, technical-unit handling and protected missing values.
