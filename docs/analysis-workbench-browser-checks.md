@@ -15,7 +15,11 @@ Verified through visible UI controls and actual service jobs:
 - For HD exploratory analysis only, explicitly choosing median fill and dropping all-missing features produced 93 retained features; PCA completed with numerical rank 17. These choices are test settings, not automatic defaults or scientific conclusions.
 - Exact regression for `851d06d`: after a new HD PCA run completed, wait for the current "saved locally" indication, immediately reload, restore the snapshot, and verify the completed result is still present. Passed.
 - Fresh preprocessing results no longer show stale solely because the downstream selected method is PCA (`ad17552`).
+- The real HD preprocessing matrix exposes 93 feature columns through bounded column pages, with sample IDs pinned (`54faa72`).
+- Synthetic heatmap, correlation and distribution jobs completed from the UI. Synthetic three-class PLS-DA and two-class OPLS-DA jobs also completed, showing separate full-fit and held-out-validation sections. These two UI smoke runs explicitly used zero permutations; they do not constitute permutation validation. The separate engine/HTTP 200-permutation benchmark is documented in the execution plan.
+- An actual submitted 200-permutation PLS-DA job was cancelled through the UI. The terminal cancelled record remained present without a later polling error overwriting it.
+- Independent command-line checks: 21 Python service tests passed; R QC-priority and quality-regression suites passed.
 
 The test identified a real persistence-status race: the previous saved label stayed visible during the 150 ms debounce before saving the terminal result. Revision-aware save receipts now prevent that misleading label. A run lost during the pre-fix test correctly restores as interrupted; it is not retroactively presented as completed.
 
-Pending at this checkpoint: independent Task 3A review closure, matrix/group pagination fixes, actual plots and graphical exports (Task 3B), local evidence queries/reports and the complete final acceptance suite (Task 4). Passing these checks does not mean the entire delivery is complete.
+Task 3A specification review passed at `54faa72`, including the matrix/group pagination fixes. Pending at this checkpoint: code-quality review closure, actual plots and graphical exports (Task 3B), local evidence queries/reports and the complete final acceptance suite (Task 4). Passing these checks does not mean the entire delivery is complete.
