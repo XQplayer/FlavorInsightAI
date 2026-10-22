@@ -24,3 +24,40 @@ Verified through visible UI controls and actual service jobs:
 The test identified a real persistence-status race: the previous saved label stayed visible during the 150 ms debounce before saving the terminal result. Revision-aware save receipts now prevent that misleading label. A run lost during the pre-fix test correctly restores as interrupted; it is not retroactively presented as completed.
 
 Task 3A specification review passed at `54faa72`, including the matrix/group pagination fixes. Pending at this checkpoint: code-quality review closure, actual plots and graphical exports (Task 3B), local evidence queries/reports and the complete final acceptance suite (Task 4). Passing these checks does not mean the entire delivery is complete.
+
+## 2026-10-23 — Task 3B actual-browser checks
+
+Task 3A quality review subsequently closed at `85b51f5`. Task 3B checks below
+used the same fresh isolated Chrome context and actual saved service results,
+not fabricated result payloads. All synthetic results are test evidence only.
+
+- Inspected actual PCA, heatmap with R clustering trees, Welch volcano,
+  observed-unit violin and OPLS predictive/orthogonal scores. HD PCA shows
+  six distinct group markers, including in grayscale.
+- SVG download contained the rendered 900 × 570 chart with explicit styles;
+  the PNG file header independently confirmed 900 × 570 RGBA pixels. No
+  automatic DPI or publication-certification claim is made.
+- Downloaded full-result XLSX contained 40 sheets and no formula cells.
+- Downloaded reproduction runner executed against the trusted local engine;
+  reproduced OPLS numerical `data` was deeply equal to the saved result.
+  Attempting to reuse the existing output file failed and left its hash intact.
+- Actual CAS link for HD feature 75-31-0 opened the threshold-search route
+  with that value present in its search input.
+- Seven public reference links had new-tab/noopener/noreferrer/no-referrer
+  behavior; no embedded external application or automatic upload was added.
+- At 390 px viewport width, document width remained 390 px; wide charts
+  were contained in their own horizontal scrolling region.
+- Completed synthetic OPLS run `55275d015b4309fefec6e14af6580b49` through the
+  UI with 200 requested permutations: 200 completed, zero failed; displayed
+  all 200 finite values and the actual observed-statistic reference line.
+  Engine-returned balanced accuracy was 0.875, Q2 was 0.6003317303286255,
+  permutation p was 0.014925373134328358. These are synthetic test results,
+  not findings about HD samples or model validity on experimental data.
+- Switching the completed run to VIP, enabling labels and changing palette
+  triggered zero POST requests to the analysis jobs endpoint. No page errors
+  were observed in these checks.
+
+The exported portable project with this run is retained outside Git at
+`outputs/analysis-workbench-qa/synthetic-200-permutations-verified.json` in
+the main project directory. Review closure and Task 4 evidence/report acceptance
+remain separate gates; this checkpoint does not claim overall completion.
