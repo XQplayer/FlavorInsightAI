@@ -91,8 +91,13 @@ compare_data <- function(dataset,a) {
   adjust<-a$adjust%||%'BH';scope<-a$adjustScope%||%'comparison'
   list(results=adjust_rows(results,adjust,scope),posthoc=if(length(posthoc))adjust_rows(posthoc,adjust,scope)else list(),adjust=adjust,adjustScope=scope,warnings=c(z$audit$warnings,if(adjust=='none')list('MULTIPLE_TESTING_UNADJUSTED')else list()),matrixStrata=z$audit,inferenceSource='observed-only biological-unit-condition means',transform=inferenceTransform,foldChangeSource='unscaled untransformed observed positive group means')
 }
+analysis_pair_budget <- function(n,limit,code) {
+  if(as.double(n)*(n-1)/2>limit)fail(code)
+  invisible(TRUE)
+}
 cluster_axis <- function(x,distance,linkage) {
   if(nrow(x)<2)return(list(order=seq_len(nrow(x)),merge=matrix(integer(),0,2),height=numeric(),labels=character()))
+  analysis_pair_budget(nrow(x),1000000,'CLUSTER_DISTANCE_LIMIT')
   choice(distance,c('euclidean','manhattan','pearson','spearman'),'DISTANCE');choice(linkage,c('average','complete','single','ward.D2'),'LINKAGE')
   if(linkage=='ward.D2'&&distance!='euclidean')fail('WARD_REQUIRES_EUCLIDEAN')
   d<-if(distance%in%c('euclidean','manhattan'))dist(x,method=distance)else as.dist(1-cor(t(x),method=distance))
@@ -109,7 +114,7 @@ analyze_dataset <- function(dataset,recipe=list(),analysis=list(method='preproce
       data$composition<-lapply(seq_len(nrow(z$matrix)),function(i){v<-z$matrix[i,];reason<-if(mixed)'MIXED_UNITS'else if(any(!is.finite(v)))'INCOMPLETE_VALUES'else if(any(v<0))'NEGATIVE_VALUES'else if(sum(v)<=0)'ZERO_TOTAL'else NULL;list(sampleId=z$samples[[i]]$id,group=g[i],proportions=if(is.null(reason))v/sum(v)else rep(NA_real_,length(v)),naReason=reason)})
     }
     if(method=='correlation'){
-      z<-prepare_independent(dataset,allow_mixed_matrix_types=isTRUE(analysis$allowMixedMatrixTypes));units<-vapply(z$samples,function(s)s$biologicalUnitId,character(1));subjects<-vapply(z$samples,function(s)s$subjectId,character(1));if(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)]))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD');cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];if(ncol(z$matrix)<2)fail('CORRELATION_FEATURES');cm<-analysis$correlation%||%'pearson';choice(cm,c('pearson','spearman'),'CORRELATION_METHOD');rows<-list();pairs<-combn(seq_len(ncol(z$matrix)),2)
+      z<-prepare_independent(dataset,allow_mixed_matrix_types=isTRUE(analysis$allowMixedMatrixTypes));units<-vapply(z$samples,function(s)s$biologicalUnitId,character(1));subjects<-vapply(z$samples,function(s)s$subjectId,character(1));if(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)]))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD');cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];if(ncol(z$matrix)<2)fail('CORRELATION_FEATURES');analysis_pair_budget(ncol(z$matrix),250000,'CORRELATION_PAIR_LIMIT');cm<-analysis$correlation%||%'pearson';choice(cm,c('pearson','spearman'),'CORRELATION_METHOD');rows<-list();pairs<-combn(seq_len(ncol(z$matrix)),2)
       for(k in seq_len(ncol(pairs))){
         i<-pairs[1,k];j<-pairs[2,k]
         ok<-is.finite(z$matrix[,i])&is.finite(z$matrix[,j]);n<-sum(ok)

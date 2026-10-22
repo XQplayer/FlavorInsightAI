@@ -1,6 +1,7 @@
 """Loopback-only in-memory R job broker. No client code, paths, or credentials."""
 from collections import deque
 from datetime import datetime, timezone
+from functools import lru_cache
 import argparse
 import hashlib
 import json
@@ -19,13 +20,42 @@ from urllib.parse import urlsplit
 
 BASE = Path(__file__).resolve().parent
 ORIGINS = frozenset(f'http://{host}:{port}' for host in ('127.0.0.1', 'localhost') for port in (5180, 5174, 5175))
-METHODS = ('preprocess', 'pca', 'heatmap', 'compare', 'correlation', 'distribution')
+BASIC_METHODS = ('preprocess', 'pca', 'heatmap', 'compare', 'correlation', 'distribution')
+SUPERVISED_METHODS = ('plsda', 'oplsda')
+METHODS = BASIC_METHODS + SUPERVISED_METHODS
 MAX_BYTES = 32 * 1024 * 1024
 MAX_CELLS = 2_000_000
 TERMINAL = frozenset(('completed', 'failed', 'cancelled'))
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+@lru_cache(maxsize=8)
+def probe_runtime(rscript, rlibs):
+    """Cached startup probe: only fixed trusted R code, never client expressions."""
+    capabilities = {'methods': [], 'runtimeReady': False, 'supervised': False, 'packages': {}}
+    env = os.environ.copy()
+    env['LC_ALL'] = 'C'
+    if rlibs is not None: env['R_LIBS_USER'] = rlibs
+    code = ('if(requireNamespace("jsonlite",quietly=TRUE)) {'
+            'cat("R:",as.character(getRversion()),"\\nJSONLITE:",'
+            'as.character(packageVersion("jsonlite")),"\\n",sep="");'
+            'if(requireNamespace("ropls",quietly=TRUE)) '
+            'cat("ROPLS:",as.character(packageVersion("ropls")),"\\n",sep="")}')
+    kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
+    try:
+        result = subprocess.run([rscript, '--vanilla', '-e', code], env=env,
+                                capture_output=True, text=True, timeout=20, check=False, **kwargs)
+        versions = re.fullmatch(r'R:([0-9]+(?:\.[0-9]+)+)\nJSONLITE:([0-9]+(?:\.[0-9]+)+)(?:\nROPLS:([0-9]+(?:\.[0-9]+)+))?', result.stdout.strip())
+        if result.returncode == 0 and versions:
+            capabilities.update(methods=list(BASIC_METHODS), runtimeReady=True,
+                                rVersion=versions[1], packages={'jsonlite': versions[2]})
+            if versions[3]:
+                capabilities.update(methods=list(METHODS), supervised=True)
+                capabilities['packages']['ropls'] = versions[3]
+    except (OSError, subprocess.SubprocessError):
+        pass  # Health must not claim a runtime/package that could not be loaded.
+    return capabilities
 
 def validate_request(request):
     if not isinstance(request, dict) or set(request) - {'dataset', 'recipe', 'analysis'}:
@@ -60,6 +90,8 @@ class AnalysisService:
     def __init__(self, rscript=None, rlibs=None, max_running=1, max_queued=8, timeout=180, max_history=32):
         self.rscript = str(rscript or os.environ.get('ANALYSIS_RSCRIPT', 'D:/R-4.6.0/bin/Rscript.exe'))
         self.rlibs = rlibs or os.environ.get('R_LIBS_USER')
+        if not 0 < timeout <= 3600: raise ValueError('INVALID_TIMEOUT')
+        self.capabilities = probe_runtime(self.rscript, self.rlibs)
         self.max_running, self.max_queued, self.timeout, self.max_history = max_running, max_queued, timeout, max_history
         self.jobs, self.pending, self.processes = {}, deque(), {}
         self.active = set()  # worker ownership outlives an immediately cancelled status
@@ -80,6 +112,10 @@ class AnalysisService:
             return bool(stored and stored[0] == origin and stored[1] > time.monotonic())
     def submit(self, request):
         validate_request(request)
+        if not self.capabilities['runtimeReady']:
+            raise ValueError('ENGINE_NOT_AVAILABLE')
+        if request['analysis']['method'] in SUPERVISED_METHODS and not self.capabilities['supervised']:
+            raise ValueError('SUPERVISED_NOT_AVAILABLE')
         canonical = json.dumps(request, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
         if len(canonical) > MAX_BYTES: raise ValueError('PAYLOAD_LIMIT')
         with self.lock:
@@ -236,7 +272,7 @@ def create_server(service, port=8890):
             self.send_response(204); self.send_header('Access-Control-Allow-Origin', self.headers['Origin']); self.send_header('Vary', 'Origin'); self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS'); self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type'); self.send_header('Content-Length', '0'); self.end_headers()
         def do_GET(self):
             if self.path == '/health':
-                if self.guard(origin_required=False): self.respond(200, {'status': 'ok', 'serviceVersion': '1.0.0', 'capabilities': {'methods': list(METHODS), 'supervised': False}, 'limits': {'maxBytes': MAX_BYTES, 'maxCells': MAX_CELLS, 'maxQueued': service.max_queued, 'maxRunning': service.max_running, 'timeoutSeconds': service.timeout}, 'persistence': 'memory-only'})
+                if self.guard(origin_required=False): self.respond(200, {'status': 'ok', 'serviceVersion': '1.0.0', 'capabilities': service.capabilities, 'limits': {'maxBytes': MAX_BYTES, 'maxCells': MAX_CELLS, 'maxQueued': service.max_queued, 'maxRunning': service.max_running, 'timeoutSeconds': service.timeout, 'maxTimeoutSeconds': 3600, 'supervisedMaxFits': 200000, 'supervisedMaxCellFits': 2000000000, 'correlationMaxPairs': 250000, 'clusterMaxDistancePairsPerAxis': 1000000}, 'persistence': 'memory-only'})
                 return
             if not self.guard(token=True): return
             match = re.fullmatch(r'/jobs/([a-f0-9]{32})', self.path)
@@ -267,7 +303,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8890); parser.add_argument('--rscript'); parser.add_argument('--rlibs'); parser.add_argument('--timeout', type=int, default=180)
     args = parser.parse_args()
-    if not 1 <= args.port <= 65535 or args.timeout < 1: parser.error('invalid port or timeout')
+    if not 1 <= args.port <= 65535 or not 1 <= args.timeout <= 3600: parser.error('invalid port or timeout')
     service = AnalysisService(rscript=args.rscript, rlibs=args.rlibs, timeout=args.timeout)
     server = create_server(service, args.port)
     try: server.serve_forever()

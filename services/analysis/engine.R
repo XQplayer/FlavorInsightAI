@@ -14,11 +14,12 @@ result<-tryCatch({
   }else analyze_dataset(request$dataset,request$recipe%||%list(),request$analysis)
 },error=function(e)list(error=list(code=conditionMessage(e))))
 # Contract vectors remain JSON arrays even when there is just one component.
-array_fields<-c('sampleIds','featureIds','trainingSampleIds','sourceSampleIds','sourceMatrixTypes','matrixTypes','eigenvalues','explained','cumulative','rowOrder','columnOrder','order','height','labels','values','proportions','denom','normalizationReference')
-json_shape<-function(value,key=''){
+array_fields<-c('sampleIds','featureIds','trainingSampleIds','sourceSampleIds','sourceMatrixTypes','matrixTypes','eigenvalues','explained','cumulative','rowOrder','columnOrder','order','height','labels','values','proportions','denom','normalizationReference','classOrder','responseClassOrder','testSampleIds','preprocessedFeatureIds','response','trueResponse','trainingPrevalence','distribution','seeds','reasons')
+json_shape<-function(value,key='',path=''){
   if(is.matrix(value))return(value)
-  if(is.atomic(value)&&key%in%array_fields)return(I(value))
-  if(is.list(value)){nm<-names(value);return(lapply(seq_along(value),function(i)json_shape(value[[i]],if(is.null(nm))''else nm[i]))|>setNames(nm))}
+  if(is.atomic(value)&&(key%in%array_fields||(key=='center'&&is.numeric(value))||
+     (key=='value'&&grepl('/state/impute$',path))))return(I(value))
+  if(is.list(value)){nm<-names(value);return(lapply(seq_along(value),function(i)json_shape(value[[i]],if(is.null(nm))''else nm[i],paste(path,key,sep='/')))|>setNames(nm))}
   value
 }
 write_json(json_shape(result),args[2],auto_unbox=TRUE,na='null',null='null',digits=16,matrix='rowmajor',pretty=FALSE)

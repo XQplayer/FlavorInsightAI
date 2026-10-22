@@ -48,7 +48,7 @@ class ServiceTest(unittest.TestCase):
     def token(self):
         status, value = self.call('/session', {}, 'POST'); self.assertEqual(status, 200); return value['token']
     def test_health_nonsecret(self):
-        status, body = self.call('/health'); self.assertEqual(status, 200); self.assertNotIn('token', body); self.assertFalse(body['capabilities']['supervised'])
+        status, body = self.call('/health'); self.assertEqual(status, 200); self.assertNotIn('token', body); self.assertTrue(body['capabilities']['supervised'])
     def test_origin_and_host_exact(self):
         for origin in ['https://evil.example', 'http://127.0.0.1:5180.evil.example', 'null']:
             self.assertEqual(self.call('/session', {}, 'POST', origin=origin)[0], 403)
@@ -91,7 +91,7 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(job['status'], 'completed', job)
         self.assertEqual(job['result']['provenance']['matrixStrata']['matrixTypes'], ['liquid'])
     def test_queued_cancellation_and_limit(self):
-        service = self.module.AnalysisService(rscript='D:/R-4.6.0/bin/Rscript.exe', max_running=0, max_queued=1)
+        service = self.module.AnalysisService(rscript='D:/R-4.6.0/bin/Rscript.exe', rlibs='E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library', max_running=0, max_queued=1)
         try:
             req = {'dataset': fixture(), 'recipe': {}, 'analysis': {'method': 'pca'}}
             job = service.submit(req)
@@ -153,7 +153,7 @@ class ServiceTest(unittest.TestCase):
         )
         try:
             health = None
-            for _ in range(100):
+            for _ in range(400):
                 self.assertIsNone(process.poll(), 'CLI exited before becoming healthy')
                 try:
                     with urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=.2) as response:
