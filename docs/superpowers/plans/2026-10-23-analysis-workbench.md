@@ -35,8 +35,8 @@ Task 2B implemented at `622bbce`, with API index corrected at `2e7ba5d`.
 Independent specification and quality reviews passed: seven R test entry points
 and 21 Python tests passed. The default-200 permutation benchmark completed all
 200 permutations through the real HTTP service in approximately 65 seconds.
-One non-blocking review suggestion adds lightweight supervised budget-boundary
-regressions before the UI task. The isolated Python preview service was started
+The non-blocking review suggestion for lightweight supervised budget-boundary
+regressions was completed at `97e60a8`. The isolated Python preview service was started
 and verified at port 8890, with a 1200-second job timeout; the original 5174/8787
 services remain independent.
 
@@ -52,6 +52,17 @@ Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervis
 ## Task 3 — Research workbench UI and external directory
 
 Execution split to keep reviews tractable: **3A** delivers the import/group/recipe/run workbench, persistence, service client and completed Shimadzu handoff, with honest raw result tables; **3B** adds the result visualizations, visual/table exports and curated external directory. Each split requires its own specification and quality review; raw-table completion alone is not the finished workbench.
+
+Task 3A completed and independently reviewed through `85b51f5`: 47 analysis
+tests passed; specification and quality review findings are closed. Corrections
+include revision-aware save status, preprocessing freshness, complete paged
+matrix values, bounded group controls, and fresh UI snapshot identities on
+repeated archive imports/handoffs so existing run history is preserved. The
+verified archive adapter remains unchanged. Real browser checks covered actual
+basic and supervised service jobs, independence gates, HD archive exploration,
+offline controls, cancellation, portable projects and immediate reload after
+saving. Details and limitations are in `docs/analysis-workbench-browser-checks.md`.
+Task 3B is in progress; graphs and local evidence queries are not yet complete.
 
 Files: `frontend/src/pages/DataAnalysisPage.jsx`, `frontend/src/components/analysis/`, `frontend/src/analysis/client.mjs`, `frontend/src/styles/analysis.css`, `frontend/src/pages/ResourcesPage.jsx`, platform contracts.
 
