@@ -85,6 +85,16 @@ internal_values <- function(raw,rows,r,d) {
   if(semi&&!isTRUE(r$acknowledgeDoubleNormalization))fail('DOUBLE_INTERNAL_STANDARD_NORMALIZATION')
   raw$x[rows,j]
 }
+sample_matrix_types <- function(sample) {
+  types<-unlist(sample$sourceMatrixTypes,use.names=FALSE)
+  if(!length(types)){
+    config<-sample$sourceConfiguration
+    kind<-config$matrixType%||%''
+    if(!nzchar(kind))kind<-config$sampleForm%||%''
+    types<-kind
+  }
+  unique(types[nzchar(types)])
+}
 fit_recipe <- function(dataset,recipe=list(),training_ids=NULL) {
   raw<-read_dataset(dataset);r<-recipe_defaults(recipe)
   rows<-which(vapply(raw$samples,function(s)!identical(s$include,FALSE),logical(1)))
@@ -96,12 +106,7 @@ fit_recipe <- function(dataset,recipe=list(),training_ids=NULL) {
   if(!length(cols))fail('NO_FEATURES')
   units<-unique(vapply(raw$features[cols],function(f)f$unit%||%'',character(1)));units<-units[nzchar(units)]
   if(length(units)>1&&!isTRUE(r$filter$allowMixedUnits))fail('MIXED_UNITS_ACKNOWLEDGEMENT_REQUIRED')
-  types<-unique(vapply(raw$samples[rows],function(s){
-    config<-s$sourceConfiguration
-    kind<-config$matrixType%||%''
-    if(!nzchar(kind))kind<-config$sampleForm%||%''
-    kind
-  },character(1)));types<-types[nzchar(types)]
+  types<-unique(unlist(lapply(raw$samples[rows],sample_matrix_types),use.names=FALSE))
   if(length(types)>1&&!isTRUE(r$filter$allowMixedMatrixTypes))fail('MIXED_MATRIX_TYPES_ACKNOWLEDGEMENT_REQUIRED')
   x<-raw$x[rows,cols,drop=FALSE];q<-raw$q[rows,cols,drop=FALSE];ratios<-colMeans(is.na(x));drop<-rep(FALSE,ncol(x));reasons<-rep('',ncol(x))
   if(!is.null(r$filter$maxMissing)) {

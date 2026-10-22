@@ -14,7 +14,7 @@ result<-tryCatch({
   }else analyze_dataset(request$dataset,request$recipe%||%list(),request$analysis)
 },error=function(e)list(error=list(code=conditionMessage(e))))
 # Contract vectors remain JSON arrays even when there is just one component.
-array_fields<-c('sampleIds','featureIds','trainingSampleIds','sourceSampleIds','eigenvalues','explained','cumulative','rowOrder','columnOrder','order','height','labels','values','proportions','denom','normalizationReference')
+array_fields<-c('sampleIds','featureIds','trainingSampleIds','sourceSampleIds','sourceMatrixTypes','matrixTypes','eigenvalues','explained','cumulative','rowOrder','columnOrder','order','height','labels','values','proportions','denom','normalizationReference')
 json_shape<-function(value,key=''){
   if(is.matrix(value))return(value)
   if(is.atomic(value)&&key%in%array_fields)return(I(value))

@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
 import urllib.request
 import urllib.error
 
@@ -79,6 +80,16 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(job['status'], 'completed', job)
         self.assertIsInstance(job['result']['data']['featureIds'], list)
         self.assertIsInstance(job['result']['data']['eigenvalues'], list)
+    def test_observed_matrix_metadata_stays_json_array(self):
+        token = self.token(); data = fixture()
+        for sample in data['samples']: sample['sourceConfiguration'] = {'sampleForm': 'liquid'}
+        _, job = self.call('/jobs', {'dataset': data, 'recipe': {}, 'analysis': {'method': 'compare', 'control': 'C', 'treatment': 'T'}}, 'POST', token=token)
+        for _ in range(200):
+            _, job = self.call('/jobs/' + job['id'], token=token)
+            if job['status'] in ['completed', 'failed']: break
+            time.sleep(.03)
+        self.assertEqual(job['status'], 'completed', job)
+        self.assertEqual(job['result']['provenance']['matrixStrata']['matrixTypes'], ['liquid'])
     def test_queued_cancellation_and_limit(self):
         service = self.module.AnalysisService(rscript='D:/R-4.6.0/bin/Rscript.exe', max_running=0, max_queued=1)
         try:
@@ -161,5 +172,83 @@ class ServiceTest(unittest.TestCase):
             except subprocess.TimeoutExpired:
                 process.kill(); process.wait(timeout=5)
         self.assertIsNotNone(process.poll())
+    def test_cancelled_active_job_not_evicted_and_worker_survives(self):
+        # Barrier changes only scheduling; temp directory and subsequent R job are real.
+        entered, release = threading.Event(), threading.Event()
+        directories = []
+        original_mkdtemp = self.module.tempfile.mkdtemp
+        def synchronized_mkdtemp(*args, **kwargs):
+            entered.set()
+            if not release.wait(5): raise AssertionError('test barrier release timed out')
+            directory = original_mkdtemp(*args, **kwargs)
+            directories.append(Path(directory))
+            return directory
+        service = self.module.AnalysisService(rscript='D:/R-4.6.0/bin/Rscript.exe', rlibs='E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library')
+        request = {'dataset': fixture(), 'recipe': {}, 'analysis': {'method': 'pca'}}
+        try:
+            with patch.object(self.module.tempfile, 'mkdtemp', side_effect=synchronized_mkdtemp):
+                first = service.submit(request)
+                self.assertTrue(entered.wait(3), 'worker did not reach pre-directory barrier')
+                service.cancel(first['id'])
+                self.assertEqual(service.get(first['id'])['status'], 'cancelled')
+                for _ in range(32):
+                    queued = service.submit(request)
+                    service.cancel(queued['id'])
+                retained = service.get(first['id'])
+                release.set()
+                for _ in range(100):
+                    if directories and all(not p.exists() for p in directories): break
+                    time.sleep(.02)
+                self.assertIsNotNone(retained, 'history evicted a cancelled job still owned by worker')
+                self.assertTrue(all(not p.exists() for p in directories), 'cancelled run temporary data not cleaned')
+            following = service.submit(request)
+            for _ in range(200):
+                result = service.get(following['id'])
+                if result['status'] in self.module.TERMINAL: break
+                time.sleep(.03)
+            self.assertEqual(result['status'], 'completed', result)
+            self.assertTrue(service.workers[0].is_alive())
+        finally:
+            release.set(); service.close()
+    def test_preprocess_startup_and_transient_cleanup_errors_do_not_kill_worker(self):
+        for phase in ('startup', 'cleanup'):
+            with self.subTest(phase=phase):
+                service = self.module.AnalysisService(rscript='D:/R-4.6.0/bin/Rscript.exe', rlibs='E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library')
+                request = {'dataset': fixture(), 'recipe': {}, 'analysis': {'method': 'pca'}}
+                owner = self.module.tempfile if phase == 'startup' else self.module.shutil
+                attribute = 'mkdtemp' if phase == 'startup' else 'rmtree'
+                original = getattr(owner, attribute)
+                failed = False
+                cleanup_paths = []
+                def fail_once(*args, **kwargs):
+                    nonlocal failed
+                    if phase == 'cleanup': cleanup_paths.append(Path(args[0]))
+                    if not failed:
+                        failed = True
+                        raise OSError('test-only failure with sensitive-looking path omitted from result')
+                    return original(*args, **kwargs)
+                try:
+                    with patch.object(owner, attribute, side_effect=fail_once):
+                        first = service.submit(request)
+                        for _ in range(150):
+                            result = service.get(first['id'])
+                            if result['status'] in self.module.TERMINAL and first['id'] not in getattr(service, 'active', set()): break
+                            if not service.workers[0].is_alive(): break
+                            time.sleep(.02)
+                        self.assertIn(result['status'], self.module.TERMINAL)
+                        if phase == 'startup':
+                            self.assertEqual(result['status'], 'failed')
+                            self.assertEqual(result['error']['code'], 'SERVICE_EXECUTION_FAILED')
+                        self.assertNotIn('sensitive-looking', json.dumps(result))
+                        following = service.submit(request)
+                        for _ in range(150):
+                            result = service.get(following['id'])
+                            if result['status'] in self.module.TERMINAL and following['id'] not in getattr(service, 'active', set()): break
+                            if not service.workers[0].is_alive(): break
+                            time.sleep(.02)
+                        self.assertEqual(result['status'], 'completed', result)
+                        self.assertTrue(service.workers[0].is_alive())
+                        self.assertTrue(all(not path.exists() for path in cleanup_paths))
+                finally: service.close()
 
 if __name__ == '__main__': unittest.main()

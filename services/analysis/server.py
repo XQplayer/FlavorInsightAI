@@ -62,6 +62,7 @@ class AnalysisService:
         self.rlibs = rlibs or os.environ.get('R_LIBS_USER')
         self.max_running, self.max_queued, self.timeout, self.max_history = max_running, max_queued, timeout, max_history
         self.jobs, self.pending, self.processes = {}, deque(), {}
+        self.active = set()  # worker ownership outlives an immediately cancelled status
         self.lock = threading.RLock()
         self.stopped = threading.Event()
         self.workers = [threading.Thread(target=self._worker, daemon=True) for _ in range(max_running)]
@@ -85,7 +86,7 @@ class AnalysisService:
             if len(self.pending) >= self.max_queued: raise ValueError('QUEUE_FULL')
             for key in list(self.jobs):
                 if len(self.jobs) < self.max_history: break
-                if self.jobs[key]['status'] in TERMINAL: del self.jobs[key]
+                if self.jobs[key]['status'] in TERMINAL and key not in self.active: del self.jobs[key]
             if len(self.jobs) >= self.max_history: raise ValueError('HISTORY_FULL')
             identifier = secrets.token_hex(16)
             self.jobs[identifier] = dict(id=identifier, status='queued', createdAt=now(), startedAt=None, finishedAt=None, requestHash=hashlib.sha256(canonical).hexdigest(), result=None, error=None, logs=[], _input=canonical)
@@ -120,12 +121,24 @@ class AnalysisService:
                 if not self.pending: continue
                 identifier = self.pending.popleft(); job = self.jobs[identifier]
                 if job['status'] != 'queued': continue
+                self.active.add(identifier)
                 job.update(status='running', startedAt=now())
-            self._run(identifier)
+            try:
+                self._run(identifier)
+            except Exception:
+                # A single infrastructure/cleanup exception must not kill the queue.
+                with self.lock:
+                    job = self.jobs.get(identifier)
+                    if job is not None and job['status'] not in TERMINAL:
+                        job.update(status='failed', error={'code': 'SERVICE_EXECUTION_FAILED'}, finishedAt=now())
+            finally:
+                with self.lock:
+                    self.active.discard(identifier)
     def _run(self, identifier):
-        directory = tempfile.mkdtemp(prefix='flavor-analysis-')
+        directory = None
         process = None
         try:
+            directory = tempfile.mkdtemp(prefix='flavor-analysis-')
             input_path = Path(directory) / 'request.json'; output_path = Path(directory) / 'result.json'
             with self.lock: payload = self.jobs[identifier].pop('_input')
             input_path.write_bytes(payload)
@@ -157,9 +170,25 @@ class AnalysisService:
             with self.lock:
                 if self.jobs[identifier]['status'] != 'cancelled': self.jobs[identifier].update(status='failed', error={'code': code}, finishedAt=now())
         finally:
-            with self.lock: self.processes.pop(identifier, None)
-            if process and process.poll() is None: self._kill(process)
-            shutil.rmtree(directory)
+            try:
+                if process and process.poll() is None: self._kill(process)
+            finally:
+                with self.lock: self.processes.pop(identifier, None)
+                if directory is not None:
+                    for attempt in range(3):
+                        try:
+                            shutil.rmtree(directory)
+                            break
+                        except FileNotFoundError:
+                            break
+                        except OSError:
+                            if attempt < 2:
+                                time.sleep(.03)
+                            else:
+                                with self.lock:
+                                    job = self.jobs.get(identifier)
+                                    if job is not None:
+                                        job['logs'].append({'code': 'TEMP_CLEANUP_FAILED'})
     def close(self):
         self.stopped.set()
         with self.lock: identifiers = list(self.jobs)

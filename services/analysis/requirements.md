@@ -63,8 +63,10 @@ No wildcard, remote deployment origin, HTTPS downgrade or `null` origin is accep
 Job: `{id,status,createdAt,startedAt,finishedAt,requestHash,result,error,logs}`.
 Statuses: queued/running/completed/failed/cancelled. requestHash is SHA-256 of
 canonical UTF-8 JSON (sorted keys, compact separators), not an original-file hash.
-Timestamps are UTC ISO 8601. error is `{code}` or null. logs is reserved, currently
-empty: raw R stdout/stderr is discarded to avoid exposing data, paths or secrets.
+Timestamps are UTC ISO 8601. error is `{code}` or null. logs contains only bounded
+service codes (normally empty; TEMP_CLEANUP_FAILED if three temporary-directory
+cleanup attempts fail). Raw R stdout/stderr and exception strings are discarded
+to avoid exposing data, paths or secrets.
 Each completed result provenance includes engineVersion, datasetId,
 recipeSchemaVersion, recipeApplied, rVersion and packages.stats. The enclosing
 job requestHash binds the exact dataset/recipe/analysis request. recipeApplied is
@@ -72,7 +74,10 @@ false for observed-only inference/distributions, which do not use exploration.
 
 Limits: 32 MiB JSON, 2,000,000 cells, 8 queued jobs, one running job, 180 seconds
 per job, 32 retained jobs, 64 live session tokens. Old terminal jobs are evicted
-before history fills. Payload/cell excess returns 413; queue/history full 429;
+before history fills. A job owned by a worker is not evicted, including one whose
+cancelled status is already visible; ownership ends only after process and
+temporary-file cleanup. Startup/cleanup exceptions cannot stop subsequent jobs
+or leave an unhandled running status. Payload/cell excess returns 413; queue/history full 429;
 bad JSON/schema/method 400; Origin/Host 403; missing token 401; unknown run 404.
 No arbitrary code, script names, shell snippets or file paths are interpreted.
 No private fixture or result is committed; execution uses temporary JSON files.
@@ -179,15 +184,37 @@ Tree fields are order, merge, height, labels; merge follows native hclust encodi
 
 ### Observed independent-unit branch
 
-`prepare_independent(dataset, require_confirmation=TRUE)` returns
-`{matrix,samples,featureIds,features}`. Values are only cells whose final lineage
+`prepare_independent(dataset, require_confirmation=TRUE,
+allow_mixed_matrix_types=FALSE, groups=NULL)` returns
+`{matrix,samples,featureIds,features,audit}`. Existing callers using its first two
+arguments remain compatible. groups is an optional explicit group-label vector;
+requested groups must have included samples, and filtering happens before unit,
+subject, matrix-stratum or transform validation. Values are only cells whose final lineage
 is observed; original imputation, QC, missing and unknown excluded. Technical
 repeats are averaged by biologicalUnitId + condition; output samples retain
-sourceSampleIds. Inference requires explicit independenceConfirmed=true and
+sourceSampleIds. Aggregated samples also retain a sourceConfiguration of common
+metadata, all contributing sourceConfigurations, and sourceMatrixTypes. A
+homogeneous sampleForm is preserved; explicitly acknowledged heterogeneous
+technical-unit sources use sampleForm/matrixType='mixed', with their actual
+types and contributing sample IDs retained in audit.mixedTechnicalUnits. This
+metadata remains available to downstream fold preprocessing rather than silently
+discarding the original matrix stratum. Inference requires explicit independenceConfirmed=true and
 nonblank groups/units. Repeated units/subjects across conditions are rejected for
 unpaired tests and correlations. Paired methods require exactly matched nonblank
 subjectId sets with one biological-unit-condition row per subject after technical
 aggregation. Missing pairs are removed per feature, never independently shuffled.
+
+All observed-only methods (compare, correlation, distribution) reject differing
+nonblank matrix types by default, using sourceConfiguration.matrixType then the
+existing Shimadzu sampleForm fallback. To deliberately cross these strata, set
+`analysis.allowMixedMatrixTypes=true`; optionally record the scientific purpose
+in `analysis.mixedMatrixTypesReason`. The result emits
+`data.warnings=['MIXED_MATRIX_TYPES_ACKNOWLEDGED', ...]` and mirrors the full
+audit under data.matrixStrata and provenance.matrixStrata: matrixTypes (always a
+JSON array), mixed, acknowledged, sourceSampleIds, mixedTechnicalUnits, warnings,
+and reason. This acknowledgement is separate from exploratory recipe filtering.
+Differing feature units alone do not prohibit per-feature comparisons or
+correlations; they still prohibit an unqualified composition sum.
 
 Compare options: test `welch` (default), `student`, `paired-t`, `wilcoxon`,
 `paired-wilcoxon`, `anova`, `welch-anova`, `kruskal`; explicit control/treatment
@@ -198,6 +225,12 @@ asymptotic tests (exact=false), ties supported. Optional analysis.transform uses
 the explicit transform schema above. **Exploratory recipe fills/scales/filters
 are never used for inference**; display filtering occurs after multiplicity.
 Internal standards are excluded unless analysis.includeInternalStandards=true.
+Only groups participating in the explicit contrast list (its union) or explicit
+multi-group selection are aggregated, checked and transformed. Unused samples
+remain unchanged in the source dataset and cannot trigger transform-domain or
+unit/subject errors. Independence is conservatively checked over the whole union
+of selected unpaired contrasts, including repeated units across distinct
+contrasts. All eligible features still enter each contrast's multiplicity family.
 
 data.results rows: featureId, comparison, control, treatment, method, alternative,
 nControl/nTreatment, controlSummary/treatmentSummary (n/mean/sd/median/iqr),
@@ -236,6 +269,7 @@ $env:R_LIBS_USER='E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library'
 & 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_preprocess_edges.R
 & 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_methods.R
 & 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_review_regressions.R
+& 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_quality_regressions.R
 & 'D:/Apps/Python313/python.exe' -m unittest discover -s services/analysis/tests -p 'test_service.py' -v
 ```
 
@@ -244,3 +278,7 @@ Welch/BH, Pareto SD, fit/apply leakage sentinel, technical-repeat effective n,
 paired checks, QC protection and method-family smoke checks. Python tests use
 real ephemeral loopback HTTP and R subprocesses, security checks, queue/running
 cancellation and timeout. No persistent service or private HD file is needed.
+Deterministic concurrency regressions pause a real job before temporary-directory
+creation, cancel it, force history eviction, then verify cleanup and a subsequent
+real R job. Injected startup and transient cleanup failures also verify worker
+survival, terminal status, sanitized errors and removal of temporary data.

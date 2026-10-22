@@ -1,15 +1,39 @@
 # Inference deliberately uses observed independent units, never exploratory fills.
-prepare_independent <- function(dataset, require_confirmation=TRUE) {
+prepare_independent <- function(dataset, require_confirmation=TRUE, allow_mixed_matrix_types=FALSE, groups=NULL) {
   if(require_confirmation&&!isTRUE(dataset$provenance$independenceConfirmed))fail('INDEPENDENCE_REQUIRED')
   z<-read_dataset(dataset);rows<-which(vapply(z$samples,function(s)!identical(s$include,FALSE),logical(1)))
+  if(!is.null(groups)){
+    available<-vapply(z$samples[rows],function(s)s$group%||%'',character(1))
+    if(!length(groups)||any(!groups%in%available))fail('REQUESTED_GROUP_HAS_NO_INCLUDED_SAMPLES')
+    rows<-rows[available%in%groups]
+  }
+  if(!length(rows))fail('NO_SAMPLES')
   samples<-z$samples[rows];x<-z$x[rows,,drop=FALSE];q<-z$q[rows,,drop=FALSE];x[q!='observed']<-NA_real_
+  matrixTypes<-unique(unlist(lapply(samples,sample_matrix_types),use.names=FALSE))
+  mixed<-length(matrixTypes)>1
+  if(mixed&&!isTRUE(allow_mixed_matrix_types))fail('MIXED_MATRIX_TYPES_ACKNOWLEDGEMENT_REQUIRED')
   group<-vapply(samples,function(s)s$group%||%'',character(1));unit<-vapply(samples,function(s)s$biologicalUnitId%||%'',character(1));subject<-vapply(samples,function(s)s$subjectId%||%'',character(1))
   if(require_confirmation&&(any(!nzchar(group))||any(!nzchar(unit))))fail('GROUP_AND_BIOLOGICAL_UNIT_REQUIRED')
   if(!require_confirmation)unit[!nzchar(unit)]<-z$sampleIds[rows][!nzchar(unit)]
   keys<-paste(nchar(unit),unit,nchar(group),group,sep=':');uniq<-unique(keys)
   xx<-matrix(NA_real_,length(uniq),ncol(x));meta<-vector('list',length(uniq))
-  for(i in seq_along(uniq)){idx<-which(keys==uniq[i]);subj<-unique(subject[idx]);if(length(subj)>1)fail('TECHNICAL_REPEAT_SUBJECT_CONFLICT');xx[i,]<-colMeans(x[idx,,drop=FALSE],na.rm=TRUE);xx[i,!is.finite(xx[i,])]<-NA_real_;meta[[i]]<-list(id=paste0('unit-',i),name=unit[idx[1]],group=group[idx[1]],biologicalUnitId=unit[idx[1]],subjectId=subj[1],include=TRUE,sourceSampleIds=z$sampleIds[rows[idx]])}
-  list(matrix=xx,samples=meta,featureIds=z$featureIds,features=z$features)
+  mixedTechnicalUnits<-list()
+  for(i in seq_along(uniq)){
+    idx<-which(keys==uniq[i]);subj<-unique(subject[idx]);if(length(subj)>1)fail('TECHNICAL_REPEAT_SUBJECT_CONFLICT')
+    xx[i,]<-colMeans(x[idx,,drop=FALSE],na.rm=TRUE);xx[i,!is.finite(xx[i,])]<-NA_real_
+    configs<-lapply(samples[idx],function(s)s$sourceConfiguration%||%list())
+    sourceTypes<-unique(unlist(lapply(samples[idx],sample_matrix_types),use.names=FALSE))
+    shared<-configs[[1]]
+    for(key in names(shared))if(!all(vapply(configs,function(config)identical(config[[key]],shared[[key]]),logical(1))))shared[[key]]<-NULL
+    if(length(sourceTypes)==1)shared$matrixType<-sourceTypes[[1]]
+    if(length(sourceTypes)>1){
+      shared$matrixType<-'mixed';shared$sampleForm<-'mixed'
+      mixedTechnicalUnits[[length(mixedTechnicalUnits)+1]]<-list(biologicalUnitId=unit[idx[1]],group=group[idx[1]],matrixTypes=sourceTypes,sourceSampleIds=z$sampleIds[rows[idx]])
+    }
+    meta[[i]]<-list(id=paste0('unit-',i),name=unit[idx[1]],group=group[idx[1]],biologicalUnitId=unit[idx[1]],subjectId=subj[1],include=TRUE,sourceSampleIds=z$sampleIds[rows[idx]],sourceConfiguration=shared,sourceConfigurations=configs,sourceMatrixTypes=sourceTypes)
+  }
+  audit<-list(matrixTypes=matrixTypes,mixed=mixed,acknowledged=isTRUE(allow_mixed_matrix_types),sourceSampleIds=z$sampleIds[rows],mixedTechnicalUnits=mixedTechnicalUnits,warnings=if(mixed)list('MIXED_MATRIX_TYPES_ACKNOWLEDGED')else list())
+  list(matrix=xx,samples=meta,featureIds=z$featureIds,features=z$features,audit=audit)
 }
 summary_values <- function(x){x<-x[is.finite(x)];list(n=length(x),mean=if(length(x))mean(x)else NA_real_,sd=if(length(x)>1)sd(x)else NA_real_,median=if(length(x))median(x)else NA_real_,iqr=if(length(x))IQR(x,type=7)else NA_real_)}
 adjust_rows <- function(rows,method,scope='comparison') {
@@ -18,17 +42,27 @@ adjust_rows <- function(rows,method,scope='comparison') {
   for(f in unique(fam)){idx<-which(fam==f);p<-vapply(rows[idx],function(r)r$p,numeric(1));adj<-p.adjust(p,method=method);for(k in seq_along(idx))rows[[idx[k]]]$padj<-adj[k]};rows
 }
 compare_data <- function(dataset,a) {
-  z<-prepare_independent(dataset)
+  test<-a$test%||%'welch';choice(test,c('welch','student','paired-t','wilcoxon','paired-wilcoxon','anova','welch-anova','kruskal'),'TEST_METHOD')
+  paired<-test%in%c('paired-t','paired-wilcoxon');multi<-test%in%c('anova','welch-anova','kruskal')
+  available<-unique(vapply(Filter(function(s)!identical(s$include,FALSE),dataset$samples),function(s)s$group%||%'',character(1)))
+  if(multi){
+    selected<-unlist(a$groups%||%available)
+    if(length(unique(selected))<3||anyDuplicated(selected)||any(!selected%in%available))fail('MULTIGROUP_REQUIRES_THREE_GROUPS')
+    comparisons<-list(list(control=paste(selected,collapse='|'),treatment='omnibus',groups=selected))
+  }else{
+    comparisons<-a$comparisons%||%list(list(control=a$control,treatment=a$treatment))
+    if(!length(comparisons))fail('EXPLICIT_COMPARISON_REQUIRED')
+    for(cmp in comparisons)if(length(cmp$control)!=1||length(cmp$treatment)!=1||identical(cmp$control,cmp$treatment)||!all(c(cmp$control,cmp$treatment)%in%available))fail('EXPLICIT_COMPARISON_REQUIRED')
+    selected<-unique(unlist(lapply(comparisons,function(cmp)c(cmp$control,cmp$treatment)),use.names=FALSE))
+  }
+  z<-prepare_independent(dataset,allow_mixed_matrix_types=isTRUE(a$allowMixedMatrixTypes),groups=selected)
   cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(a$includeInternalStandards),logical(1)))
   if(!length(cols))fail('NO_FEATURES')
   z$matrix<-z$matrix[,cols,drop=FALSE];z$features<-z$features[cols];z$featureIds<-z$featureIds[cols]
   x<-z$matrix;s<-z$samples;groups<-vapply(s,function(t)t$group,character(1));units<-vapply(s,function(t)t$biologicalUnitId,character(1));subjects<-vapply(s,function(t)t$subjectId,character(1))
-  test<-a$test%||%'welch';choice(test,c('welch','student','paired-t','wilcoxon','paired-wilcoxon','anova','welch-anova','kruskal'),'TEST_METHOD');paired<-test%in%c('paired-t','paired-wilcoxon')
   if(!paired&&(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)])))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD')
   direction<-a$alternative%||%'two.sided';choice(direction,c('two.sided','less','greater'),'ALTERNATIVE')
   inferenceTransform<-a$transform%||%list(method='none',pseudocount=0);inferenceTransform<-modifyList(list(method='none',pseudocount=0),inferenceTransform);choice(inferenceTransform$method,c('none','log2','log10','ln','sqrt'),'TRANSFORM_METHOD');tx<-transform_matrix(x,inferenceTransform)
-  multi<-test%in%c('anova','welch-anova','kruskal');comparisons<-a$comparisons
-  if(multi){selected<-unlist(a$groups%||%unique(groups));if(length(selected)<3||any(!selected%in%groups))fail('MULTIGROUP_REQUIRES_THREE_GROUPS');comparisons<-list(list(control=paste(selected,collapse='|'),treatment='omnibus',groups=selected))}else if(is.null(comparisons))comparisons<-list(list(control=a$control,treatment=a$treatment))
   results<-list();posthoc<-list()
   for(cmp in comparisons){
     if(!multi&&(is.null(cmp$control)||is.null(cmp$treatment)||identical(cmp$control,cmp$treatment)||!all(c(cmp$control,cmp$treatment)%in%groups)))fail('EXPLICIT_COMPARISON_REQUIRED')
@@ -55,7 +89,7 @@ compare_data <- function(dataset,a) {
     }
   }
   adjust<-a$adjust%||%'BH';scope<-a$adjustScope%||%'comparison'
-  list(results=adjust_rows(results,adjust,scope),posthoc=if(length(posthoc))adjust_rows(posthoc,adjust,scope)else list(),adjust=adjust,adjustScope=scope,warnings=if(adjust=='none')list('MULTIPLE_TESTING_UNADJUSTED')else list(),inferenceSource='observed-only biological-unit-condition means',transform=inferenceTransform,foldChangeSource='unscaled untransformed observed positive group means')
+  list(results=adjust_rows(results,adjust,scope),posthoc=if(length(posthoc))adjust_rows(posthoc,adjust,scope)else list(),adjust=adjust,adjustScope=scope,warnings=c(z$audit$warnings,if(adjust=='none')list('MULTIPLE_TESTING_UNADJUSTED')else list()),matrixStrata=z$audit,inferenceSource='observed-only biological-unit-condition means',transform=inferenceTransform,foldChangeSource='unscaled untransformed observed positive group means')
 }
 cluster_axis <- function(x,distance,linkage) {
   if(nrow(x)<2)return(list(order=seq_len(nrow(x)),merge=matrix(integer(),0,2),height=numeric(),labels=character()))
@@ -70,12 +104,12 @@ analyze_dataset <- function(dataset,recipe=list(),analysis=list(method='preproce
     p<-NULL
     if(method=='compare')data<-compare_data(dataset,analysis)
     if(method=='distribution'){
-      z<-prepare_independent(dataset,FALSE);cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];z$features<-z$features[cols];g<-vapply(z$samples,function(s)s$group,character(1));data<-list(points=lapply(seq_len(nrow(z$matrix)),function(i)list(sampleId=z$samples[[i]]$id,biologicalUnitId=z$samples[[i]]$biologicalUnitId,group=g[i],values=z$matrix[i,])),featureIds=z$featureIds,summaries=lapply(seq_len(ncol(z$matrix)),function(j)list(featureId=z$featureIds[j],groups=setNames(lapply(unique(g),function(k)summary_values(z$matrix[g==k,j])),unique(g)))),source='observed-only biological-unit-condition means')
+      z<-prepare_independent(dataset,FALSE,allow_mixed_matrix_types=isTRUE(analysis$allowMixedMatrixTypes));cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];z$features<-z$features[cols];g<-vapply(z$samples,function(s)s$group,character(1));data<-list(points=lapply(seq_len(nrow(z$matrix)),function(i)list(sampleId=z$samples[[i]]$id,biologicalUnitId=z$samples[[i]]$biologicalUnitId,group=g[i],values=z$matrix[i,])),featureIds=z$featureIds,summaries=lapply(seq_len(ncol(z$matrix)),function(j)list(featureId=z$featureIds[j],groups=setNames(lapply(unique(g),function(k)summary_values(z$matrix[g==k,j])),unique(g)))),source='observed-only biological-unit-condition means')
       units<-unique(vapply(z$features,function(f)f$unit%||%'',character(1)));mixed<-length(units[nzchar(units)])>1
       data$composition<-lapply(seq_len(nrow(z$matrix)),function(i){v<-z$matrix[i,];reason<-if(mixed)'MIXED_UNITS'else if(any(!is.finite(v)))'INCOMPLETE_VALUES'else if(any(v<0))'NEGATIVE_VALUES'else if(sum(v)<=0)'ZERO_TOTAL'else NULL;list(sampleId=z$samples[[i]]$id,group=g[i],proportions=if(is.null(reason))v/sum(v)else rep(NA_real_,length(v)),naReason=reason)})
     }
     if(method=='correlation'){
-      z<-prepare_independent(dataset);units<-vapply(z$samples,function(s)s$biologicalUnitId,character(1));subjects<-vapply(z$samples,function(s)s$subjectId,character(1));if(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)]))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD');cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];if(ncol(z$matrix)<2)fail('CORRELATION_FEATURES');cm<-analysis$correlation%||%'pearson';choice(cm,c('pearson','spearman'),'CORRELATION_METHOD');rows<-list();pairs<-combn(seq_len(ncol(z$matrix)),2)
+      z<-prepare_independent(dataset,allow_mixed_matrix_types=isTRUE(analysis$allowMixedMatrixTypes));units<-vapply(z$samples,function(s)s$biologicalUnitId,character(1));subjects<-vapply(z$samples,function(s)s$subjectId,character(1));if(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)]))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD');cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];if(ncol(z$matrix)<2)fail('CORRELATION_FEATURES');cm<-analysis$correlation%||%'pearson';choice(cm,c('pearson','spearman'),'CORRELATION_METHOD');rows<-list();pairs<-combn(seq_len(ncol(z$matrix)),2)
       for(k in seq_len(ncol(pairs))){
         i<-pairs[1,k];j<-pairs[2,k]
         ok<-is.finite(z$matrix[,i])&is.finite(z$matrix[,j]);n<-sum(ok)
@@ -107,5 +141,9 @@ analyze_dataset <- function(dataset,recipe=list(),analysis=list(method='preproce
       data<-list(matrix=shown,analysisMatrix=x,rowOrder=if(is.null(rt))seq_len(nrow(x))else rt$order,columnOrder=if(is.null(ct))seq_len(ncol(x))else ct$order,rowTree=rt,columnTree=ct,sampleIds=p$sampleIds,featureIds=p$featureIds,displayScale=display)
     }
   }
-  list(schemaVersion=1,method=method,data=data,preprocessing=p,provenance=list(engineVersion='1.0.0',datasetId=dataset$id%||%NULL,recipeSchemaVersion=recipe$schemaVersion%||%1,recipeApplied=!is.null(p),rVersion=as.character(getRversion()),packages=list(stats=as.character(packageVersion('stats')))))
+  if(method%in%c('compare','correlation','distribution')){
+    if(method!='compare'){data$matrixStrata<-z$audit;data$warnings<-z$audit$warnings}
+    data$matrixStrata$reason<-analysis$mixedMatrixTypesReason%||%NULL
+  }
+  list(schemaVersion=1,method=method,data=data,preprocessing=p,provenance=list(engineVersion='1.0.0',datasetId=dataset$id%||%NULL,recipeSchemaVersion=recipe$schemaVersion%||%1,recipeApplied=!is.null(p),matrixStrata=data$matrixStrata%||%NULL,rVersion=as.character(getRversion()),packages=list(stats=as.character(packageVersion('stats')))))
 }
