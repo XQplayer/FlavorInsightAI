@@ -104,3 +104,53 @@ user's browser profile and does not modify the HD source archive.
 Independent specification/quality review and final whole-implementation review
 are separate completion gates. Any subsequent corrections require their own
 regression checks before the plan is marked complete.
+
+### Review corrections and final regression checkpoint
+
+Specification review closed at `f07bd36`: the complete rendered text of every
+report section, including the factual overview and long headings, is bounded;
+full JSON attachments retain the original values. Quality review closed at
+`0060968`: draft typing/citation interaction no longer repeats evidence scans
+or serialization of unchanged large cell values; cloned package metadata no
+longer freezes the caller's original object.
+
+At `0060968`, independent frontend verification passed **418/418 tests**, with
+zero skipped/failed tests, plus ESLint, Vite build and static-route generation.
+The separate real-Chrome regression
+`node --test scripts/e2e/verify_evidence_memo.test.mjs` passed **1/1** without
+skipping: it counts actual query/serialization calls during draft input, source
+inspection, query submission, paging and context changes. It is intentionally
+outside the regular frontend glob because it needs an explicitly available
+browser/Playwright runtime. Normal source test execution does not gain a new
+hard-coded browser prerequisite.
+
+### Final integration review closure
+
+Fresh whole-implementation review identified and closed two additional issues:
+
+- `b3ca973` accepts the broker's exact safe cleanup-warning object during
+  restoration, while preserving legacy string logs and rejecting extra fields
+  or unknown object codes. Actual fresh-Chrome IndexedDB save/reopen and portable
+  roundtrip preserve the completed result and its warning unchanged.
+- `8477997` rejects ambiguous/duplicate comparison display labels before any
+  aggregation or statistical fit, for both explicit contrasts and omnibus
+  posthoc pairs. This prevents distinct contrasts sharing a correction family
+  or plot selector. Real R regressions prove normal p/BH results and source data
+  are unchanged; English/Chinese messages explain how to correct the settings.
+
+The independent integration reviewer closed both findings and reported no
+remaining Critical/Important issue in the reviewed scope. At `8477997`, the
+coordinating agent reran **420 frontend tests**, **21 Python tests**, **nine R
+test entry points**, ESLint, production build/static routes, and both separate
+real-Chrome regressions: all passed, with no skipped frontend/browser tests.
+Known dependency/build warnings described above remain; no new security or
+public-deployment certification is asserted.
+
+Final complete fresh-browser acceptance at `8477997` also passed **20/20** checks,
+including the real HD scenario and zero page errors. Its durable record and
+downloads are in the main project's
+`outputs/analysis-workbench-final-8477997/acceptance.json`. The isolated preview
+and Python service remain available; main merge, GitHub publication, production
+deployment and AI-model configuration are not part of this completed local
+delivery. Source workbooks, the main worktree's unrelated changes and version
+number remain unchanged.

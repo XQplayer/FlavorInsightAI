@@ -67,18 +67,21 @@ plots, full exports and public references are implemented. Review corrections
 cover numerical-rank scree limits, malformed clustering-tree size/topology,
 omitted-axis height handling and SSR-safe CAS initialization. Targeted frontend
 regressions passed 196 tests; actual browser/export checks include a complete
-200-permutation OPLS run. Task 4 is in progress. The broader root frontend suite
-also exposed legacy wording/release-boundary assertions, which must be reconciled
-against current approved behavior before final acceptance; it is not yet all green.
+200-permutation OPLS run. Task 4 added local evidence/reports and reconciled the
+legacy wording/release-boundary assertions against actual approved behavior.
+Final independent checks at `8477997` passed all 420 frontend tests, 21 Python
+tests, nine R suites, lint/build/static routes, two dedicated actual-browser
+regressions and 20 complete actual-browser acceptance checks including read-only
+HD data. Performance review and whole-integration review are closed.
 
 Files: `frontend/src/pages/DataAnalysisPage.jsx`, `frontend/src/components/analysis/`, `frontend/src/analysis/client.mjs`, `frontend/src/styles/analysis.css`, `frontend/src/pages/ResourcesPage.jsx`, platform contracts.
 
 - [x] Add failing UI contracts for real import/group/preprocess/run controls and unavailable-service state.
-- [ ] Implement bilingual accessible data/group editor, preprocessing controls, versioned run list, analysis settings, cancel/retry, diagnostics and evidence inspector. Never rerun on style changes.
+- [x] Implement bilingual accessible data/group editor, preprocessing controls, versioned run list, analysis settings, cancel/retry, diagnostics and evidence inspector. Never rerun on style changes.
 - [x] Render scores/loadings/scree/heatmap/volcano/box/correlation and supervised validation from real payloads; download SVG/PNG plus complete tables/recipe/methods and reproducible request/script.
 - [x] Connect completed Shimadzu handoff and portable snapshots; show stale runs after edits; preserve run errors without clearing source data.
 - [x] Integrate only seven curated public reference links from the audited catalogue, new-tab/no automatic upload/no iframe, retain verification limits.
-- [ ] Run UI contracts, full frontend lint/build/regression tests, independent spec/quality review, scoped commit.
+- [x] Run UI contracts, full frontend lint/build/regression tests, independent spec/quality review, scoped commit.
 
 ## Task 4 — Evidence assistant, reports and acceptance
 
@@ -86,12 +89,25 @@ User confirmed on 2026-10-23: complete local evidence queries first; model confi
 
 Files: `frontend/src/analysis/evidence.mjs`, `frontend/src/components/analysis/EvidenceAssistant.jsx`, service optional assistant handler, `scripts/e2e/verify_analysis_workbench.mjs`, `docs/analysis-workbench.md`.
 
-- [ ] Test summary/results/methods/feature references against run IDs; unknown claims return no evidence; no cross-project context.
-- [ ] Implement deterministic local evidence lookup explicitly labelled as such. Model configuration remains deferred by the user's explicit choice; no credentials or cloud calls are needed.
-- [ ] Add report composition with methods/limitations/data source and linked result tables. Public reference search uses generic terms only and user activation.
-- [ ] Exercise real HD result archive read-only and a known synthetic independent-unit dataset; test import, PCA, heatmap, comparisons, PLS/OPLS, persistence, cancellation, export and offline/model-unconfigured behavior.
-- [ ] Run complete automated checks and browser visual checks, final independent review. Document verified capabilities versus credentials/deployment prerequisites. Start isolated preview and local analysis service; do not push or bump versions.
+Completed through `8477997`. Independent specification review closed the full
+report-section text-bound issue; quality review closed repeated query/serialization
+work and metadata aliasing. Final integration review closed safe cleanup-log
+restoration and ambiguous comparison-label handling. All findings were fixed and
+independently rechecked. No cloud assistant handler or model configuration was
+added, in accordance with the user's local-evidence-first decision.
+
+- [x] Test summary/results/methods/feature references against run IDs; unknown claims return no evidence; no cross-project context.
+- [x] Implement deterministic local evidence lookup explicitly labelled as such. Model configuration remains deferred by the user's explicit choice; no credentials or cloud calls are needed.
+- [x] Add report composition with methods/limitations/data source and linked result tables. Public reference search uses generic terms only and user activation.
+- [x] Exercise real HD result archive read-only and a known synthetic independent-unit dataset; test import, PCA, heatmap, comparisons, PLS/OPLS, persistence, cancellation, export and offline/model-unconfigured behavior.
+- [x] Run complete automated checks and browser visual checks, final independent review. Document verified capabilities versus credentials/deployment prerequisites. Start isolated preview and local analysis service; do not push or bump versions.
 
 ## Completion boundary
 
 No original experiment file edits, main dirty-file staging, production deployment, cloud data upload or GitHub push. R package installation is project-local. Remote AI live validation requires user-owned credentials and consent; never report it tested when absent. Server configuration and private bookmark inventory must not enter Git. Complete local functionality and report any remaining externally blocked feature explicitly.
+
+Local implementation and acceptance are complete. Branch `codex/analysis-workbench`
+and its isolated worktree are preserved, pending the user's integration choice.
+The original 5174/8787 services are separate from preview 5180 and Python analysis
+8890. No main merge or remote push has occurred, and version 1.5.0 is unchanged.
+Full evidence and limitations: `docs/analysis-workbench-browser-checks.md`.
