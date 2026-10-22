@@ -12,22 +12,32 @@ network access is needed. Do not upgrade packages silently.
 
 ## Start / stop
 
-From the repository root in PowerShell:
+Current verified fallback, from the repository root in PowerShell:
 
 ```powershell
-./scripts/start_analysis_service.ps1
+& 'D:/Apps/Python313/python.exe' services/analysis/server.py --port 8890 --rscript 'D:/R-4.6.0/bin/Rscript.exe' --rlibs 'E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library'
 ```
 
 Defaults: Python `D:/Apps/Python313/python.exe`, Rscript
 `D:/R-4.6.0/bin/Rscript.exe`, project-local R library
 `E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library`, port 8890.
-Override with `-PythonPath`, `-RscriptPath`, `-RLibraryPath`, `-Port`,
-`-TimeoutSeconds`. The launcher uses a hidden process, resolves script paths,
-does not replace an existing server and never touches ports 5174 or 8787.
-Use the printed owned PID to stop the service. Jobs and tokens are **memory-only**;
+Override the direct server options with `--rscript`, `--rlibs`, `--port`,
+`--timeout`. The foreground server can be stopped with Ctrl+C. It never changes
+ports 5174 or 8787. Jobs and tokens are **memory-only**;
 restart loses all history and does not claim old jobs are still running. A process
 forcibly terminated outside the broker cannot clean up its temporary files;
 normal cancellation/shutdown removes each job's isolated temporary directory.
+
+**Launcher delivery blocker (2026-10-23):** the intended
+`scripts/start_analysis_service.ps1` was written and its presence/hidden-launch
+contract passed a Python read test, but a subsequent PowerShell parser check
+reported access denied and the file then disappeared. No matching recent
+Defender detection or operational event was returned by read-only checks. Cause
+is unconfirmed; no security controls were disabled and the file was not
+recreated to bypass them. The dedicated hidden launcher is therefore **not
+delivered**. The launcher-presence regression test intentionally remains failing
+until the host issue is resolved. No persistent 8890 service was started during
+implementation. All execution tests use the implemented Python service directly.
 
 ## HTTP contract
 
