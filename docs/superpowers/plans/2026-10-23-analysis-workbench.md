@@ -18,12 +18,12 @@ Completed core contracts at `2859daf`: 19 tests, spec/quality review approved; r
 
 Files: `frontend/src/analysis/{dataset,imports,storage,exports,shimadzuAdapter}.mjs`, corresponding `*.test.mjs`; minimal handoff changes in existing Shimadzu page.
 
-- [ ] Write tests for duplicate IDs, nonnumeric cells, numeric CAS not becoming measurements, explicit orientation, null preservation, safe ZIP paths/hash validation and incomplete-run rejection.
-- [ ] Run `node --test frontend/src/analysis/*.test.mjs` and verify failures before implementation.
-- [ ] Implement XLSX/CSV/TSV/paste preview and explicit sample-column/header selection; cached formula values only, bounded imports, stable feature IDs; editable grouping and immutable version helpers.
-- [ ] Implement verified complete Shimadzu archive adapter selecting sample concentration output, retaining imputation/CV masks/internal-standard metadata. Direct handoff uses the same archive adapter so equivalence is testable.
-- [ ] Implement IndexedDB project save/load and portable JSON export, safe CSV cells and CSV/XLSX result exports.
-- [ ] Run focused tests, independently review spec then quality, commit only these files.
+- [x] Write tests for duplicate IDs, nonnumeric cells, numeric CAS not becoming measurements, explicit orientation, null preservation, safe ZIP paths/hash validation and incomplete-run rejection.
+- [x] Run `node --test frontend/src/analysis/*.test.mjs` and verify failures before implementation.
+- [x] Implement XLSX/CSV/TSV/paste preview and explicit sample-column/header selection; cached formula values only, bounded imports, stable feature IDs; editable grouping and immutable version helpers.
+- [x] Implement verified complete Shimadzu archive adapter selecting sample concentration output, retaining imputation/CV masks/internal-standard metadata. Direct handoff uses the same archive adapter so equivalence is testable.
+- [x] Implement IndexedDB project save/load and portable JSON export, safe CSV cells and CSV/XLSX result exports.
+- [x] Run focused tests, independently review spec then quality, commit only these files.
 
 ## Task 2 — Local R engine and task service
 
@@ -42,12 +42,12 @@ services remain independent.
 
 Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervised.R,requirements.md}`, `services/analysis/tests/`. Startup uses the shipped `server.py` Python CLI directly; no new PS1 launcher is required. The earlier missing-script incident remains documented in `requirements.md`, and the real CLI startup/health/shutdown path is regression-tested without changing HTTP security.
 
-- [ ] Write real R reference tests: PCA eigenvalues/reconstruction, Welch p, BH, Pareto sample-SD, missing/log/constant errors, paired IDs, technical-unit handling and protected missing values.
-- [ ] Implement validated fixed-order filtering/imputation (none/constant/median/half-min/KNN), normalization (none/sum/median/PQN/IS), transform and scaling. Keep observed inference separate from exploration.
-- [ ] Implement PCA, heatmap distances/trees, two/multigroup tests with posthoc/effects/n/FC/FDR, correlation and distribution payloads.
-- [ ] Implement ropls PLS-DA/OPLS-DA, training-fold preprocessing, grouped nested validation, seeded permutation and feasibility gates. Export fitted versus held-out results distinctly.
-- [ ] Implement allowlisted loopback service with token/exact-origin/Host checks, queued jobs, timeout, cancellation and bounded JSON. No arbitrary code/path execution. Tests use real subprocesses plus malformed requests.
-- [ ] Pin actual package versions and licenses, run numeric and service/security tests, independent spec/quality review and scoped commit.
+- [x] Write real R reference tests: PCA eigenvalues/reconstruction, Welch p, BH, Pareto sample-SD, missing/log/constant errors, paired IDs, technical-unit handling and protected missing values.
+- [x] Implement validated fixed-order filtering/imputation (none/constant/median/half-min/KNN), normalization (none/sum/median/PQN/IS), transform and scaling. Keep observed inference separate from exploration.
+- [x] Implement PCA, heatmap distances/trees, two/multigroup tests with posthoc/effects/n/FC/FDR, correlation and distribution payloads.
+- [x] Implement ropls PLS-DA/OPLS-DA, training-fold preprocessing, grouped nested validation, seeded permutation and feasibility gates. Export fitted versus held-out results distinctly.
+- [x] Implement allowlisted loopback service with token/exact-origin/Host checks, queued jobs, timeout, cancellation and bounded JSON. No arbitrary code/path execution. Tests use real subprocesses plus malformed requests.
+- [x] Pin actual package versions and licenses, run numeric and service/security tests, independent spec/quality review and scoped commit.
 
 ## Task 3 — Research workbench UI and external directory
 
@@ -66,10 +66,10 @@ Task 3B is in progress; graphs and local evidence queries are not yet complete.
 
 Files: `frontend/src/pages/DataAnalysisPage.jsx`, `frontend/src/components/analysis/`, `frontend/src/analysis/client.mjs`, `frontend/src/styles/analysis.css`, `frontend/src/pages/ResourcesPage.jsx`, platform contracts.
 
-- [ ] Add failing UI contracts for real import/group/preprocess/run controls and unavailable-service state.
+- [x] Add failing UI contracts for real import/group/preprocess/run controls and unavailable-service state.
 - [ ] Implement bilingual accessible data/group editor, preprocessing controls, versioned run list, analysis settings, cancel/retry, diagnostics and evidence inspector. Never rerun on style changes.
 - [ ] Render scores/loadings/scree/heatmap/volcano/box/correlation and supervised validation from real payloads; download SVG/PNG plus complete tables/recipe/methods and reproducible request/script.
-- [ ] Connect completed Shimadzu handoff and portable snapshots; show stale runs after edits; preserve run errors without clearing source data.
+- [x] Connect completed Shimadzu handoff and portable snapshots; show stale runs after edits; preserve run errors without clearing source data.
 - [ ] Integrate only seven curated public reference links from the audited catalogue, new-tab/no automatic upload/no iframe, retain verification limits.
 - [ ] Run UI contracts, full frontend lint/build/regression tests, independent spec/quality review, scoped commit.
 
