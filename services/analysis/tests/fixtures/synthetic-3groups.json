@@ -1,0 +1,797 @@
+{
+  "schemaVersion": 1,
+  "id": "public-synthetic-3groups-24x8-v1",
+  "name": "SYNTHETIC demonstration — not experimental evidence",
+  "samples": [
+    {
+      "id": "synthetic-s1",
+      "name": "Synthetic 1",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit1",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s2",
+      "name": "Synthetic 2",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit2",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s3",
+      "name": "Synthetic 3",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit3",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s4",
+      "name": "Synthetic 4",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit4",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s5",
+      "name": "Synthetic 5",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit5",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s6",
+      "name": "Synthetic 6",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit6",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s7",
+      "name": "Synthetic 7",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit7",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s8",
+      "name": "Synthetic 8",
+      "group": "Control",
+      "biologicalUnitId": "synthetic-unit8",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s9",
+      "name": "Synthetic 9",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit9",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s10",
+      "name": "Synthetic 10",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit10",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s11",
+      "name": "Synthetic 11",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit11",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s12",
+      "name": "Synthetic 12",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit12",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s13",
+      "name": "Synthetic 13",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit13",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s14",
+      "name": "Synthetic 14",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit14",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s15",
+      "name": "Synthetic 15",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit15",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s16",
+      "name": "Synthetic 16",
+      "group": "TreatmentA",
+      "biologicalUnitId": "synthetic-unit16",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s17",
+      "name": "Synthetic 17",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit17",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s18",
+      "name": "Synthetic 18",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit18",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s19",
+      "name": "Synthetic 19",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit19",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s20",
+      "name": "Synthetic 20",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit20",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s21",
+      "name": "Synthetic 21",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit21",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s22",
+      "name": "Synthetic 22",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit22",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s23",
+      "name": "Synthetic 23",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit23",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    },
+    {
+      "id": "synthetic-s24",
+      "name": "Synthetic 24",
+      "group": "TreatmentB",
+      "biologicalUnitId": "synthetic-unit24",
+      "subjectId": "",
+      "batch": "synthetic",
+      "include": true
+    }
+  ],
+  "features": [
+    {
+      "id": "synthetic-f1",
+      "name": "Synthetic compound 1",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f2",
+      "name": "Synthetic compound 2",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f3",
+      "name": "Synthetic compound 3",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f4",
+      "name": "Synthetic compound 4",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f5",
+      "name": "Synthetic compound 5",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f6",
+      "name": "Synthetic compound 6",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f7",
+      "name": "Synthetic compound 7",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-f8",
+      "name": "Synthetic compound 8",
+      "cas": "",
+      "unit": "arbitrary-positive-unit",
+      "isInternalStandard": false,
+      "annotations": {
+        "synthetic": true
+      }
+    }
+  ],
+  "matrix": [
+    [
+      14.336735,
+      13.561021,
+      15.309875,
+      15.636145,
+      20.08775,
+      22.650794,
+      26.243067,
+      26.358403
+    ],
+    [
+      11.015967,
+      13.039502,
+      18.308576,
+      16.433412,
+      19.669381,
+      23.112732,
+      24.173867,
+      23.94825
+    ],
+    [
+      11.205749,
+      14.940377,
+      14.932319,
+      19.173616,
+      18.743939,
+      23.313366,
+      22.655616,
+      27.348494
+    ],
+    [
+      13.08785,
+      13.706288,
+      14.843983,
+      20.233999,
+      17.838177,
+      22.949852,
+      24.609158,
+      24.511723
+    ],
+    [
+      10.563211,
+      15.69825,
+      17.055951,
+      18.39698,
+      17.551181,
+      21.921364,
+      24.641231,
+      28.225468
+    ],
+    [
+      11.232732,
+      12.546373,
+      14.373057,
+      16.317259,
+      18.022184,
+      20.635919,
+      22.244158,
+      25.447023
+    ],
+    [
+      14.455212,
+      14.868189,
+      17.078328,
+      16.69749,
+      18.812483,
+      19.899835,
+      23.358134,
+      26.096743
+    ],
+    [
+      12.009506,
+      11.782609,
+      17.627781,
+      18.670842,
+      19.309235,
+      20.361236,
+      26.349889,
+      25.783058
+    ],
+    [
+      11.746373,
+      18.124575,
+      17.910514,
+      20.539012,
+      21.679837,
+      25.528257,
+      26.109726,
+      26.742561
+    ],
+    [
+      14.20551,
+      15.212241,
+      20.409422,
+      19.189947,
+      21.46793,
+      27.289929,
+      23.206503,
+      30.11717
+    ],
+    [
+      12.596718,
+      18.835054,
+      18.961502,
+      18.092534,
+      21.652235,
+      28.092978,
+      24.589893,
+      27.241747
+    ],
+    [
+      11.573057,
+      14.710514,
+      18.024527,
+      18.936998,
+      22.483899,
+      27.372586,
+      26.446818,
+      30.65223
+    ],
+    [
+      15.163303,
+      17.60305,
+      21.838151,
+      20.304881,
+      23.622087,
+      25.58628,
+      24.729056,
+      27.14925
+    ],
+    [
+      14.322843,
+      14.0799,
+      19.353301,
+      19.893031,
+      24.413585,
+      23.894089,
+      24.238328,
+      28.399984
+    ],
+    [
+      11.517259,
+      17.739012,
+      19.336998,
+      18.12901,
+      24.462038,
+      23.329396,
+      26.829056,
+      27.926479
+    ],
+    [
+      13.660786,
+      15.479363,
+      20.872636,
+      17.707926,
+      23.965961,
+      24.105984,
+      26.488574,
+      27.426587
+    ],
+    [
+      14.681987,
+      20.698506,
+      20.883758,
+      20.776906,
+      25.916864,
+      29.171792,
+      24.383221,
+      32.787311
+    ],
+    [
+      12.422184,
+      18.079837,
+      23.283899,
+      22.462038,
+      25.944633,
+      30.37794,
+      24.883577,
+      29.707341
+    ],
+    [
+      15.395685,
+      19.201686,
+      24.515919,
+      21.425374,
+      26.320941,
+      30.754845,
+      27.990402,
+      32.744514
+    ],
+    [
+      16.433297,
+      17.551368,
+      22.104842,
+      18.814718,
+      26.48542,
+      30.370432,
+      27.330755,
+      28.891069
+    ],
+    [
+      13.035919,
+      18.728257,
+      24.972586,
+      18.129396,
+      25.97794,
+      29.663695,
+      25.27364,
+      30.978835
+    ],
+    [
+      14.048453,
+      19.049133,
+      23.05922,
+      20.428339,
+      24.886257,
+      28.998969,
+      26.714004,
+      30.376769
+    ],
+    [
+      15.323246,
+      19.287229,
+      21.123137,
+      22.742103,
+      23.795507,
+      28.471456,
+      27.690995,
+      30.57963
+    ],
+    [
+      12.644158,
+      19.709726,
+      24.446818,
+      22.029056,
+      23.283577,
+      28.07364,
+      25.069973,
+      32.752796
+    ]
+  ],
+  "quality": {
+    "cellStates": [
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ],
+      [
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed",
+        "observed"
+      ]
+    ]
+  },
+  "provenance": {
+    "independenceConfirmed": true,
+    "groupedIndependenceConfirmed": true,
+    "synthetic": true,
+    "description": "Deterministic positive synthetic fixture, 3 groups of 8 independent units; no private research data."
+  }
+}
