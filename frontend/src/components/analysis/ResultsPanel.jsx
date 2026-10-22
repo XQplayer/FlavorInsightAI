@@ -5,6 +5,9 @@ import { downloadFile } from '../../analysis/download.mjs';
 import { serviceError } from '../../analysis/client.mjs';
 import { resultTable } from '../../analysis/resultTables.mjs';
 import ResultVisualizations from './ResultVisualizations.jsx';
+import EvidenceAssistant from './EvidenceAssistant.jsx';
+import AnalysisReport from './AnalysisReport.jsx';
+import { PlotBoundary } from './PlotPrimitives.jsx';
 function ArrayTable({value,name,context,t}) {
   const table=resultTable(value,{name,context});
   return <>
@@ -46,9 +49,9 @@ export default function ResultsPanel({
   <h2>
     {t('Results & audit', '结果与审计')}
   </h2>
-  {!run ? <p>
+  {!run ? <><p>
     {t('No runs yet. Results appear only after actual service execution.', '尚无运行。仅展示实际服务计算结果。')}
-  </p> : <>
+  </p><EvidenceAssistant key={dataset.id} dataset={dataset} t={t}/></> : <>
     <Select label={t('Run history', '运行历史')} value={run.id} onChange={setSelected} options={runs.map(r => ({
         value: r.id,
         label: `${r.request.analysis.method} · ${r.status} · ${r.id}`
@@ -77,8 +80,9 @@ export default function ResultsPanel({
     {run.error && <p role="alert">
       {t(serviceError(run.error, 'en'), serviceError(run.error, 'zh'))}
     </p>}
+    {run.status === 'completed' && <PlotBoundary key={`evidence-${run.id}`} t={t}><EvidenceAssistant run={run} t={t}/></PlotBoundary>}
     {run.result && <>
-      {run.status === 'completed' && <ResultVisualizations key={run.id} run={run} t={t}/>}
+      {run.status === 'completed' && <><PlotBoundary key={`report-${run.id}`} t={t}><AnalysisReport run={run} t={t}/></PlotBoundary><ResultVisualizations key={run.id} run={run} t={t}/></>}
       <JsonBranch name={t('Provenance', '来源')} value={run.result.provenance} t={t} />
       {run.result.data?.fullFit && <section>
         <h3>

@@ -44,7 +44,10 @@ test('the production database page SSRs distinct embedded home and search views'
   assert.match(homeMarkup, /FlavorInsight AI · 数据库模块/);
   assert.match(homeMarkup, /<h1>FlavorThresholdDB<\/h1>/);
   assert.match(homeMarkup, /aria-label="数据库数据覆盖"/);
-  assert.match(homeMarkup, /数据库实时动态/);
+  // Current source distinguishes the activity label from its statistics heading.
+  assert.match(homeMarkup, /数据库动态/);
+  assert.match(homeMarkup, /访问统计/);
+  assert.equal((homeMarkup.match(/<main\b/g) ?? []).length, 0);
   assert.match(homeMarkup, />数据来源与引用<\/button>/);
   assert.doesNotMatch(homeMarkup, /class="science-nav/);
   assert.doesNotMatch(homeMarkup, /联系我们|Contact us|HXQLab/);

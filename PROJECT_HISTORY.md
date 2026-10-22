@@ -325,3 +325,10 @@ pnpm run build
 - RCSB PDB 记录标为实验结构并链接结构页与 mmCIF 下载；AlphaFold DB 标为预测模型并保留版本及 global pLDDT；GPCRdb 必须精确匹配 UniProt accession；
 - 前端将实验结构、预测模型和 GPCR 受体分栏显示，明确 AlphaFold 模型不是实验性配体—蛋白复合物证据；
 - 乙酸乙酯实测得到 2 个 RCSB PDB 实验结构、14 个 AlphaFold 预测模型和 0 个精确 GPCRdb 记录；三来源并发查询并按来源 TTL 缓存。
+
+## 18. 本地统计分析工作台（2026-10-23，未发布）
+
+- 独立 `codex/analysis-workbench` 工作树新增本地 Python/R 统计分析、不可变数据快照与来源质量、浏览器 IndexedDB 历史及便携项目；本地预览 5180 与计算服务 8890，不更改原 5174 服务。
+- 支持真实预处理、PCA/热图、两组/多组比较、相关/分布、PLS-DA/OPLS-DA；实测推断与探索性补值独立，监督全拟合与留出嵌套验证分别标明，合成数据不得当作实验证据。
+- 本地证据查询（非 AI 生成）只读绑定请求/结果，引用定位实际运行/特征/比较/JSON Pointer；报告提供安全 HTML/Markdown 和完整 CSV/JSON 附件。模型稍后配置，不含模型密钥或网络调用，不宣称 PDF、生产部署或安全认证。
+- 保留原始交接任务 ID：`019fb7d8-f158-7ec3-9e28-82571a114705`。使用、科学边界、Python 启动与验收说明见 `docs/analysis-workbench.md`。此前历史条目保持原样；本条不是对既往发布能力的追溯改写。

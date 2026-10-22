@@ -10,7 +10,13 @@ Version 1.5.0 is the current public release. In addition to the v1.4.0 FlavorDB2
 
 Open-spectrum records retain source identity and license status. Peak downloads and comparison exports are enabled only for reviewed redistributable licenses. The large GNPS metadata index is distributed as a verified GitHub Release asset rather than committed to Git.
 
-Excel upload is temporarily suspended and the vulnerable SheetJS dependency has been removed. Bulk text input and compact/detailed CSV export remain available.
+Excel upload in the database search app remains suspended. Bulk text input and compact/detailed CSV export remain available there. Spreadsheet dependencies (including the existing SheetJS 0.18.5) are used by the separate, lazy-loaded instrument/analysis workbenches; this is not a repository-wide dependency-removal or security-certification claim.
+
+## Local unreleased analysis workbench
+
+The `codex/analysis-workbench` worktree adds local statistical analysis and deterministic **local evidence query — not AI-generated**. This is an unreleased local capability, not a claim about the public deployment. Model configuration and AI inference are deferred. See [analysis workbench usage and scientific boundaries](docs/analysis-workbench.md).
+
+The isolated preview uses `http://127.0.0.1:5180/FlavorInsightAI/data-analysis/` and the Python/R service on `127.0.0.1:8890`; the original frontend on 5174 remains untouched. Source imports and saved project JSON stay local. The current workbench supports HTML/Markdown report ZIPs with complete result attachments, not PDF reports.
 
 ## Version 1.3.1
 

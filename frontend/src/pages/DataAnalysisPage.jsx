@@ -180,7 +180,7 @@ export default function DataAnalysisPage({
       {tab === 'analysis' && <fieldset disabled={busy}>
         <AnalysisPanel dataset={w.dataset} analysis={w.analysis} onChange={w.setAnalysis} available={available} onRun={() => start()} disabled={busy || w.dirty} t={t} />
       </fieldset>}
-      {tab === 'results' && <ResultsPanel runs={w.runs} dataset={w.dataset} recipe={w.recipe} analysis={w.analysis} onRetry={start} disabled={busy || w.dirty || !available.length} t={t} />}
+      {tab === 'results' && <ResultsPanel key={w.contextId} runs={w.runs} dataset={w.dataset} recipe={w.recipe} analysis={w.analysis} onRetry={start} disabled={busy || w.dirty || !available.length} t={t} />}
     </> : tab !== 'data' && <p>
       {t('Import data or load the clearly labelled synthetic example first.', '请先导入数据或加载明确标注的合成示例。')}
     </p>}

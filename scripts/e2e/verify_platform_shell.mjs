@@ -27,7 +27,7 @@ const ROUTES = Object.freeze([
   { name: 'search', segment: 'aroma-threshold/', heading: /香气阈值与风味描述检索/u, title: /^香气阈值检索 \|/u },
   { name: 'processing', segment: 'data-processing/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
   { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
-  { name: 'analysis', segment: 'data-analysis/', heading: /^数据分析平台$/u, title: /^数据分析 \|/u, lightweight: true },
+  { name: 'analysis', segment: 'data-analysis/', heading: /^数据分析$/u, title: /^数据分析 \|/u, lightweight: true },
   { name: 'resources', segment: 'resources/', heading: /^资源中心$/u, title: /^资源中心 \|/u, lightweight: true },
   { name: 'login', segment: 'login/', heading: /^FlavorInsight AI$/u, title: /^账号访问 \|/u, lightweight: true },
 ]);

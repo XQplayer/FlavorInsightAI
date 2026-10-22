@@ -29,6 +29,7 @@ test('PlatformApp keeps the homepage eager and mature workbenches behind lazy bo
   assert.match(platformAppSource, /import PlatformHomePage from ['"]\.\.\/pages\/PlatformHomePage\.jsx['"]/);
   assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DatabaseOverviewPage\.jsx['"]\)\)/);
   assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataProcessingPage\.jsx['"]\)\)/);
+  assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]\)\)/);
   assert.match(platformAppSource, /<Suspense[\s\S]*fallback=\{<RouteLoading/);
   assert.match(platformAppSource, /role=['"]status['"][\s\S]*aria-live=['"]polite['"]/);
   assert.match(platformAppSource, /<PlatformPreferencesProvider>/);
@@ -40,9 +41,10 @@ test('each lazy route keeps its Suspense boundary inside a route error boundary'
     /<RouteErrorBoundary\b[\s\S]*?<\/RouteErrorBoundary>/g,
   )].map(match => match[0]);
 
-  assert.equal(boundaries.length, 2);
+  assert.equal(boundaries.length, 3);
   assert.match(boundaries[0], /<Suspense[\s\S]*<DatabaseOverviewPage/);
   assert.match(boundaries[1], /<Suspense[\s\S]*<DataProcessingPage/);
+  assert.match(boundaries[2], /<Suspense[\s\S]*<DataAnalysisPage/);
   for (const boundary of boundaries) {
     assert.match(boundary, /routeKey=\{route\}/);
     assert.match(boundary, /language=\{language\}/);

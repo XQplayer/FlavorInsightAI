@@ -2,12 +2,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-test('release build does not expose Excel import or ship SheetJS', async () => {
+test('database keeps Excel import suspended while existing spreadsheet tooling is scoped to lazy workbenches', async () => {
   const app = await readFile(new URL('./App.jsx', import.meta.url), 'utf8');
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
-  assert.equal(pkg.dependencies?.xlsx, undefined);
+  // SheetJS already exists for the instrument workbench; a global ban misstates the current boundary.
+  assert.equal(pkg.dependencies?.xlsx, '^0.18.5');
   assert.doesNotMatch(app, /from ['"]xlsx['"]|XLSX\.read|handleFileUpload|file-upload/);
+  const router = await readFile(new URL('./app/PlatformApp.jsx', import.meta.url), 'utf8');
+  assert.match(router, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]\)\)/);
+  assert.match(router, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataProcessingPage\.jsx['"]\)\)/);
+  assert.doesNotMatch(router, /from ['"]xlsx['"]/);
+  const importer=await readFile(new URL('./analysis/imports.mjs',import.meta.url),'utf8');
+  assert.match(importer,/from ['"]xlsx['"]/);
+  assert.match(importer,/maxBytes/);
 });
 
 test('release verification artifacts stay outside source control boundaries', async () => {
@@ -46,7 +54,12 @@ test('release documents describe the current candidate boundaries', async () => 
   assert.match(sources, /PubChem PUG View/);
   assert.match(checklist, /pnpm audit --prod/);
   assert.match(checklist, /单实例/);
-  assert.match(history, /codex\/pubchem-volatile-properties/);
+  // Preserve scientific-source/history contracts, not a long-obsolete working branch name.
+  assert.match(history, /PubChem/);
+  assert.match(history, /来源|source/i);
+  assert.match(history, /019fb7d8-f158-7ec3-9e28-82571a114705/);
+  assert.match(readme, /analysis-workbench\.md/);
+  assert.doesNotMatch(readme, /vulnerable SheetJS dependency has been removed/);
   assert.match(history, /未发布|发布候选/);
 });
 
