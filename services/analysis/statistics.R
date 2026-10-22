@@ -18,7 +18,11 @@ adjust_rows <- function(rows,method,scope='comparison') {
   for(f in unique(fam)){idx<-which(fam==f);p<-vapply(rows[idx],function(r)r$p,numeric(1));adj<-p.adjust(p,method=method);for(k in seq_along(idx))rows[[idx[k]]]$padj<-adj[k]};rows
 }
 compare_data <- function(dataset,a) {
-  z<-prepare_independent(dataset);x<-z$matrix;s<-z$samples;groups<-vapply(s,function(t)t$group,character(1));units<-vapply(s,function(t)t$biologicalUnitId,character(1));subjects<-vapply(s,function(t)t$subjectId,character(1))
+  z<-prepare_independent(dataset)
+  cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(a$includeInternalStandards),logical(1)))
+  if(!length(cols))fail('NO_FEATURES')
+  z$matrix<-z$matrix[,cols,drop=FALSE];z$features<-z$features[cols];z$featureIds<-z$featureIds[cols]
+  x<-z$matrix;s<-z$samples;groups<-vapply(s,function(t)t$group,character(1));units<-vapply(s,function(t)t$biologicalUnitId,character(1));subjects<-vapply(s,function(t)t$subjectId,character(1))
   test<-a$test%||%'welch';choice(test,c('welch','student','paired-t','wilcoxon','paired-wilcoxon','anova','welch-anova','kruskal'),'TEST_METHOD');paired<-test%in%c('paired-t','paired-wilcoxon')
   if(!paired&&(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)])))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD')
   direction<-a$alternative%||%'two.sided';choice(direction,c('two.sided','less','greater'),'ALTERNATIVE')
@@ -72,7 +76,13 @@ analyze_dataset <- function(dataset,recipe=list(),analysis=list(method='preproce
     }
     if(method=='correlation'){
       z<-prepare_independent(dataset);units<-vapply(z$samples,function(s)s$biologicalUnitId,character(1));subjects<-vapply(z$samples,function(s)s$subjectId,character(1));if(anyDuplicated(units)||anyDuplicated(subjects[nzchar(subjects)]))fail('REPEATED_CONDITION_REQUIRES_PAIRED_METHOD');cols<-which(vapply(z$features,function(f)!isTRUE(f$isInternalStandard)||isTRUE(analysis$includeInternalStandards),logical(1)));z$matrix<-z$matrix[,cols,drop=FALSE];z$featureIds<-z$featureIds[cols];if(ncol(z$matrix)<2)fail('CORRELATION_FEATURES');cm<-analysis$correlation%||%'pearson';choice(cm,c('pearson','spearman'),'CORRELATION_METHOD');rows<-list();pairs<-combn(seq_len(ncol(z$matrix)),2)
-      for(k in seq_len(ncol(pairs))){i<-pairs[1,k];j<-pairs[2,k];ok<-is.finite(z$matrix[,i])&is.finite(z$matrix[,j]);n<-sum(ok);fit<-if(n>=3)tryCatch(suppressWarnings(cor.test(z$matrix[ok,i],z$matrix[ok,j],method=cm,exact=FALSE)),error=function(e)NULL)else NULL;rows[[k]]<-list(featureId=z$featureIds[i],otherFeatureId=z$featureIds[j],comparison='all-correlations',n=n,r=if(is.null(fit))NA_real_ else unname(fit$estimate),p=if(is.null(fit))NA_real_ else fit$p.value,padj=NA_real_,naReason=if(is.null(fit))'INSUFFICIENT_N_OR_VARIANCE'else NULL)}
+      for(k in seq_len(ncol(pairs))){
+        i<-pairs[1,k];j<-pairs[2,k]
+        ok<-is.finite(z$matrix[,i])&is.finite(z$matrix[,j]);n<-sum(ok)
+        fit<-if(n>=3)tryCatch(suppressWarnings(cor.test(z$matrix[ok,i],z$matrix[ok,j],method=cm,exact=FALSE)),error=function(e)NULL)else NULL
+        valid<-!is.null(fit)&&is.finite(fit$estimate)&&is.finite(fit$p.value)
+        rows[[k]]<-list(featureId=z$featureIds[i],otherFeatureId=z$featureIds[j],comparison='all-correlations',n=n,r=if(valid)unname(fit$estimate)else NA_real_,p=if(valid)fit$p.value else NA_real_,padj=NA_real_,naReason=if(valid)NULL else 'INSUFFICIENT_N_OR_VARIANCE')
+      }
       data<-list(results=adjust_rows(rows,analysis$adjust%||%'BH','all'),method=cm,source='observed-only biological-unit-condition means')
     }
   }else{
@@ -82,7 +92,12 @@ analyze_dataset <- function(dataset,recipe=list(),analysis=list(method='preproce
       if(any(!is.finite(x)))fail('PCA_REQUIRES_COMPLETE_FINITE_MATRIX');if(nrow(x)<2||ncol(x)<1)fail('PCA_DIMENSIONS')
       centered<-p$state$recipe$scale$axis=='feature'&&p$state$recipe$scale$method%in%c('center','uv','pareto')
       center<-if(centered)FALSE else analysis$center%||%TRUE
-      pc<-prcomp(x,center=center,scale.=FALSE);ev<-pc$sdev^2;if(sum(ev)<=.Machine$double.eps)fail('PCA_ZERO_RANK');rank<-sum(pc$sdev>max(pc$sdev)*sqrt(.Machine$double.eps));ncomp<-analysis$components%||%rank;if(length(ncomp)!=1||ncomp<1||ncomp>rank||ncomp!=as.integer(ncomp))fail('PCA_COMPONENTS')
+      pc<-prcomp(x,center=center,scale.=FALSE);ev<-pc$sdev^2
+      if(any(!is.finite(ev))||!is.finite(sum(ev)))fail('PCA_NONFINITE_VARIANCE')
+      rank<-sum(pc$sdev>max(pc$sdev)*sqrt(.Machine$double.eps))
+      if(sum(ev)<=0||rank<1)fail('PCA_ZERO_RANK')
+      ncomp<-analysis$components%||%rank
+      if(length(ncomp)!=1||ncomp<1||ncomp>rank||ncomp!=as.integer(ncomp))fail('PCA_COMPONENTS')
       data<-list(scores=pc$x[,seq_len(ncomp),drop=FALSE],loadings=pc$rotation[,seq_len(ncomp),drop=FALSE],eigenvalues=ev,explained=ev/sum(ev),cumulative=cumsum(ev/sum(ev)),rank=rank,center=pc$center,sampleIds=p$sampleIds,featureIds=p$featureIds)
     }
     if(method=='heatmap'){

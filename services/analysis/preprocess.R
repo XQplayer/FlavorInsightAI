@@ -81,7 +81,7 @@ normalize_matrix <- function(x,r,reference=NULL,internal=NULL) {
 internal_values <- function(raw,rows,r,d) {
   if(r$method!='internal-standard')return(NULL)
   j<-match(r$featureId,raw$featureIds);if(length(j)!=1||is.na(j))fail('INTERNAL_STANDARD_REQUIRED')
-  semi<-isTRUE(d$provenance$semiQuantitative)||identical(d$provenance$matrixType,'semiquantitative')
+  semi<-isTRUE(d$provenance$semiQuantitative)||identical(d$provenance$matrixType,'semiquantitative')||identical(d$provenance$source,'shimadzu-verified-archive')
   if(semi&&!isTRUE(r$acknowledgeDoubleNormalization))fail('DOUBLE_INTERNAL_STANDARD_NORMALIZATION')
   raw$x[rows,j]
 }
@@ -96,12 +96,22 @@ fit_recipe <- function(dataset,recipe=list(),training_ids=NULL) {
   if(!length(cols))fail('NO_FEATURES')
   units<-unique(vapply(raw$features[cols],function(f)f$unit%||%'',character(1)));units<-units[nzchar(units)]
   if(length(units)>1&&!isTRUE(r$filter$allowMixedUnits))fail('MIXED_UNITS_ACKNOWLEDGEMENT_REQUIRED')
-  types<-unique(vapply(raw$samples[rows],function(s)s$sourceConfiguration$matrixType%||%'',character(1)));types<-types[nzchar(types)]
+  types<-unique(vapply(raw$samples[rows],function(s){
+    config<-s$sourceConfiguration
+    kind<-config$matrixType%||%''
+    if(!nzchar(kind))kind<-config$sampleForm%||%''
+    kind
+  },character(1)));types<-types[nzchar(types)]
   if(length(types)>1&&!isTRUE(r$filter$allowMixedMatrixTypes))fail('MIXED_MATRIX_TYPES_ACKNOWLEDGEMENT_REQUIRED')
   x<-raw$x[rows,cols,drop=FALSE];q<-raw$q[rows,cols,drop=FALSE];ratios<-colMeans(is.na(x));drop<-rep(FALSE,ncol(x));reasons<-rep('',ncol(x))
   if(!is.null(r$filter$maxMissing)) {
     metric<-ratios
-    if(r$filter$missingScope=='group'){groups<-vapply(raw$samples[rows],function(s)s$group%||%'',character(1));if(any(!nzchar(groups)))fail('GROUP_REQUIRED');metric<-apply(vapply(unique(groups),function(g)colMeans(is.na(x[groups==g,,drop=FALSE])),numeric(ncol(x))),1,max)}
+    if(r$filter$missingScope=='group'){
+      groups<-vapply(raw$samples[rows],function(s)s$group%||%'',character(1))
+      if(any(!nzchar(groups)))fail('GROUP_REQUIRED')
+      groupRatios<-lapply(unique(groups),function(g)colMeans(is.na(x[groups==g,,drop=FALSE])))
+      metric<-Reduce(pmax,groupRatios)
+    }
     drop<-metric>r$filter$maxMissing;reasons[drop]<-'missing-threshold'
   }
   allmissing<-colSums(!is.na(x))==0

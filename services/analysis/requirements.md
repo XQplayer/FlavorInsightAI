@@ -112,7 +112,9 @@ Fixed order: filter → fill → sample normalize → transform → scale.
   features exceeding the threshold; missingScope `global` or `group` (worst group).
   allMissing `error`/`drop`; zeroVariance `keep`/`drop`. All drops are audited.
   Differing nonblank units or sample sourceConfiguration.matrixType require
-  explicit acknowledgement. Blank metadata is not invented or grouped by names.
+  explicit acknowledgement. If matrixType is blank/missing, the existing
+  Shimadzu sourceConfiguration.sampleForm (liquid/solid) is used. Blank metadata
+  is not invented or grouped by names.
 - impute.method `none`, `constant`, `median`, `half-minimum`, `knn`.
   Median and minimum positive/2 use only fitted training columns. KNN uses mean
   of up to k nearest fitted training rows measured by RMS Euclidean distance over
@@ -124,8 +126,9 @@ Fixed order: filter → fill → sample normalize → transform → scale.
   PQN's reference is fitted column medians; denominator is median positive finite
   sample/reference quotient. IS requires featureId; reference is read before
   default feature exclusion. provenance.semiQuantitative=true or
-  provenance.matrixType='semiquantitative' requires explicit double-normalization
-  acknowledgement. Nonpositive/undefined denominators fail.
+  provenance.matrixType='semiquantitative' or the existing verified archive
+  provenance.source='shimadzu-verified-archive' requires explicit
+  double-normalization acknowledgement. Nonpositive/undefined denominators fail.
 - transform.method `none`, `log2`, `log10`, `ln`, `sqrt`. Explicit nonnegative
   pseudocount only; default zero, never implicit +1. Domain errors fail.
 - scale.method `none`, `center`, `uv`, `pareto`, `minmax`, `robust`.
@@ -157,7 +160,9 @@ indices; nonfinite output estimates serialize as null with reasons where relevan
 
 PCA `analysis:{method:'pca',components?,center?}`. prcomp SVD, no automatic scaling.
 Center defaults true unless feature center/UV/Pareto already centered the recipe.
-Requires complete finite matrix and nonzero numerical rank. Components default
+Requires complete finite matrix, positive finite variance and nonzero numerical
+rank relative to the largest singular value (not an absolute intensity cutoff).
+Components default
 to rank; requesting more fails. data: scores, loadings, eigenvalues, explained,
 cumulative, rank, center, sampleIds, featureIds. Explained variance is a fraction.
 
@@ -227,6 +232,7 @@ $env:LC_ALL='C'
 $env:R_LIBS_USER='E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library'
 & 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_preprocess_edges.R
 & 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_methods.R
+& 'D:/R-4.6.0/bin/Rscript.exe' services/analysis/tests/test_review_regressions.R
 & 'D:/Apps/Python313/python.exe' -m unittest discover -s services/analysis/tests -p 'test_service.py' -v
 ```
 
