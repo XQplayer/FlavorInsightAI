@@ -26,6 +26,7 @@ import {
 import { recordCompoundSearch } from './lib/supabase';
 import { classifyCompoundBySmarts } from './lib/compoundClassification';
 import { casClassificationService } from './lib/casClassification';
+import { casQuery } from './analysis/casLink.mjs';
 import { CLASSIFICATION_EXPORT_COLUMNS, classificationExportValues } from './lib/csvClassificationExport';
 import { formatSentenceCaseEnglishName } from './lib/compoundNameFormat';
 import { loadResultView, saveResultView } from './resultViewPreference';
@@ -152,7 +153,7 @@ export default function App({
   const [resultView, setResultView] = useState(() => loadResultView());
   
   const [searchMode, setSearchMode] = useState('single'); // 'single' or 'bulk'
-  const [singleQuery, setSingleQuery] = useState('');
+  const [singleQuery, setSingleQuery] = useState(() => casQuery(window.location.search));
   const [bulkQuery, setBulkQuery] = useState('');
   const [selectedMedia, setSelectedMedia] = useState(['空气', '水', '其他介质']);
   const [includeBookResults, setIncludeBookResults] = useState(true);

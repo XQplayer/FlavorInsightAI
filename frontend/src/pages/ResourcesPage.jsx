@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { usePlatformPreferences } from '../app/PlatformPreferences.jsx';
+import ExternalTools from '../components/analysis/ExternalTools.jsx';
 import './PlatformPages.css';
 
 const REPOSITORY_BASE = 'https://github.com/XQplayer/FlavorInsightAI/blob/main';
@@ -19,9 +20,9 @@ const COPY = Object.freeze({
   zh: {
     status: '已核实资源',
     title: '资源中心',
-    description: '仅列出当前可访问的模板与项目文档。尚未发布的材料明确标记为待开放，不提供失效下载入口。',
+    description: '提供当前可访问的模板与项目文档，并单独列出精选公共外部参考及其验证边界。尚未发布的材料明确标记为待开放。',
     policyTitle: '链接发布原则',
-    policyDescription: '链接仅指向项目仓库中已存在的文件。模板可直接下载，文档可在仓库中查看。',
+    policyDescription: '项目模板与文档链接指向仓库文件；精选公共外部参考另列，并明确其核对日期与验证边界。',
     verifiedTitle: '当前可用',
     verifiedDescription: '以下入口已经核对文件路径与访问状态。外部链接将在新标签页打开。',
     verifiedStatus: '可用',
@@ -35,9 +36,9 @@ const COPY = Object.freeze({
   en: {
     status: 'Verified resources',
     title: 'Resources',
-    description: 'Only accessible templates and project documentation are listed. Unreleased materials are clearly marked as coming later and have no dead download links.',
+    description: 'Accessible templates and project documentation, plus separately labelled public external references with verification limits. Unreleased materials are clearly marked as coming later.',
     policyTitle: 'Link publication policy',
-    policyDescription: 'Links point only to files that exist in the project repository. Templates can be downloaded directly and documentation can be reviewed in the repository.',
+    policyDescription: 'Project templates and documents link to repository files. Curated public external references are listed separately with checked dates and verification limits.',
     verifiedTitle: 'Available now',
     verifiedDescription: 'The following paths and access status have been checked. External links open in a new tab.',
     verifiedStatus: 'Available',
@@ -178,7 +179,8 @@ export default function ResourcesPage() {
                 href={resource.href}
                 key={resource.href}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
                 aria-label={`${title}, ${copy.newWindow}`}
               >
                 <div className="platform-resources__verified-card-topline">
@@ -206,6 +208,7 @@ export default function ResourcesPage() {
         </div>
       </section>
 
+      <ExternalTools t={(en,zh)=>language==='zh'?zh:en}/>
       <section className="platform-resources__section" aria-labelledby="planned-resources-title">
         <div className="platform-status-page__section-heading">
           <h2 id="planned-resources-title">{copy.plannedTitle}</h2>

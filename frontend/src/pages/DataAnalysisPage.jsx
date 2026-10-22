@@ -107,6 +107,9 @@ export default function DataAnalysisPage({
       }))}>
       {t('Load SYNTHETIC example (not scientific evidence)', '加载合成示例（非科学证据）')}
     </button>
+    <button onClick={() => onNavigate?.('resources')}>
+      {t('Public external analysis references','公共外部分析参考')}
+    </button>
     <button disabled={busy} onClick={() => onNavigate?.('processing')}>
       {t('Data processing', '数据处理')}
     </button>

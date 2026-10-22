@@ -4,6 +4,7 @@ import { isRunStale } from '../../analysis/workbench.mjs';
 import { downloadFile } from '../../analysis/download.mjs';
 import { serviceError } from '../../analysis/client.mjs';
 import { resultTable } from '../../analysis/resultTables.mjs';
+import ResultVisualizations from './ResultVisualizations.jsx';
 function ArrayTable({value,name,context,t}) {
   const table=resultTable(value,{name,context});
   return <>
@@ -77,6 +78,7 @@ export default function ResultsPanel({
       {t(serviceError(run.error, 'en'), serviceError(run.error, 'zh'))}
     </p>}
     {run.result && <>
+      {run.status === 'completed' && <ResultVisualizations key={run.id} run={run} t={t}/>}
       <JsonBranch name={t('Provenance', '来源')} value={run.result.provenance} t={t} />
       {run.result.data?.fullFit && <section>
         <h3>
