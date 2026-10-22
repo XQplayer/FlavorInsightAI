@@ -29,6 +29,8 @@ Files: `frontend/src/analysis/{dataset,imports,storage,exports,shimadzuAdapter}.
 
 Execution split: Task 2A implements preprocessing, basic statistics and local task service; Task 2B implements the supervised wrapper against the reviewed fit/apply contract. Each receives independent spec and quality review.
 
+Task 2A completed at `51c114e`: independent specification and quality reviews passed, all R suites passed and HTTP/CLI/lifecycle tests passed 15/15. Quality review added mixed-matrix inference gates, selected-contrast scoping and cancellation/history race regressions. User confirmed retaining the Python startup approach after providing the security-software deletion log for the earlier PS1; do not restore that script or alter security settings.
+
 Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervised.R,requirements.md}`, `services/analysis/tests/`. Startup uses the shipped `server.py` Python CLI directly; no new PS1 launcher is required. The earlier missing-script incident remains documented in `requirements.md`, and the real CLI startup/health/shutdown path is regression-tested without changing HTTP security.
 
 - [ ] Write real R reference tests: PCA eigenvalues/reconstruction, Welch p, BH, Pareto sample-SD, missing/log/constant errors, paired IDs, technical-unit handling and protected missing values.
@@ -39,6 +41,8 @@ Files: `services/analysis/{server.py,engine.R,preprocess.R,statistics.R,supervis
 - [ ] Pin actual package versions and licenses, run numeric and service/security tests, independent spec/quality review and scoped commit.
 
 ## Task 3 — Research workbench UI and external directory
+
+Execution split to keep reviews tractable: **3A** delivers the import/group/recipe/run workbench, persistence, service client and completed Shimadzu handoff, with honest raw result tables; **3B** adds the result visualizations, visual/table exports and curated external directory. Each split requires its own specification and quality review; raw-table completion alone is not the finished workbench.
 
 Files: `frontend/src/pages/DataAnalysisPage.jsx`, `frontend/src/components/analysis/`, `frontend/src/analysis/client.mjs`, `frontend/src/styles/analysis.css`, `frontend/src/pages/ResourcesPage.jsx`, platform contracts.
 
