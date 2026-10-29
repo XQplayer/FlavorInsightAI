@@ -71,8 +71,9 @@ export default function DataAnalysisPage({
         {t('Snapshot', '快照')}: {w.dataset.id}
       </code>}
     </div>
-    <div>
-      <p role="status">
+    <div className="analysis-service-card">
+      <span className="analysis-service-label">{t('LOCAL COMPUTE', '本地计算')}</span>
+      <p role="status" className={available.length ? 'is-ready' : 'is-offline'}>
         {t('Compute service', '计算服务')}: {available.length ? t('Ready', '已就绪') : t('Offline / unavailable', '离线 / 不可用')}
       </p>
       <button onClick={w.connect}>
@@ -84,7 +85,7 @@ export default function DataAnalysisPage({
       </p>}
     </div>
   </header>
- <p className="analysis-notice">
+ <p className="analysis-notice analysis-scope-note">
     {t('Observed-only inference is separate from exploratory preprocessing. AI identification and flavor prediction remain planned; no production AI model is deployed.', '仅实测推断与探索性预处理独立。未知物辅助鉴定与风味预测仍为规划，未部署生产 AI 模型。')}
   </p>
  {w.error && <div role="alert" className="analysis-error">
@@ -92,7 +93,7 @@ export default function DataAnalysisPage({
       {t('Dismiss', '关闭')}
     </button>
   </div>}
- <div className="analysis-toolbar">
+ <div className="analysis-toolbar analysis-project-actions" aria-label={t('Project actions', '项目操作')}>
     <button disabled={busy} onClick={() => replace(null)}>
       {t('New / clear project context', '新建 / 清空项目上下文')}
     </button>
@@ -121,7 +122,7 @@ export default function DataAnalysisPage({
       <button onClick={() => exportData('xlsx')}>XLSX</button>
     </>}
   </div>
- <details>
+ <details className="analysis-snapshots">
     <summary onClick={w.refresh}>
       {t('Saved local snapshots', '已保存本地快照')}
     </summary>
@@ -148,7 +149,8 @@ export default function DataAnalysisPage({
  {w.dirty && <p role="status" className="analysis-notice">
     {t('Pending metadata draft: apply or explicitly discard it before running.', '元数据草稿待应用：运行前请应用或明确放弃。')}
   </p>}
- <div className="analysis-tabs" role="tablist" aria-label={t('Analysis workflow', '分析流程')}>
+ <div className="analysis-workflow-layout">
+ <nav className="analysis-tabs" role="tablist" aria-label={t('Analysis workflow', '分析流程')}>
     {tabs.map(([id, label], i) => <button role="tab" id={`analysis-tab-${id}`} aria-controls={`analysis-panel-${id}`} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} key={id} onKeyDown={e => {
         if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
           e.preventDefault();
@@ -157,10 +159,10 @@ export default function DataAnalysisPage({
           document.getElementById(`analysis-tab-${tabs[index][0]}`)?.focus();
         }
       }} onClick={() => setTab(id)}>
-      {label}
+      <span className="analysis-tab-index">{String(i + 1).padStart(2, '0')}</span><span>{label}</span>
     </button>)}
-  </div>
- <div role="tabpanel" id={`analysis-panel-${tab}`} aria-labelledby={`analysis-tab-${tab}`} tabIndex={0}>
+  </nav>
+ <div className="analysis-stage-panel" role="tabpanel" id={`analysis-panel-${tab}`} aria-labelledby={`analysis-tab-${tab}`} tabIndex={0}>
  <div hidden={tab !== 'data'}>
       <fieldset disabled={busy}>
         <ImportPanel key={w.contextId} onReplace={replace} onError={w.setError} t={t} />
@@ -184,6 +186,7 @@ export default function DataAnalysisPage({
     </> : tab !== 'data' && <p>
       {t('Import data or load the clearly labelled synthetic example first.', '请先导入数据或加载明确标注的合成示例。')}
     </p>}
+ </div>
  </div>
 </div>;
 }

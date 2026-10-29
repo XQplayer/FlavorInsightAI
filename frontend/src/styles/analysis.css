@@ -39,3 +39,82 @@
 .analysis-workbench summary { cursor: pointer; padding: 8px 0; }
 @media(max-width:900px) { .analysis-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width:600px) { .analysis-workbench { padding: 16px; } .analysis-header { flex-direction: column; } .analysis-grid { grid-template-columns: minmax(0,1fr); } .analysis-toolbar { align-items: stretch; } }
+
+/* Scientific SaaS workbench: visual-only layers around unchanged analysis controls. */
+.analysis-workbench {
+  width: min(100% - 48px, 1320px);
+  max-width: none;
+  padding: 30px 0 80px;
+  color: var(--text-primary);
+}
+.analysis-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 290px);
+  align-items: center;
+  gap: 24px;
+  padding: 24px 28px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-control);
+}
+.analysis-header h1 { margin: 10px 0 6px; color: var(--platform-ink); font-size: clamp(28px, 3.5vw, 42px); line-height: 1.12; }
+.analysis-header p { color: var(--text-secondary); }
+.analysis-eyebrow { color: var(--platform-action); font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.analysis-service-card { padding: 16px; border: 1px solid var(--border-default); border-radius: var(--radius-surface); background: var(--surface-subtle); }
+.analysis-service-label { color: var(--text-tertiary); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.analysis-service-card p[role=status] { margin: 5px 0 10px; color: var(--text-primary); font-weight: 700; }
+.analysis-service-card p[role=status]::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--platform-warning); }
+.analysis-service-card p.is-ready::before { background: var(--platform-success); }
+.analysis-service-card p.is-offline::before { background: var(--platform-warning); }
+.analysis-service-card button { min-height: 36px; }
+.analysis-service-card p:last-child:not([role=status]) { font-size: 12px; }
+.analysis-scope-note { border-left: 3px solid var(--data-accent); }
+.analysis-workbench .analysis-error { border: 1px solid var(--platform-danger); background: color-mix(in srgb, var(--platform-danger) 8%, var(--surface-panel)); }
+.analysis-project-actions { padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-surface); background: var(--surface-panel); box-shadow: var(--shadow-control); }
+.analysis-workbench button, .analysis-workbench input, .analysis-workbench select, .analysis-workbench textarea { border-radius: var(--radius-control); }
+.analysis-workbench button { min-height: 40px; padding: 8px 12px; font-weight: 600; transition: background-color var(--motion-fast), border-color var(--motion-fast); }
+.analysis-workbench :focus-visible { outline-color: var(--platform-focus); }
+.analysis-workbench input[type=checkbox] { accent-color: var(--platform-action); }
+.analysis-snapshots { margin: 12px 0 22px !important; border: 1px solid var(--border-default); border-radius: var(--radius-surface); background: var(--surface-panel); }
+.analysis-snapshots summary { padding: 12px 16px; font-weight: 700; }
+.analysis-snapshots[open] summary { border-bottom: 1px solid var(--border-default); }
+.analysis-snapshots > .analysis-toolbar { padding: 0 16px 16px; }
+.analysis-workflow-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: start; gap: 16px; }
+.analysis-tabs { position: sticky; top: 88px; min-width: 0; display: grid; gap: 6px; overflow: visible; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface-panel); box-shadow: var(--shadow-control); }
+.analysis-tabs button { width: 100%; min-height: 52px; justify-content: flex-start; gap: 12px; border-color: transparent; text-align: left; white-space: normal; }
+.analysis-tabs [aria-selected=true] { background: var(--platform-action); border-color: var(--platform-action); color: var(--platform-action-text); }
+.analysis-tabs [aria-selected=true]:hover:not(:disabled) { background: var(--platform-action-hover); color: var(--platform-action-text); }
+.analysis-tab-index { min-width: 20px; opacity: .72; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 800; }
+.analysis-stage-panel { min-width: 0; min-height: 420px; padding: 24px; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface-panel); box-shadow: var(--shadow-control); }
+.analysis-stage-panel > div[hidden] { display: none; }
+.analysis-stage-panel .analysis-section { margin: 0 0 18px; padding: 0 0 18px; border-bottom: 1px solid var(--border-default); }
+.analysis-stage-panel .analysis-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+.analysis-section h2 { margin-bottom: 12px; color: var(--text-primary); font-size: 22px; }
+.analysis-section h3 { color: var(--text-primary); }
+.analysis-workbench fieldset { border-radius: var(--radius-surface); }
+.analysis-scroll { border-radius: var(--radius-control); }
+.analysis-workbench th { position: sticky; top: 0; z-index: 1; color: var(--text-primary); background: var(--surface-muted); }
+.analysis-workbench th, .analysis-workbench td { border-right: 1px solid var(--border-default); }
+.analysis-workbench th:last-child, .analysis-workbench td:last-child { border-right: 0; }
+.analysis-workbench tbody tr:hover { background: color-mix(in srgb, var(--platform-action) 5%, var(--surface-panel)); }
+.analysis-stage-panel .analysis-notice { border-radius: var(--radius-control); }
+.analysis-workbench .analysis-figure { border-radius: var(--radius-surface); }
+
+@media (max-width: 900px) {
+  .analysis-workflow-layout { grid-template-columns: minmax(0, 1fr); }
+  .analysis-tabs { position: static; display: flex; overflow-x: auto; overscroll-behavior-inline: contain; }
+  .analysis-tabs button { width: auto; min-width: 145px; white-space: nowrap; }
+}
+@media (max-width: 600px) {
+  .analysis-workbench { width: min(100% - 24px, 1320px); padding: 18px 0 56px; }
+  .analysis-header { grid-template-columns: minmax(0, 1fr); padding: 18px; gap: 16px; }
+  .analysis-project-actions { align-items: stretch; }
+  .analysis-project-actions button { width: 100%; justify-content: flex-start; }
+  .analysis-stage-panel { padding: 16px; }
+  .analysis-tabs { padding: 8px; }
+  .analysis-tabs button { min-width: 132px; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-workbench button { transition: none; }
+}
