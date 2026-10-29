@@ -1,0 +1,57 @@
+.fi-home { min-height: calc(100dvh - var(--navbar-height)); padding: 20px var(--container-gutter) 0; color: var(--text-primary); background: var(--surface-workbench); }
+.fi-home > section, .fi-home__footer { width: min(100%, 1320px); margin: 0 auto; }
+.fi-home__hero { min-height: min(690px, calc(100dvh - 112px)); display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr); align-items: center; gap: clamp(24px, 4vw, 64px); padding: clamp(32px, 4.5vw, 64px); overflow: hidden; border: 1px solid #31506c; border-radius: 20px; color: #f3f8ff; background: radial-gradient(circle at 86% 12%, rgba(6, 182, 212, .16), transparent 40%), #102a43; box-shadow: 0 22px 55px rgba(16, 42, 67, .13); }
+.fi-home__hero-copy { min-width: 0; }
+.fi-home__eyebrow { margin: 0 0 24px; color: #a5ddec; font-size: 13px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.fi-home__hero h1 { margin: 0; font-size: clamp(44px, 5vw, 70px); line-height: 1.05; letter-spacing: -.055em; }
+.fi-home__lead { max-width: 19ch; margin: 24px 0 0; font-size: clamp(23px, 2.2vw, 32px); line-height: 1.2; font-weight: 650; letter-spacing: -.025em; }
+.fi-home__description { max-width: 43ch; margin: 18px 0 0; color: #d3e0ed; font-size: 16px; line-height: 1.65; }
+.fi-home__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.fi-home__button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px; border: 1px solid transparent; border-radius: 8px; font-weight: 720; text-decoration: none; white-space: nowrap; transition: background-color .18s, border-color .18s, transform .18s; }
+.fi-home__button:hover { transform: translateY(-1px); }
+.fi-home__button:active { transform: translateY(1px); }
+.fi-home__button--primary { color: #fff; background: #2563eb; }
+.fi-home__button--primary:hover { background: #1d4ed8; }
+.fi-home__button--secondary { border-color: #8ca8c1; color: #f3f8ff; background: rgba(255,255,255,.06); }
+.fi-home__button--secondary:hover { background: rgba(255,255,255,.14); }
+.fi-home__search-link { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; color: #bde9f5; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.fi-home__preview { min-width: 0; margin: 0; }
+.fi-home__preview-link { position: relative; height: clamp(340px, 40vw, 530px); display: block; overflow: hidden; border: 8px solid rgba(255,255,255,.92); border-radius: 16px; background: #fff; box-shadow: 0 24px 48px rgba(2, 14, 30, .26); }
+.fi-home__preview-link img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+.fi-home__preview-action { position: absolute; right: 16px; bottom: 16px; min-height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 8px; color: #102a43; background: #fff; box-shadow: 0 4px 16px rgba(16,42,67,.19); font-size: 13px; font-weight: 750; }
+.fi-home__preview figcaption { margin-top: 12px; color: #c1d4e6; font-size: 12px; line-height: 1.5; }
+.fi-home__modules { padding: 74px 0 64px; }
+.fi-home h2 { margin: 0 0 28px; font-size: clamp(27px, 3vw, 39px); line-height: 1.15; letter-spacing: -.035em; }
+.fi-home__module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.fi-home__module { position: relative; min-height: 220px; display: flex; flex-direction: column; align-items: flex-start; padding: 28px; border: 1px solid var(--border-default); border-radius: 16px; color: var(--text-primary); background: var(--surface-panel); text-decoration: none; transition: border-color .18s, transform .18s, box-shadow .18s; }
+a.fi-home__module:hover { border-color: #2563eb; transform: translateY(-2px); box-shadow: var(--shadow-control); }
+.fi-home__module:first-child { background: color-mix(in srgb, #2563eb 8%, var(--surface-panel)); }
+.fi-home__module--planned { background: var(--surface-muted); }
+.fi-home__module-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; color: #2563eb; background: color-mix(in srgb, #2563eb 12%, var(--surface-panel)); }
+.fi-home__status { position: absolute; top: 29px; right: 28px; padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+.fi-home__status--live { color: #065f46; background: #d8f8e8; }
+.fi-home__status--beta { color: #1d4ed8; background: #dceaff; }
+.fi-home__status--planned { color: var(--text-secondary); background: var(--surface-panel); border: 1px solid var(--border-default); }
+.fi-home__module h3 { margin: 23px 0 6px; font-size: 21px; line-height: 1.25; letter-spacing: -.02em; }
+.fi-home__module p { max-width: 52ch; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+.fi-home__module-arrow { position: absolute; right: 29px; bottom: 26px; color: #2563eb; }
+.fi-home__workflow { padding: 48px 0 72px; border-top: 1px solid var(--border-default); }
+.fi-home__section-heading p { max-width: 65ch; margin: -12px 0 28px; color: var(--text-secondary); font-size: 15px; line-height: 1.6; }
+.fi-home__workflow ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-default); border-radius: 16px; overflow: hidden; background: var(--surface-panel); }
+.fi-home__workflow li { min-width: 0; min-height: 118px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 22px; border-right: 1px solid var(--border-default); }
+.fi-home__workflow li:last-child { border-right: 0; }
+.fi-home__workflow li span { color: #2563eb; font: 700 13px/1 ui-monospace, Consolas, monospace; }
+.fi-home__workflow li strong { font-size: 15px; line-height: 1.3; }
+.fi-home__footer { min-height: 110px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--border-default); }
+.fi-home__footer p { max-width: 70ch; color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
+.fi-home__footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+.fi-home__footer a { min-height: 44px; display: inline-flex; align-items: center; color: #1d4ed8; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.fi-home :is(a, button):focus-visible { outline: 3px solid #06b6d4; outline-offset: 3px; }
+:root[data-theme='dark'] .fi-home__status--live { color: #83efbd; background: #143a34; }
+:root[data-theme='dark'] .fi-home__status--beta { color: #a9c8ff; background: #1c365a; }
+:root[data-theme='dark'] .fi-home__module-icon { color: #86b3ff; }
+:root[data-theme='dark'] .fi-home__module-arrow, :root[data-theme='dark'] .fi-home__workflow li span, :root[data-theme='dark'] .fi-home__footer a { color: #8db8ff; }
+@media (max-width: 1050px) { .fi-home__hero { grid-template-columns: 1fr; min-height: 0; } .fi-home__preview-link { height: 400px; } }
+@media (max-width: 768px) { .fi-home { padding: 12px 16px 0; } .fi-home__hero { padding: 32px 24px; } .fi-home__preview-link { height: 330px; } .fi-home__modules { padding: 48px 0; } .fi-home__module-grid { grid-template-columns: 1fr; } .fi-home__workflow ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fi-home__workflow li { border-bottom: 1px solid var(--border-default); } .fi-home__workflow li:nth-child(2n) { border-right: 0; } .fi-home__workflow li:last-child { border-bottom: 0; } .fi-home__footer { flex-direction: column; align-items: flex-start; justify-content: center; padding: 24px 0; } }
+@media (max-width: 480px) { .fi-home__hero h1 { font-size: 42px; } .fi-home__lead { font-size: 24px; } .fi-home__actions { align-items: stretch; flex-direction: column; } .fi-home__button { width: 100%; } .fi-home__preview-link { height: 260px; } .fi-home__module { min-height: 200px; padding: 24px; } .fi-home__workflow ol { grid-template-columns: 1fr; } .fi-home__workflow li { min-height: 74px; flex-direction: row; align-items: center; border-right: 0; } }
+@media (prefers-reduced-motion: reduce) { .fi-home__button, .fi-home__module { transition: none; } .fi-home__button:hover, a.fi-home__module:hover { transform: none; } }

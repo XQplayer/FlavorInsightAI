@@ -47,7 +47,7 @@ test('production shell renders the resolved system theme through its provider', 
 
   const [shellModule, homeModule, preferencesModule] = await Promise.all([
     vite.ssrLoadModule('/src/components/platform/PlatformShell.jsx'),
-    vite.ssrLoadModule('/src/pages/PlatformHomePage.jsx'),
+    vite.ssrLoadModule('/src/pages/PlatformHomeV2.jsx'),
     vite.ssrLoadModule('/src/app/PlatformPreferences.jsx'),
   ]);
   const PlatformShell = shellModule.default;
@@ -88,8 +88,8 @@ test('production shell renders the resolved system theme through its provider', 
   assert.match(markup, /href="\/FlavorInsightAI\/database\/"/);
   assert.match(markup, /href="\/FlavorInsightAI\/aroma-threshold\/"/);
   assert.match(markup, /href="\/FlavorInsightAI\/data-processing\/"/);
-  assert.equal((markup.match(/<details/g) ?? []).length, 4);
-  assert.match(markup, /No production AI model is deployed/);
+  assert.equal((markup.match(/<details/g) ?? []).length, 0);
+  assert.match(markup, /AI prediction is not deployed/);
   assert.match(markup, /data-preference-theme="system"/);
   assert.match(markup, /data-resolved-theme="dark"/);
   assert.match(markup, /aria-label="Theme toggle"[^>]*aria-pressed="true"[^>]*title="Switch to light theme"/);

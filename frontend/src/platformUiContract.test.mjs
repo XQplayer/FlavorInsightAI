@@ -11,13 +11,14 @@ const styles = await readFile(
   'utf8',
 );
 const homeSource = await readFile(
-  new URL('./pages/PlatformHomePage.jsx', import.meta.url),
+  new URL('./pages/PlatformHomeV2.jsx', import.meta.url),
   'utf8',
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 const pageStyles = await readFile(
   new URL('./pages/PlatformPages.css', import.meta.url),
   'utf8',
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const homeStyles = await readFile(new URL('./pages/PlatformHomeV2.css', import.meta.url), 'utf8');
 const analysisSource = await readFile(
   new URL('./pages/DataAnalysisPage.jsx', import.meta.url),
   'utf8',
@@ -134,31 +135,20 @@ test('keeps fixed-header compensation inside the shell height budget', () => {
   assert.match(shellRules[1] ?? '', /min-height:\s*100dvh/);
 });
 
-test('presents the approved bilingual evidence-led platform identity', () => {
+test('presents bilingual evidence-led identity in a concise hero', () => {
   assert.match(homeSource, /usePlatformPreferences/);
-  assert.match(homeSource, /title: 'FlavorInsight AI'/);
-  assert.match(homeSource, /从仪器信号到可解释的风味证据/);
-  assert.match(homeSource, /From instrumental signals to interpretable flavor evidence/);
-  assert.match(homeSource, /可追溯/);
-  assert.match(homeSource, /traceable/i);
+  assert.match(homeSource, /FlavorInsight AI/);
+  assert.match(homeSource, /From instrument data to reviewable flavor evidence/);
+  assert.match(homeSource, /从仪器数据到可复核的风味证据/);
+  assert.match(homeStyles, /\.fi-home__hero\s*\{[^}]*background:/s);
+  assert.match(homeStyles, /\.fi-home__hero\s*\{[^}]*border-radius:/s);
 });
 
-test('gives the homepage a distinct immersive brand layer without changing scientific workbenches', () => {
-  assert.match(homeSource, /platform-home__hero-rail/);
-  assert.match(homeSource, /platform-home__hero-index/);
-  assert.match(homeSource, /platform-home__evidence-line/);
-  assert.match(pageStyles, /\.platform-home__hero\s*\{[^}]*background:/s);
-  assert.match(pageStyles, /\.platform-home__hero\s*\{[^}]*border-radius:/s);
-  assert.match(pageStyles, /\.platform-home__capability-preview\s*\{[^}]*backdrop-filter:/s);
-  assert.match(pageStyles, /@media \(prefers-reduced-transparency: reduce\)/);
-});
-
-test('frames the hero with an evidence trajectory rather than decorative metrics', () => {
-  assert.match(homeSource, /platform-home__trajectory/);
-  assert.match(homeSource, /aria-label=\{copy\.trajectoryLabel\}/);
-  assert.match(homeSource, /<svg[\s\S]*?viewBox="0 0 640 260"/);
-  assert.match(pageStyles, /\.platform-home__trajectory\s*\{/);
-  assert.match(pageStyles, /prefers-reduced-motion: reduce/);
+test('uses a real current product screenshot rather than decorative metrics', () => {
+  assert.match(homeSource, /product-search-preview\.png/);
+  assert.match(homeSource, /CAS 106-30-9/);
+  assert.match(homeSource, /<img\b/);
+  assert.doesNotMatch(homeSource, /<svg\b|platform-home__trajectory/);
 });
 
 test('limits floating navigation treatment to brand pages', () => {
@@ -169,75 +159,43 @@ test('limits floating navigation treatment to brand pages', () => {
 
 test('exposes real database, search, and processing destinations', () => {
   for (const route of ['database', 'search', 'processing']) {
-    assert.match(homeSource, new RegExp(`routeHref\\('${route}',`));
-    assert.match(homeSource, new RegExp(`handleNavigation\\(event, '${route}'\\)`));
+    assert.match(homeSource, new RegExp(`route: '${route}'|route="${route}"`));
   }
-  assert.match(homeSource, /typeof onNavigate === 'function'/);
+  assert.match(homeSource, /typeof onNavigate !== 'function'/);
 });
 
-test('renders the real capability preview and complete honest research chain', () => {
-  assert.match(homeSource, /platform-home__capability-preview/);
-  assert.match(homeSource, /乙酸乙酯/);
-  assert.match(homeSource, /141-78-6/);
-  assert.match(homeSource, /原始峰表/);
-  assert.match(homeSource, /质量门禁/);
-  assert.match(homeSource, /审核结果包/);
-  assert.match(homeSource, /仪器数据/);
-  assert.match(homeSource, /化合物鉴定/);
-  assert.match(homeSource, /风味数据库/);
-  assert.match(homeSource, /风味贡献评价/);
-  assert.match(homeSource, /数据分析与 AI/);
-  assert.match(homeSource, /风味贡献评价[^\n]+statuses:\s*\['beta'\]/);
+test('keeps the research workflow explicit without inventing scientific results', () => {
+  for (const step of ['仪器峰表', '化合物身份', '风味证据', '质控与分析', '可复核结果']) {
+    assert.match(homeSource, new RegExp(step));
+  }
   assert.doesNotMatch(homeSource, /半定量[^\n]+OAV/);
-  assert.doesNotMatch(homeSource, /<img\b/i);
 });
 
 test('labels capability status without claiming deployed AI', () => {
   assert.match(homeSource, /已上线/);
   assert.match(homeSource, /测试中/);
-  assert.match(homeSource, /开发中/);
   assert.match(homeSource, /规划中/);
   assert.match(homeSource, /Available/);
   assert.match(homeSource, /Beta/);
-  assert.match(homeSource, /当前未部署生产级 AI 模型/);
-  assert.match(homeSource, /No production AI model is deployed/);
+  assert.match(homeSource, /AI 预测尚未部署/);
+  assert.match(homeSource, /AI prediction is not deployed/);
   assert.doesNotMatch(homeSource, /AI(?:模型)?已上线|AI (?:prediction|model) is (?:live|available)/i);
   assert.doesNotMatch(homeSource, /用户数量|使用次数|客户评价|users trust|testimonials?/i);
 });
 
-test('includes four factual FAQs, platform principles, and a compact footer', () => {
-  assert.match(homeSource, /证据可追溯/);
-  assert.match(homeSource, /Traceable evidence/);
-  assert.match(homeSource, /质量门禁/);
-  assert.match(homeSource, /Quality gates/);
-  assert.match(homeSource, /本地优先/);
-  assert.match(homeSource, /Local-first/);
-  assert.match(homeSource, /标准化导出/);
-  assert.match(homeSource, /Standardized export/);
-  assert.match(homeSource, /多仪器与 AI/);
-  assert.equal((homeSource.match(/<details\b/g) ?? []).length, 4);
-  assert.match(homeSource, /当前支持哪些仪器/);
-  assert.match(homeSource, /数据库信息来自哪里/);
+test('moves extended explanation out of the homepage and retains a compact footer', () => {
+  assert.equal((homeSource.match(/<details\b/g) ?? []).length, 0);
   assert.match(homeSource, /<footer\b/);
-  assert.match(homeSource, /v1\.5\.0/);
   assert.match(homeSource, /mailto:hanxq888@gmail\.com/);
-  assert.match(homeSource, /引用说明/);
-  assert.match(homeSource, /隐私说明/);
-  assert.match(homeSource, /routeHref\('resources',/);
+  assert.match(homeSource, /route="resources"/);
 });
 
 test('keeps the homepage responsive and motion restrained', () => {
-  assert.match(pageStyles, /overflow-x:\s*(?:clip|hidden)/);
-  assert.match(pageStyles, /min-height:\s*clamp\(520px,[^;]+650px\)/);
-  assert.match(pageStyles, /animation-duration:\s*(?:[34]\d{2}|500)ms/);
-  assert.match(pageStyles, /font-size:\s*clamp\([^;]+56px\)/);
-  assert.match(pageStyles, /font-size:\s*clamp\(42px,\s*11vw,\s*54px\)/);
-  assert.match(pageStyles, /@media \(max-width:\s*1024px\)/);
-  assert.match(pageStyles, /@media \(max-width:\s*768px\)/);
-  assert.match(pageStyles, /@media \(max-width:\s*420px\)/);
-  assert.match(pageStyles, /@media \(min-width:\s*1440px\)/);
-  assert.match(pageStyles, /@media \(prefers-reduced-motion:\s*reduce\)/);
-  assert.match(pageStyles, /animation:\s*none\s*!important/);
+  assert.match(homeStyles, /@media \(max-width: 1050px\)/);
+  assert.match(homeStyles, /@media \(max-width: 768px\)/);
+  assert.match(homeStyles, /@media \(max-width: 480px\)/);
+  assert.match(homeStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(homeStyles, /:focus-visible/);
 });
 
 test('offers a real bilingual local workbench while AI remains planned', () => {
