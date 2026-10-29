@@ -534,7 +534,9 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     const revealTargets = gsap.utils.toArray('.shimadzu-reveal')
     const heroTargets = gsap.utils.toArray('.shimadzu-hero-animate')
 
-    if (reducedMotion) {
+    // A data workbench must remain readable before scrolling (and in full-page
+    // captures); keep the presentation animation only on the standalone deck.
+    if (reducedMotion || embedded) {
       gsap.set([...heroTargets, ...revealTargets, '.shimadzu-flow-node'], { autoAlpha: 1, x: 0, y: 0, clearProps: 'transform' })
       return
     }
@@ -562,7 +564,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       })
 
     ScrollTrigger.refresh()
-  }, { scope: pageRef, dependencies: [Boolean(job), reducedMotion], revertOnUpdate: true })
+  }, { scope: pageRef, dependencies: [Boolean(job), reducedMotion, embedded], revertOnUpdate: true })
 
   const progress = getStageProgress(job)
   const engineBase = browserEnginePresentation()
@@ -1032,10 +1034,17 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
             <p>{language === 'en' ? 'Configure, validate, monitor and export a traceable Shimadzu GC–MS processing task.' : '配置、预检、监控并导出可追溯的岛津 GC–MS 处理任务。'}</p>
           </div>
         )}
+        {embedded && (
+          <nav className="shimadzu-workbench-nav" aria-label={textFor(language, '处理工作台区域', 'Processing workbench sections')}>
+            <a href="#processing-configuration"><span>01</span>{textFor(language, '流程与导出', 'Workflow & export')}</a>
+            <a href="#processing-import"><span>02</span>{textFor(language, '文件与预检', 'Files & preflight')}</a>
+            <a href="#processing-monitor"><span>03</span>{textFor(language, '监控与结果', 'Monitor & results')}</a>
+          </nav>
+        )}
         {error && <div className="shimadzu-alert" role="alert"><AlertCircle /><span><strong>{textFor(language, '当前操作未完成', 'The current operation did not complete')}</strong>{error}</span></div>}
         {cloudError && <div className="shimadzu-alert cloud" role="alert"><AlertCircle /><span><strong>{textFor(language, '云端服务提示', 'Cloud service notice')}</strong>{cloudError}</span></div>}
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>{textFor(language, '浏览器任务恢复', 'Browser task recovery')}</strong>{recoveryNotice}</span></div>}
-        <section className="shimadzu-workbench-region shimadzu-configuration-region" aria-labelledby="analysis-output-configuration-title">
+        <section id="processing-configuration" className="shimadzu-workbench-region shimadzu-configuration-region" aria-labelledby="analysis-output-configuration-title">
           <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">01</span><h2 id="analysis-output-configuration-title">{textFor(language, '分析流程与数据导出配置', 'Analysis workflow and data export configuration')}</h2><p>{textFor(language, '确认当前可运行的分析边界、执行位置与结果字段。', 'Confirm the available analysis scope, execution location, and exported fields.')}</p></div><span>{job ? textFor(language, '任务参数已锁定', 'Task parameters locked') : textFor(language, '连续执行 · 本地优先', 'Continuous run · Local first')}</span></div>
           <details className="shimadzu-configuration-details" open={!job}>
             <summary>{job ? textFor(language, '配置已折叠，展开查看本次任务参数', 'Configuration collapsed; expand to view task parameters') : textFor(language, '配置当前处理任务', 'Configure this processing task')}</summary>
@@ -1099,7 +1108,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           </details>
         </section>
 
-        <section className="shimadzu-workbench-region shimadzu-import-region" aria-labelledby="data-import-preflight-title">
+        <section id="processing-import" className="shimadzu-workbench-region shimadzu-import-region" aria-labelledby="data-import-preflight-title">
           <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">02</span><h2 id="data-import-preflight-title">{textFor(language, '数据导入与运行前检查', 'Data import and preflight checks')}</h2><p>{textFor(language, '导入两个工作簿，并在运行前确认文件、字段、Worker 与联网补充条件。', 'Import two workbooks and confirm files, fields, Worker readiness, and online enrichment before running.')}</p></div><span>{textFor(language, '2 个 Excel 文件', '2 Excel files')}</span></div>
           {!job ? (
             <form className="shimadzu-setup" onSubmit={submit}>
@@ -1128,7 +1137,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           )}
         </section>
 
-        <section className="shimadzu-workbench-region shimadzu-monitor-results-region" aria-labelledby="process-monitor-results-title">
+        <section id="processing-monitor" className="shimadzu-workbench-region shimadzu-monitor-results-region" aria-labelledby="process-monitor-results-title">
           <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">03</span><h2 id="process-monitor-results-title">{textFor(language, '过程监控与结果', 'Process monitoring and results')}</h2><p>{textFor(language, '沿 00–07 流程查看总体进度、联网补充、门禁状态、错误证据和结果包。', 'Follow the 00–07 rail for overall progress, online enrichment, gate status, error evidence, and result packages.')}</p></div><div className="shimadzu-status-legend" aria-label={textFor(language, '状态图例', 'Status legend')}><span className="PASS">PASS</span><span className="WARN">WARN</span><span className="REVIEW">REVIEW</span><span className="FAIL">FAIL</span></div></div>
           <WorkflowMap job={job} language={language} />
           {!job ? (
