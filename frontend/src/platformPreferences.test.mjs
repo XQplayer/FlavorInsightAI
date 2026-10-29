@@ -171,16 +171,16 @@ test('system theme subscriptions deliver live changes and clean up safely', () =
 test('platform tokens expose the product palette, sizing, radii, and dark mappings', () => {
   const tokens = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
   const requiredTokens = [
-    '--accent-600: #315fce;',
-    '--accent-500: #4477df;',
-    '--accent-100: #e9effc;',
+    '--accent-600: #2563eb;',
+    '--accent-500: #2563eb;',
+    '--accent-100: #eaf1ff;',
     '--brand-mist: #d9ddd9;',
     '--brand-blue-gray: #aeb9bd;',
     '--brand-violet-gray: #b7b1bd;',
     '--brand-warm-white: #eceae5;',
     '--platform-brand: var(--accent-500);',
-    '--platform-ink: #252729;',
-    '--platform-canvas: #f7f8f7;',
+    '--platform-ink: #102a43;',
+    '--platform-canvas: #f5f7fb;',
     '--platform-action: var(--accent-600);',
     '--platform-action-text: #ffffff;',
     '--platform-monitor: #111827;',

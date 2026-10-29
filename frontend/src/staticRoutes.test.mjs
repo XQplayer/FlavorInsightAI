@@ -68,7 +68,7 @@ test('homepage metadata and package scripts identify FlavorInsight AI without ch
   assert.equal(packageJson.version, '1.5.0')
   assert.equal(
     packageJson.scripts['test:platform'],
-    'node --test src/platformRoutes.test.mjs src/platformUiContract.test.mjs',
+    'node --test src/platformRoutes.test.mjs src/platformUiContract.test.mjs src/platformHomeV2.test.mjs',
   )
   assert.equal(
     packageJson.scripts['test:e2e:platform'],

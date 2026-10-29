@@ -159,7 +159,7 @@ export default function DataAnalysisPage({
           document.getElementById(`analysis-tab-${tabs[index][0]}`)?.focus();
         }
       }} onClick={() => setTab(id)}>
-      <span className="analysis-tab-index">{String(i + 1).padStart(2, '0')}</span><span>{label}</span>
+      <span className="analysis-tab-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><span>{label}</span>
     </button>)}
   </nav>
  <div className="analysis-stage-panel" role="tabpanel" id={`analysis-panel-${tab}`} aria-labelledby={`analysis-tab-${tab}`} tabIndex={0}>
