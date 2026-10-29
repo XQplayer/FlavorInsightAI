@@ -151,6 +151,7 @@ export default function App({
   const [coreSearchError, setCoreSearchError] = useState(null);
   const [coreLoadNonce, setCoreLoadNonce] = useState(0);
   const [resultView, setResultView] = useState(() => loadResultView());
+  const [summaryTableOpen, setSummaryTableOpen] = useState(false);
   
   const [searchMode, setSearchMode] = useState('single'); // 'single' or 'bulk'
   const [singleQuery, setSingleQuery] = useState(() => casQuery(typeof window === 'undefined' ? '' : window.location.search));
@@ -1903,7 +1904,11 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
           )}
         </div>
 
-        <ResultViewSwitch value={resultView} onChange={changeResultView} isEnglish={isEnglish} />
+        <div className="database-presentation-toolbar" role="group" aria-label={isEnglish ? 'Result presentation' : '结果呈现方式'}>
+          <button type="button" aria-pressed={!summaryTableOpen} onClick={() => setSummaryTableOpen(false)}>{isEnglish ? 'Dossier view' : '档案视图'}</button>
+          <button type="button" aria-pressed={summaryTableOpen} onClick={() => setSummaryTableOpen(true)}>{isEnglish ? 'Table view' : '表格视图'}</button>
+        </div>
+        {!summaryTableOpen && <ResultViewSwitch value={resultView} onChange={changeResultView} isEnglish={isEnglish} />}
 
         {coreSearchError ? (
           <section className="core-search-error" aria-live="polite" data-testid="core-search-error">
@@ -1929,6 +1934,21 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
                   : (isEnglish ? 'Retry local database' : '重试本地数据库')}
               </button>
             </div>
+          </section>
+        ) : summaryTableOpen ? (
+          <section className="database-summary-view" aria-label={isEnglish ? 'Compound results table' : '化合物结果表'}>
+            <div className="database-summary-view__heading"><h2>{ui.results}</h2><span>{compoundDossierCandidates.length} {isEnglish ? (compoundDossierCandidates.length === 1 ? 'compound' : 'compounds') : '种化合物'}</span></div>
+            <p className="database-summary-view__scroll-hint">{isEnglish ? 'Scroll the table horizontally to see all columns.' : '横向滚动表格可查看全部列。'}</p>
+            {compoundDossierCandidates.length ? <div className="database-summary-view__scroll" tabIndex={0} role="region" aria-label={isEnglish ? 'Scrollable results table' : '可滚动结果表'}>
+              <table><thead><tr><th scope="col">{isEnglish ? 'Compound' : '化合物'}</th><th scope="col">CAS</th><th scope="col">{isEnglish ? 'Threshold records' : '阈值记录'}</th><th scope="col">{isEnglish ? 'Sources ready' : '已就绪来源'}</th><th scope="col">{isEnglish ? 'Details' : '详情'}</th></tr></thead>
+                <tbody>{compoundDossierCandidates.map(candidate => <tr key={candidate.entityKey}>
+                  <th scope="row"><strong>{isEnglish ? formatSentenceCaseEnglishName(candidate.englishName) || candidate.chineseName : candidate.chineseName || formatSentenceCaseEnglishName(candidate.englishName)}</strong><small>{isEnglish ? candidate.chineseName : formatSentenceCaseEnglishName(candidate.englishName)}</small></th>
+                  <td><code>{candidate.cas || 'NA'}</code></td>
+                  <td>{candidate.dossier?.thresholds?.records?.length ?? 0}</td>
+                  <td>{Object.values(candidate.dossier?.sourceStates || {}).filter(state => state.status === 'ready').length}</td>
+                  <td><button type="button" onClick={() => setSummaryTableOpen(false)}>{isEnglish ? 'Open dossier' : '打开档案'}</button></td>
+                </tr>)}</tbody></table>
+            </div> : <p className="database-summary-view__empty">{loading ? (isEnglish ? 'Loading search records…' : '正在载入检索记录…') : (isEnglish ? 'Search by compound name or CAS to populate this table.' : '请输入化合物名称或 CAS 号以查看表格。')}</p>}
           </section>
         ) : resultView === 'new' ? (
           <SearchResultsWorkbench
