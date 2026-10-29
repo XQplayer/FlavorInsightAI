@@ -91,14 +91,14 @@
   box-shadow: 0 30px 85px rgba(10, 20, 25, .28), inset 0 2px 0 rgba(255, 255, 255, .95);
 }
 .platform-login__card::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); }
-.platform-login__card-kicker { color: #315fce; font-size: 13px; font-weight: 800; letter-spacing: .1em; }
+.platform-login__card-kicker { color: var(--platform-action); font-size: 13px; font-weight: 800; letter-spacing: .1em; }
 .platform-login__card-kicker svg { width: 20px; }
 .platform-login__card h2 { margin: 38px 0 18px; font-size: clamp(30px, 3vw, 42px); letter-spacing: -.04em; line-height: 1.12; }
 .platform-login__card p { font-size: 16px; line-height: 1.7; }
 .platform-login__status { margin: 0 0 16px; padding: 14px 16px; border-left: 3px solid #9a630c; border-radius: 8px; color: #4f3d17; background: #faf2e3; font-weight: 700; }
-.platform-login__continue { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; padding: 0 20px; border-radius: 12px; color: #fff; background: #315fce; font-weight: 750; text-decoration: none; }
-.platform-login__continue:hover { background: #244da9; }
-.platform-login__continue:focus-visible { outline: 3px solid #315fce; outline-offset: 4px; }
+.platform-login__continue { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; padding: 0 20px; border-radius: 12px; color: #fff; background: var(--platform-action); font-weight: 750; text-decoration: none; }
+.platform-login__continue:hover { background: var(--platform-action-hover); }
+.platform-login__continue:focus-visible { outline: 3px solid var(--platform-focus); outline-offset: 4px; }
 .platform-login__continue svg { width: 20px; }
 .platform-login__note { margin: 20px 0 0; color: #586064; font-size: 14px !important; }
 @media (max-width: 800px) {
@@ -109,6 +109,16 @@
 @media (prefers-reduced-transparency: reduce) {
   .platform-login__card { background: #fff; }
 }
+
+:root[data-theme='dark'] .platform-login__card {
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
+}
+:root[data-theme='dark'] .platform-login__card::before { background: linear-gradient(90deg, transparent, rgba(255,255,255,.24), transparent); }
+:root[data-theme='dark'] .platform-login__status { color: #fce5ad; border-color: #e4a33a; background: rgba(217, 119, 6, .15); }
+:root[data-theme='dark'] .platform-login__note { color: var(--text-secondary); }
 
 .platform-home > section,
 .platform-home__footer {
@@ -983,6 +993,30 @@
 .platform-home__hero {
   min-height: clamp(680px, 82vh, 790px);
 }
+
+/* Resources keep the detailed workflow guidance out of the focused home page. */
+.platform-resources__workflow { margin-top: 0; }
+.platform-resources__workflow-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.platform-resources__workflow-list li {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-surface);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-control);
+}
+.platform-resources__workflow-list li > span { color: var(--platform-action); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.platform-resources__workflow-list h3 { margin: 14px 0 6px; color: var(--text-primary); font-size: 17px; }
+.platform-resources__workflow-list p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
+@media (max-width: 900px) { .platform-resources__workflow-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .platform-resources__workflow-list { grid-template-columns: minmax(0, 1fr); } }
 .platform-home .platform-home__capability-preview {
   padding: 22px;
   transform: none;

@@ -32,6 +32,8 @@ const COPY = Object.freeze({
     download: '下载文件',
     view: '查看文档',
     newWindow: '在新标签页打开',
+    workflowTitle: '从仪器文件到可复核结果',
+    workflowDescription: '岛津 GC–MS 处理遵循逐步质量门禁；数据分析是独立工作台。以下是平台入口之间的关系，不替代具体方法说明。',
   },
   en: {
     status: 'Verified resources',
@@ -48,8 +50,18 @@ const COPY = Object.freeze({
     download: 'Download file',
     view: 'View document',
     newWindow: 'opens in a new tab',
+    workflowTitle: 'From instrument files to reviewable results',
+    workflowDescription: 'Shimadzu GC–MS processing follows staged quality gates; statistical analysis is a separate workbench. This map connects platform entry points and does not replace method documentation.',
   },
 });
+
+const WORKFLOW_STEPS = Object.freeze([
+  { en: 'Import', zh: '导入', enBody: 'Check workbook structure and sample metadata.', zhBody: '核对工作簿结构与样品元数据。' },
+  { en: 'Identify', zh: '定性', enBody: 'Preserve source peaks, CAS matches, and identity evidence.', zhBody: '保留原始峰、CAS 匹配及定性证据。' },
+  { en: 'Review', zh: '审核', enBody: 'Inspect replicates, exceptions, and stage gates.', zhBody: '检查平行、异常和阶段门禁。' },
+  { en: 'Quantify', zh: '定量', enBody: 'Apply the existing semi-quantitation and threshold options.', zhBody: '使用现有半定量及阈值选项。' },
+  { en: 'Analyze', zh: '分析', enBody: 'Explore exported data in the separate analysis workbench.', zhBody: '在独立数据分析工作台探索导出数据。' },
+]);
 
 const VERIFIED_RESOURCES = Object.freeze([
   {
@@ -162,6 +174,20 @@ export default function ResourcesPage() {
             <p>{copy.policyDescription}</p>
           </div>
         </aside>
+      </section>
+
+      <section className="platform-resources__section platform-resources__workflow" aria-labelledby="resources-workflow-title">
+        <div className="platform-status-page__section-heading">
+          <h2 id="resources-workflow-title">{copy.workflowTitle}</h2>
+          <p>{copy.workflowDescription}</p>
+        </div>
+        <ol className="platform-resources__workflow-list">
+          {WORKFLOW_STEPS.map((step, index) => <li key={step.en}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <h3>{language === 'en' ? step.en : step.zh}</h3>
+            <p>{language === 'en' ? step.enBody : step.zhBody}</p>
+          </li>)}
+        </ol>
       </section>
 
       <section className="platform-resources__section" aria-labelledby="verified-resources-title">

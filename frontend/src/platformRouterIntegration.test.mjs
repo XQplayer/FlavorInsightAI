@@ -26,7 +26,7 @@ test('PlatformApp owns history navigation and responds to browser popstate', () 
 });
 
 test('PlatformApp keeps the homepage eager and mature workbenches behind lazy boundaries', () => {
-  assert.match(platformAppSource, /import PlatformHomePage from ['"]\.\.\/pages\/PlatformHomePage\.jsx['"]/);
+  assert.match(platformAppSource, /import PlatformHomePage from ['"]\.\.\/pages\/PlatformHomeV2\.jsx['"]/);
   assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DatabaseOverviewPage\.jsx['"]\)\)/);
   assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataProcessingPage\.jsx['"]\)\)/);
   assert.match(platformAppSource, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]\)\)/);

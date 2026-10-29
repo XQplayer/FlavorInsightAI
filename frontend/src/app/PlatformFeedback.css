@@ -1,0 +1,26 @@
+.platform-route-loading,
+.platform-route-error {
+  width: min(100% - 48px, 680px);
+  margin: 56px auto;
+  padding: 28px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-control);
+}
+.platform-route-loading { min-height: 180px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+.platform-route-error { border-top: 3px solid var(--platform-danger); }
+.platform-route-error h1 { margin: 0 0 10px; font-size: clamp(25px, 3vw, 36px); line-height: 1.2; }
+.platform-route-error p { margin: 0; color: var(--text-secondary); line-height: 1.65; }
+.platform-route-error__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.platform-route-error__actions a,
+.platform-route-error__actions button { min-height: 44px; padding: 9px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-panel); color: var(--text-primary); font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+.platform-route-error__actions a { border-color: var(--platform-action); background: var(--platform-action); color: var(--platform-action-text); }
+.platform-route-error__actions a:hover { background: var(--platform-action-hover); }
+.platform-route-error__actions button:hover { border-color: var(--platform-action); background: var(--surface-muted); }
+.platform-route-error__actions :focus-visible { outline: 3px solid var(--platform-focus); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .platform-route-loading,
+  .platform-route-error { width: min(100% - 24px, 680px); margin: 24px auto; padding: 20px; }
+}

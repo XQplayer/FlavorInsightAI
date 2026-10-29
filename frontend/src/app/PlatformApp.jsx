@@ -4,6 +4,7 @@ import PlatformShell from '../components/platform/PlatformShell.jsx';
 import PlatformHomePage from '../pages/PlatformHomeV2.jsx';
 import ResourcesPage from '../pages/ResourcesPage.jsx';
 import PlatformLoginPage from '../pages/PlatformLoginPage.jsx';
+import './PlatformFeedback.css';
 import {
   PlatformPreferencesProvider,
   usePlatformPreferences,
