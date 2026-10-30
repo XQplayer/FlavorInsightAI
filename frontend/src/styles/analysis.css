@@ -42,7 +42,7 @@
 
 /* Scientific SaaS workbench: visual-only layers around unchanged analysis controls. */
 .analysis-workbench {
-  width: min(100% - 48px, 1320px);
+  width: calc(100% - clamp(32px, 4vw, 80px));
   max-width: none;
   padding: 30px 0 80px;
   color: var(--text-primary);
@@ -80,8 +80,8 @@
 .analysis-snapshots summary { padding: 12px 16px; font-weight: 700; }
 .analysis-snapshots[open] summary { border-bottom: 1px solid var(--border-default); }
 .analysis-snapshots > .analysis-toolbar { padding: 0 16px 16px; }
-.analysis-workflow-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: start; gap: 16px; }
-.analysis-tabs { position: sticky; top: 88px; min-width: 0; display: grid; gap: 6px; overflow: visible; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface-panel); box-shadow: var(--shadow-control); }
+.analysis-workflow-layout { display: grid; grid-template-columns: clamp(200px, 17%, 252px) minmax(0, 1fr); align-items: start; gap: 16px; }
+.analysis-tabs { position: sticky; top: 16px; min-width: 0; display: grid; gap: 6px; overflow: visible; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface-panel); box-shadow: var(--shadow-control); }
 .analysis-tabs button { width: 100%; min-height: 52px; justify-content: flex-start; gap: 12px; border-color: transparent; text-align: left; white-space: normal; }
 .analysis-tabs [aria-selected=true] { background: var(--platform-action); border-color: var(--platform-action); color: var(--platform-action-text); }
 .analysis-tabs [aria-selected=true]:hover:not(:disabled) { background: var(--platform-action-hover); color: var(--platform-action-text); }
@@ -107,7 +107,7 @@
   .analysis-tabs button { width: auto; min-width: 145px; white-space: nowrap; }
 }
 @media (max-width: 600px) {
-  .analysis-workbench { width: min(100% - 24px, 1320px); padding: 18px 0 56px; }
+  .analysis-workbench { width: calc(100% - 32px); padding: 18px 0 56px; }
   .analysis-header { grid-template-columns: minmax(0, 1fr); padding: 18px; gap: 16px; }
   .analysis-project-actions { align-items: stretch; }
   .analysis-project-actions button { width: 100%; justify-content: flex-start; }

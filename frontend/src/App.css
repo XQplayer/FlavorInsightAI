@@ -25,15 +25,13 @@ body {
   --surface-primary: var(--platform-surface);
   --text-primary: var(--platform-ink);
   --text-secondary: var(--platform-text);
-  min-height: calc(100vh - var(--navbar-height, 70px));
-  min-height: calc(100dvh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--shell-utility-height, 68px));
   color: var(--platform-ink);
   background: var(--platform-canvas);
 }
 
 .app-shell.embedded .science-hero {
-  min-height: calc(100vh - var(--navbar-height, 70px));
-  min-height: calc(100dvh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--shell-utility-height, 68px));
   padding-top: 0;
   background:
     radial-gradient(ellipse 56% 38% at 82% 14%, color-mix(in srgb, var(--platform-brand) 8%, transparent), transparent 72%),
@@ -41,7 +39,7 @@ body {
 }
 
 .app-shell.embedded .hero-inner {
-  min-height: calc(100dvh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--shell-utility-height, 68px));
 }
 
 .app-shell.embedded .science-hero-content {
@@ -50,7 +48,7 @@ body {
 
 /* The database is a research module, not a second brand landing page. */
 .app-shell.embedded .science-hero-content {
-  width: min(1120px, calc(100% - (2 * var(--container-gutter))));
+  width: min(1600px, calc(100% - clamp(32px, 4vw, 80px)));
   padding-bottom: clamp(36px, 5vw, 64px);
   text-align: left;
 }
@@ -118,6 +116,12 @@ body {
   border-color: var(--platform-border);
   background: var(--platform-surface);
   backdrop-filter: none;
+}
+
+/* Search results use the available workspace, independent of the global reading token. */
+.app-shell.embedded .search-shell-content,
+.app-shell.embedded .search-main {
+  width: min(1680px, calc(100% - clamp(32px, 4vw, 80px)));
 }
 
 button:focus-visible,
@@ -873,7 +877,7 @@ select:focus-visible,
   align-items: center;
   gap: var(--space-3);
   padding: 0 16px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--border-default);
   border-radius: 16px;
   background: var(--surface-panel);
   box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.05);
@@ -911,7 +915,7 @@ select:focus-visible,
 }
 
 .search-input::placeholder {
-  color: var(--color-slate-500);
+  color: var(--text-secondary);
 }
 
 .match-mode-control {
@@ -919,9 +923,9 @@ select:focus-visible,
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
-  border: 1px solid #dbe3ee;
+  border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--surface-muted);
 }
 
 .match-mode-control button {
@@ -930,7 +934,7 @@ select:focus-visible,
   padding: 0 12px;
   border: 0;
   border-radius: 999px;
-  color: #64748b;
+  color: var(--text-secondary);
   background: transparent;
   font-size: 13px;
   font-weight: 700;
@@ -940,9 +944,10 @@ select:focus-visible,
 
 .match-mode-control button.active {
   color: #1d4ed8;
-  background: #ffffff;
+  background: var(--surface-panel);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
 }
+:root[data-theme='dark'] .match-mode-control button.active { color: #a9c8ff; }
 
 .match-mode-control button:focus-visible {
   outline: 2px solid #60a5fa;
@@ -4055,12 +4060,14 @@ select:focus-visible,
 
   .search-mode-tabs button {
     justify-content: center;
-    padding: 0 8px;
-    white-space: nowrap;
+    min-width: 0;
+    padding: 0 6px;
+    white-space: normal;
+    line-height: 1.2;
   }
 
   .search-input-shell {
-    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-columns: 20px minmax(0, 1fr);
     gap: var(--space-2);
     padding-left: var(--space-3);
   }
@@ -4068,6 +4075,8 @@ select:focus-visible,
   .search-input {
     font-size: 14px;
   }
+
+  .match-mode-control.compact { grid-column: 1 / -1; justify-self: end; margin: 0 0 8px; }
 
   .match-mode-control.compact button {
     min-width: 46px;

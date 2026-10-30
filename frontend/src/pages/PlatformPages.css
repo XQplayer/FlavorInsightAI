@@ -51,7 +51,7 @@
 }
 
 .platform-login {
-  min-height: calc(100dvh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--shell-utility-height, 68px));
   display: grid;
   align-items: center;
   padding: clamp(24px, 5vw, 72px);
@@ -64,7 +64,7 @@
 }
 
 .platform-login__layout {
-  width: min(100%, 1280px);
+  width: min(100%, 1480px);
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
   align-items: center;
@@ -76,7 +76,7 @@
 .platform-login__eyebrow, .platform-login__provenance, .platform-login__card-kicker { display: inline-flex; align-items: center; gap: 10px; }
 .platform-login__eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .platform-login__eyebrow svg, .platform-login__provenance svg { width: 20px; }
-.platform-login__story h1 { margin: 26px 0 18px; font-size: clamp(52px, 7vw, 100px); letter-spacing: -.06em; line-height: .98; }
+.platform-login__story h1 { margin: 26px 0 18px; font-size: clamp(48px, 5vw, 86px); letter-spacing: -.06em; line-height: .98; }
 .platform-login__statement { max-width: 620px; margin: 0; font-size: clamp(23px, 2.8vw, 38px); font-weight: 620; line-height: 1.2; }
 .platform-login__detail { max-width: 570px; margin: 26px 0 0; color: #f0f1f1; font-size: 17px; line-height: 1.7; }
 .platform-login__provenance { margin: 42px 0 0; color: #f0f1f1; font-size: 15px; }
@@ -462,12 +462,12 @@
 .platform-home__footer a { min-height: 44px; display: inline-flex; align-items: center; color: var(--action-primary); font-weight: 700; text-decoration: none; white-space: nowrap; }
 
 .platform-status-page {
-  min-height: calc(100dvh - var(--navbar-height, 70px));
+  min-height: calc(100dvh - var(--shell-utility-height, 68px));
   padding: clamp(42px, 6vw, 80px) var(--container-gutter, 24px) clamp(72px, 9vw, 112px);
 }
 
 .platform-status-page > section {
-  width: min(100%, var(--container-max, 1200px));
+  width: min(100%, 1800px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -830,6 +830,12 @@
   width: 22px;
   height: 22px;
   color: var(--text-secondary);
+}
+
+@media (min-width: 1900px) {
+  .platform-resources__verified-grid,
+  .platform-resources__planned-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .platform-resources__verified-card:last-child { grid-column: auto; min-height: 270px; }
 }
 
 .platform-page :is(a, button, summary):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }

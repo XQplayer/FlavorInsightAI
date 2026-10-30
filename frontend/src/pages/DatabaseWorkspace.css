@@ -1,4 +1,4 @@
-.platform-shell .app-shell.embedded.home-view .science-hero, .platform-shell .app-shell.embedded.home-view .hero-inner { min-height: min(700px, calc(100dvh - var(--navbar-height))); }
+.platform-shell .app-shell.embedded.home-view .science-hero, .platform-shell .app-shell.embedded.home-view .hero-inner { min-height: min(700px, calc(100dvh - var(--shell-utility-height, 68px))); }
 .platform-shell .app-shell.embedded.home-view .science-hero-content { padding-top: clamp(40px, 6vh, 64px); }
 .platform-shell .app-shell.embedded.home-view .science-hero-content h1 { font-size: clamp(44px, 5.2vw, 70px); color: var(--text-primary); }
 .platform-shell .app-shell.embedded.search-view .search-hero { padding-top: 36px; padding-bottom: 36px; }
