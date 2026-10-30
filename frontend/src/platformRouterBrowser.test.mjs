@@ -157,7 +157,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   }).waitFor();
   assert.equal(await page.title(), 'FlavorInsight AI | 食品风味信息学智能分析平台');
 
-  await page.getByRole('link', { name: /进入数据库/ }).first().click();
+  await page.getByRole('link', { name: '进入 FlavorThresholdDB', exact: true }).click();
   await page.waitForURL('**/FlavorInsightAI/database/');
   await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
   assert.equal(await page.title(), 'FlavorThresholdDB 数据库 | FlavorInsight AI');
@@ -244,7 +244,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
     await route.abort('failed');
   });
   await rejectionPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await rejectionPage.getByRole('link', { name: /进入数据库/ }).first().click();
+  await rejectionPage.getByRole('link', { name: '进入 FlavorThresholdDB', exact: true }).click();
   await rejectionPage.waitForURL('**/FlavorInsightAI/database/');
 
   const alert = rejectionPage.getByRole('alert');

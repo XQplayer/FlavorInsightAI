@@ -22,7 +22,7 @@ const servers = [];
 const verificationScope = process.env.CODEX_E2E_SCOPE || 'all';
 
 const ROUTES = Object.freeze([
-  { name: 'home', segment: '', heading: /FlavorInsight AI/, title: /^FlavorInsight AI \|/u, lightweight: true },
+  { name: 'home', segment: '', heading: /让风味数据成为可解释的科研证据|Make flavor data interpretable research evidence/u, title: /^FlavorInsight AI \|/u, lightweight: true },
   { name: 'database', segment: 'database/', heading: /^FlavorThresholdDB$/u, title: /^FlavorThresholdDB 数据库 \|/u },
   { name: 'search', segment: 'aroma-threshold/', heading: /香气阈值与风味描述检索/u, title: /^香气阈值检索 \|/u },
   { name: 'processing', segment: 'data-processing/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
@@ -373,13 +373,13 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
   try {
     const freshPage = await freshContext.newPage();
     await freshPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-    await freshPage.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+    await freshPage.locator('#platform-home-title').waitFor();
     assert.equal(await freshPage.locator('html').getAttribute('lang'), 'en', 'fresh visitors start in English');
     await freshPage.getByRole('link', { name: 'Account status' }).click();
     await freshPage.getByRole('heading', { name: 'Work locally today.' }).waitFor();
     assert.equal(await freshPage.locator('input[type="email"], input[type="password"]').count(), 0, 'account status never requests credentials');
     await freshPage.getByRole('link', { name: 'Continue locally' }).click();
-    await freshPage.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+    await freshPage.locator('#platform-home-title').waitFor();
   } finally {
     await freshContext.close();
   }
@@ -430,10 +430,10 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.equal(await page.locator('#main-content').evaluate(element => document.activeElement === element), true, 'skip link focuses main content');
 
     await page.locator('button[data-language="en"]').click();
-    await page.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+    await page.locator('#platform-home-title').waitFor();
     await page.getByRole('button', { name: 'Theme toggle' }).click();
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+    await page.locator('#platform-home-title').waitFor();
     await waitForStableRoute(page, observed);
     assert.equal(await page.locator('html').getAttribute('lang'), 'en', 'language preference survives refresh');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark', 'theme preference survives refresh');
@@ -443,7 +443,7 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assert.equal(await page.getByRole('link', { name: 'Data processing', exact: true }).getAttribute('aria-current'), 'page', 'active desktop route is announced');
     await page.goBack({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'FlavorInsight AI', exact: true }).waitFor();
+    await page.locator('#platform-home-title').waitFor();
     await waitForStableRoute(page, observed);
     assert.equal(new URL(page.url()).pathname, '/FlavorInsightAI/');
     assert.ok(['', '#main-content'].includes(new URL(page.url()).hash), 'history preserves only the intentional skip-link anchor');

@@ -143,17 +143,19 @@ test('removes legacy top-nav compensation without changing the global container 
   assert.doesNotMatch(styles, /--container-max:\s*100%/);
 });
 
-test('presents bilingual evidence-led identity in a concise hero', () => {
+test('presents bilingual evidence-led identity in a clear entry hero', () => {
   assert.match(homeSource, /usePlatformPreferences/);
   assert.match(homeSource, /FlavorInsight AI/);
-  assert.match(homeSource, /From instrument data to reviewable flavor evidence/);
-  assert.match(homeSource, /从仪器数据到可复核的风味证据/);
+  assert.match(homeSource, /Make flavor data interpretable research evidence/);
+  assert.match(homeSource, /让风味数据成为可解释的科研证据/);
   assert.match(homeStyles, /\.fi-home__hero\s*\{[^}]*background:/s);
   assert.match(homeStyles, /\.fi-home__hero\s*\{[^}]*border-radius:/s);
 });
 
-test('uses a real current product screenshot rather than decorative metrics', () => {
-  assert.match(homeSource, /product-search-preview\.png/);
+test('uses three real product screenshots rather than decorative metrics', () => {
+  for (const asset of ['product-search-preview', 'product-processing-preview', 'product-analysis-preview']) {
+    assert.match(homeSource, new RegExp(asset + '\\.png'));
+  }
   assert.match(homeSource, /CAS 106-30-9/);
   assert.match(homeSource, /<img\b/);
   assert.doesNotMatch(homeSource, /<svg\b|platform-home__trajectory/);
@@ -174,10 +176,11 @@ test('exposes real database, search, and processing destinations', () => {
   assert.match(homeSource, /typeof onNavigate !== 'function'/);
 });
 
-test('keeps the research workflow explicit without inventing scientific results', () => {
-  for (const step of ['仪器峰表', '化合物身份', '风味证据', '质控与分析', '可复核结果']) {
+test('keeps a three-step research workflow explicit without inventing scientific results', () => {
+  for (const step of ['导入数据', '处理与校核', '分析与导出']) {
     assert.match(homeSource, new RegExp(step));
   }
+  assert.equal((homeSource.match(/enBody: '.*', zhBody:/g) ?? []).length >= 3, true);
   assert.doesNotMatch(homeSource, /半定量[^\n]+OAV/);
 });
 
@@ -187,27 +190,28 @@ test('labels capability status without claiming deployed AI', () => {
   assert.match(homeSource, /规划中/);
   assert.match(homeSource, /Available/);
   assert.match(homeSource, /Beta/);
-  assert.match(homeSource, /AI 预测尚未部署/);
-  assert.match(homeSource, /AI prediction is not deployed/);
+  assert.match(homeSource, /尚未部署生产级 AI 鉴定或风味预测模型/);
+  assert.match(homeSource, /No production AI identification or flavor-prediction model is deployed/);
   assert.doesNotMatch(homeSource, /AI(?:模型)?已上线|AI (?:prediction|model) is (?:live|available)/i);
   assert.doesNotMatch(homeSource, /用户数量|使用次数|客户评价|users trust|testimonials?/i);
 });
 
-test('moves extended explanation out of the homepage and retains a compact footer', () => {
-  assert.equal((homeSource.match(/<details\b/g) ?? []).length, 0);
+test('keeps four concise FAQ answers and a factual footer', () => {
+  assert.equal((homeSource.match(/<details\b/g) ?? []).length, 1);
+  assert.equal((homeSource.match(/id: '(?:instruments|privacy|sources|ai)'/g) ?? []).length, 4);
   assert.match(homeSource, /<footer\b/);
   assert.match(homeSource, /mailto:hanxq888@gmail\.com/);
   assert.match(homeSource, /route="resources"/);
 });
 
 test('keeps the homepage responsive and motion restrained', () => {
-  assert.match(homeStyles, /@container \(max-width: 1000px\)/);
-  assert.match(homeStyles, /@media \(max-width: 768px\)/);
-  assert.match(homeStyles, /@media \(max-width: 480px\)/);
+  assert.match(homeStyles, /@container \(max-width: 1050px\)/);
+  assert.match(homeStyles, /@media \(max-width: 767px\)/);
+  assert.match(homeStyles, /@container \(max-width: 430px\)/);
   assert.match(homeStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(homeStyles, /:focus-visible/);
-  assert.match(homeStyles, /--home-gutter:\s*clamp\(16px,\s*2vw,\s*48px\)/);
-  assert.match(homeStyles, /width:\s*min\(100%,\s*1800px\)/);
+  assert.match(homeStyles, /--home-gutter:\s*clamp\(20px,\s*2vw,\s*40px\)/);
+  assert.match(homeStyles, /width:\s*min\(100%,\s*1840px\)/);
   assert.doesNotMatch(homeStyles, /transform:\s*scale\(/);
 });
 
