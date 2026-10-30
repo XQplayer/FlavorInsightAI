@@ -52,13 +52,14 @@ test('provides a skip link and a labelled main landmark', () => {
   assert.match(source, /<main[^>]*id="main-content"/);
 });
 
-test('defines exactly the five approved platform destinations and labels', () => {
+test('defines the six platform destinations and labels', () => {
   const navigation = source.match(/const NAV_ITEMS = Object\.freeze\(\[[\s\S]*?\]\);/)?.[0] ?? '';
   const destinations = [
     ['home', '首页', 'Home'],
     ['database', 'FlavorThresholdDB', 'FlavorThresholdDB'],
     ['processing', '数据处理', 'Data processing'],
     ['analysis', '数据分析', 'Data analysis'],
+    ['models', '智能模型', 'AI Models'],
     ['resources', '资源中心', 'Resources'],
   ];
 
@@ -79,7 +80,7 @@ test('labels language, theme, and account controls and uses Lucide icons only', 
   assert.match(source, /data-language="en"/);
   assert.match(source, /aria-label=\{copy\.themeControl\}/);
   assert.match(source, /aria-label=\{copy\.accountControl\}/);
-  for (const icon of ['House', 'Database', 'PanelsTopLeft', 'ChartNoAxesCombined', 'BookOpen', 'Menu', 'Moon', 'Sun', 'UserRound', 'X']) {
+  for (const icon of ['House', 'Database', 'PanelsTopLeft', 'ChartNoAxesCombined', 'BrainCircuit', 'BookOpen', 'Menu', 'Moon', 'Sun', 'UserRound', 'X']) {
     assert.match(source, new RegExp(`\\b${icon}\\b`));
   }
   assert.doesNotMatch(source, /[\u{1F300}-\u{1FAFF}]/u);
@@ -215,7 +216,7 @@ test('keeps the homepage responsive and motion restrained', () => {
   assert.doesNotMatch(homeStyles, /transform:\s*scale\(/);
 });
 
-test('offers a real bilingual local workbench while AI remains planned', () => {
+test('offers a real bilingual local analysis workbench without claiming deployed prediction', () => {
   assert.match(analysisSource, /usePlatformPreferences/);
   for (const component of ['ImportPanel','GroupEditor','RecipePanel','AnalysisPanel','ResultsPanel']) assert.match(analysisSource,new RegExp(component));
   assert.match(analysisSource, /Data & groups/);

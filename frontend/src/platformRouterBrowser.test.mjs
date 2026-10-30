@@ -89,12 +89,16 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await page.addInitScript(() => {
     localStorage.setItem('flavorinsight:language', 'zh');
     const originalFetch = window.fetch.bind(window);
+    window.__analyticsWrites = 0;
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input.url;
       if (!url.startsWith('https://flavorinsight-browser-test.invalid/')) {
         return originalFetch(input, init);
       }
       const headers = { 'Content-Type': 'application/json' };
+      if (url.includes('/rpc/increment_visit') || url.includes('/rpc/increment_search')) {
+        window.__analyticsWrites += 1;
+      }
       if (url.includes('/rest/v1/search_stats')) {
         return new Response(JSON.stringify([{
           cas: '141-78-6',
@@ -159,7 +163,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
 
   await page.getByRole('link', { name: '进入 FlavorThresholdDB', exact: true }).click();
   await page.waitForURL('**/FlavorInsightAI/database/');
-  await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '探索风味化合物的科学证据', exact: true }).waitFor();
   assert.equal(await page.title(), 'FlavorThresholdDB 数据库 | FlavorInsight AI');
   await assertSinglePlatformLandmarks(page);
 
@@ -168,6 +172,13 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   await page.locator('button[data-language="zh"]').click();
   assert.equal(await page.title(), 'FlavorThresholdDB 数据库 | FlavorInsight AI');
 
+  await page.locator('.search-insights[data-status="ready"]').waitFor();
+  assert.equal(await page.locator('.search-insights-counters strong').first().innerText(), '24');
+  assert.equal(await page.evaluate(() => window.__analyticsWrites), 0, 'local read-only analytics must not alter online counters');
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert.equal(await page.locator('.search-insights-mobile-list').isVisible(), true);
+  assert.equal(await page.locator('.compound-treemap').isVisible(), false);
+  await page.setViewportSize({ width: 1280, height: 800 });
   const insight = page.getByRole('button', { name: /Ethyl acetate/ });
   await insight.waitFor();
   await insight.click();
@@ -181,9 +192,9 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
 
   await platformNavigation.getByRole('link', { name: 'FlavorThresholdDB', exact: true }).click();
   await page.waitForURL('**/FlavorInsightAI/database/');
-  await page.getByRole('heading', { name: 'FlavorThresholdDB', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '探索风味化合物的科学证据', exact: true }).waitFor();
   await assertSinglePlatformLandmarks(page);
-  await page.getByRole('button', { name: '开启风味探索之旅' }).click();
+  await page.getByRole('button', { name: '进入检索工作台' }).click();
   await page.waitForURL('**/FlavorInsightAI/aroma-threshold/');
   assert.equal(await page.locator('#compound-search').inputValue(), '141-78-6');
   await assertSinglePlatformLandmarks(page);
@@ -208,6 +219,65 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   assert.equal(listenerState.active, 1);
   assert.ok(listenerState.added >= 2);
   assert.ok(listenerState.removed >= 1);
+
+  const overviewPage = await browser.newPage();
+  await overviewPage.addInitScript(() => localStorage.setItem('flavorinsight:language', 'zh'));
+  await overviewPage.goto(`${baseUrl}database/`, { waitUntil: 'domcontentloaded' });
+  await overviewPage.locator('#database-overview-query').fill('乙酸乙酯');
+  await overviewPage.locator('#database-overview-query').press('Enter');
+  await overviewPage.waitForURL('**/FlavorInsightAI/aroma-threshold/');
+  assert.equal(await overviewPage.locator('#compound-search').inputValue(), '乙酸乙酯');
+  await overviewPage.getByText('CAS 141-78-6', { exact: true }).first().waitFor();
+  await overviewPage.getByRole('navigation', { name: '平台主导航' })
+    .getByRole('link', { name: 'FlavorThresholdDB', exact: true }).click();
+  await overviewPage.getByRole('button', { name: '数据来源与引用' }).click();
+  await overviewPage.locator('.science-citation-panel').waitFor();
+  await overviewPage.getByRole('heading', { name: '探索风味化合物的科学证据' }).waitFor();
+  await overviewPage.getByRole('link', { name: '查看访问与检索统计' }).click();
+  assert.equal(new URL(overviewPage.url()).hash, '#database-activity');
+  await overviewPage.locator('#database-activity').waitFor();
+  await overviewPage.getByRole('button', { name: '查看该 CAS 的真实记录' }).click();
+  await overviewPage.waitForURL('**/FlavorInsightAI/aroma-threshold/');
+  assert.equal(await overviewPage.locator('#compound-search').inputValue(), '141-78-6');
+
+  const unavailablePage = await browser.newPage();
+  await unavailablePage.addInitScript(() => localStorage.setItem('flavorinsight:language', 'zh'));
+  let rejectedAnalyticsRequests = 0;
+  await unavailablePage.route('https://flavorinsight-browser-test.invalid/**', async route => {
+    rejectedAnalyticsRequests += 1;
+    await route.abort('failed');
+  });
+  const unavailableStatsRequest = unavailablePage.waitForRequest(request => request.url().includes('/rest/v1/search_stats'));
+  await unavailablePage.goto(`${baseUrl}database/`, { waitUntil: 'domcontentloaded' });
+  await unavailablePage.getByRole('heading', { name: '探索风味化合物的科学证据' }).waitFor();
+  await unavailableStatsRequest;
+  await unavailablePage.locator('.search-insights[data-status="error"]').waitFor();
+  assert.ok(rejectedAnalyticsRequests >= 1);
+  assert.deepEqual(await unavailablePage.locator('.search-insights-counters strong').allInnerTexts(), ['—', '—', '—', '—']);
+  assert.equal(await unavailablePage.locator('.compound-treemap').count(), 0);
+
+  const partialPage = await browser.newPage();
+  await partialPage.addInitScript(() => {
+    localStorage.setItem('flavorinsight:language', 'zh');
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url.includes('/rest/v1/search_stats')) return Promise.reject(new TypeError('Search list unavailable'));
+      if (url.includes('/rest/v1/rpc/get_analytics_summary')) {
+        return Promise.resolve(new Response(JSON.stringify({ total_visits: 24, total_searches: 12, today_searches: 3 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      return url.startsWith('https://flavorinsight-browser-test.invalid/')
+        ? Promise.resolve(new Response('null', { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : originalFetch(input, init);
+    };
+  });
+  await partialPage.goto(`${baseUrl}database/`, { waitUntil: 'domcontentloaded' });
+  await partialPage.locator('.search-insights[data-status="ready"]').waitFor();
+  assert.equal(await partialPage.locator('.search-insights-counters strong').first().innerText(), '24');
+  assert.equal(await partialPage.locator('.compound-treemap').count(), 0);
 
   const standalonePage = await browser.newPage();
   await standalonePage.addInitScript(() => localStorage.setItem('flavorinsight:language', 'zh'));

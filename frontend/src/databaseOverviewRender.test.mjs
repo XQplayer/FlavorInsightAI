@@ -41,12 +41,15 @@ test('the production database page SSRs distinct embedded home and search views'
   }));
 
   assert.match(homeMarkup, /class="app-shell embedded home-view"/);
-  assert.match(homeMarkup, /FlavorInsight AI · 数据库模块/);
-  assert.match(homeMarkup, /<h1>FlavorThresholdDB<\/h1>/);
-  assert.match(homeMarkup, /aria-label="数据库数据覆盖"/);
-  // Current source distinguishes the activity label from its statistics heading.
-  assert.match(homeMarkup, /数据库动态/);
-  assert.match(homeMarkup, /访问统计/);
+  assert.match(homeMarkup, /科研工作台/);
+  assert.match(homeMarkup, /<h1 lang="zh-CN">探索风味化合物的科学证据<\/h1>/);
+  assert.match(homeMarkup, /id="database-overview-query"/);
+  assert.match(homeMarkup, /示例记录 · 字段预览/);
+  assert.doesNotMatch(homeMarkup, /aria-label="数据库数据覆盖"|从化合物到可引用记录/);
+  assert.match(homeMarkup, /id="database-activity"/);
+  assert.match(homeMarkup, /访问与化合物检索统计/);
+  assert.match(homeMarkup, /累计访问|Total visits/);
+  assert.doesNotMatch(homeMarkup, /compound-treemap--unavailable/);
   assert.equal((homeMarkup.match(/<main\b/g) ?? []).length, 0);
   assert.match(homeMarkup, />数据来源与引用<\/button>/);
   assert.doesNotMatch(homeMarkup, /class="science-nav/);
@@ -65,10 +68,10 @@ test('the production database page SSRs distinct embedded home and search views'
   assert.equal((standaloneSearchMarkup.match(/href="#main-content"/g) ?? []).length, 1);
 });
 
-test('the mobile database hero keeps the product name and coverage metrics readable', () => {
-  const css = readFileSync(fileURLToPath(new URL('./App.css', import.meta.url)), 'utf8');
+test('the mobile embedded database overview collapses its hero and fields without changing search layout', () => {
+  const css = readFileSync(fileURLToPath(new URL('./pages/DatabaseWorkspace.css', import.meta.url)), 'utf8');
 
-  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.science-hero-content h1\s*\{[\s\S]*?font-size:\s*clamp\(26px,\s*8vw,\s*34px\)/);
-  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.science-metrics\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
-  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.science-metrics > div \+ div\s*\{[\s\S]*?border-left:\s*0[\s\S]*?border-top:/);
+  assert.match(css, /@container \(max-width: 1000px\) \{[\s\S]*?\.database-overview__hero-grid\s*\{[^}]*grid-template-columns:\s*1fr/);
+  assert.match(css, /@container \(max-width: 680px\) \{[\s\S]*?\.database-overview__fields\s*\{[^}]*grid-template-columns:\s*1fr/);
+  assert.doesNotMatch(css, /\.database-overview__metrics|\.database-overview__usage/);
 });

@@ -4,6 +4,7 @@ export const PLATFORM_ROUTE_SEGMENTS = Object.freeze({
   search: 'aroma-threshold',
   processing: 'data-processing',
   analysis: 'data-analysis',
+  models: 'ai-models',
   resources: 'resources',
   login: 'login',
 });
@@ -14,6 +15,7 @@ const PLATFORM_ROUTE_BY_SEGMENT = Object.freeze({
   'data-processing': 'processing',
   'shimadzu-analysis': 'processing',
   'data-analysis': 'analysis',
+  'ai-models': 'models',
   resources: 'resources',
   login: 'login',
 });

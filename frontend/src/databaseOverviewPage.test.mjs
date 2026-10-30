@@ -7,11 +7,12 @@ async function readSource(relativePath) {
     .catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 }
 
-const [pageSource, platformSource, appSource, appStyles, tokenStyles] = await Promise.all([
+const [pageSource, platformSource, appSource, appStyles, databaseStyles, tokenStyles] = await Promise.all([
   readSource('./pages/DatabaseOverviewPage.jsx'),
   readSource('./app/PlatformApp.jsx'),
   readSource('./App.jsx'),
   readSource('./App.css'),
+  readSource('./pages/DatabaseWorkspace.css'),
   readSource('./tokens.css'),
 ]);
 
@@ -66,12 +67,18 @@ test('embedded search yields its main landmark and skip target to the platform s
   assert.match(appSource, /<\/SearchContentRoot>/);
 });
 
-test('the legacy homepage is explicitly scoped to the database module', () => {
-  assert.match(appSource, /FlavorInsight AI · Database module/);
-  assert.match(appSource, /FlavorInsight AI · 数据库模块/);
-  assert.match(appSource, /Database coverage/);
-  assert.match(appSource, /数据库数据覆盖/);
+test('the embedded overview keeps real search and source flows without changing the search engine', () => {
+  assert.match(appSource, /FLAVOR RESEARCH DATABASE/);
+  assert.match(appSource, /探索风味化合物的科学证据/);
+  assert.match(appSource, /id="database-overview-query"/);
+  assert.match(appSource, /openCompoundFromOverview\(overviewQuery\)/);
+  assert.match(appSource, /setSingleQuery\(normalizedQuery\)/);
+  assert.match(appSource, /openSearchView\(\)/);
+  assert.match(appSource, /!embedded && !showCitationExample && <div className="science-metrics"/);
+  assert.doesNotMatch(appSource, /database-overview__metrics|database-overview__usage/);
   assert.match(appSource, /<SearchInsights/);
+  assert.match(appSource, /示例记录 · 字段预览/);
+  assert.match(appSource, /此处仅展示字段结构，不推断具体阈值数值或来源/);
   for (const sourceName of ['FEMA', 'FlavorDB2', 'PubChem', 'Van Gemert', 'Fan & Xu']) {
     assert.match(appSource, new RegExp(sourceName.replace('&', '\\&')));
   }
@@ -79,13 +86,15 @@ test('the legacy homepage is explicitly scoped to the database module', () => {
   assert.match(appSource, /if \(!embedded\)\s*\{[\s\S]*window\.history\.pushState\(\{ view: 'home' \}/);
 });
 
-test('embedded database chrome inherits platform surfaces without legacy top offsets', () => {
+test('embedded database chrome uses a local responsive container without changing the platform shell', () => {
   const embeddedShell = appStyles.match(/\.app-shell\.embedded\s*\{([^}]*)\}/)?.[1] ?? '';
   assert.match(embeddedShell, /--surface-workbench:\s*var\(--platform-canvas\)/);
   assert.match(embeddedShell, /--surface-panel:\s*var\(--platform-surface\)/);
   assert.match(embeddedShell, /--text-primary:\s*var\(--platform-ink\)/);
   assert.match(embeddedShell, /--text-secondary:\s*var\(--platform-text\)/);
-  assert.match(appStyles, /\.app-shell\.embedded \.science-hero\s*\{[^}]*padding-top:\s*0/);
+  assert.match(databaseStyles, /\.database-overview\s*\{[^}]*container-type:\s*inline-size/);
+  assert.match(databaseStyles, /\.database-overview__hero-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1\.1fr\) minmax\(0, \.9fr\)/);
+  assert.match(databaseStyles, /@container \(max-width: 1000px\)/);
   assert.match(appStyles, /\.app-shell\.embedded \.search-page-header\s*\{[^}]*padding-top:\s*0/);
 });
 
@@ -105,16 +114,26 @@ test('the secondary database action uses tokenized light and dark colors above A
 });
 
 test('search insight counters use tokenized light and dark surfaces above AA contrast', () => {
-  assert.match(appStyles, /\.search-insights-counters span\s*\{[^}]*color:\s*var\(--text-primary\)[^}]*background:\s*var\(--surface-panel\)/);
-  assert.match(appStyles, /:root\[data-theme=['"]dark['"]\] \.search-insights-counters span\s*\{[^}]*color:\s*var\(--platform-ink\)[^}]*background:\s*var\(--platform-surface\)/);
+  assert.match(appStyles, /\.search-insights-metric\s*\{[^}]*color:\s*var\(--text-secondary\)[^}]*background:\s*var\(--surface-muted\)/);
+  assert.match(appStyles, /\.search-insights-metric strong\s*\{[^}]*color:\s*var\(--text-primary\)/);
+  assert.match(databaseStyles, /\.database-overview \.search-insights-metric\s*\{[^}]*background:\s*var\(--overview-muted\)/);
   const lightTokens = tokenStyles.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? '';
   const darkTokens = tokenStyles.match(/:root\[data-theme=['"]dark['"]\]\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+  const darkOverview = databaseStyles.match(/:root\[data-theme=['"]dark['"]\] \.database-overview\s*\{[^}]*--overview-muted:\s*(#[0-9a-f]{6})/i)?.[1];
   assert.ok(contrastRatio(
     tokenValue(lightTokens, 'platform-ink'),
-    tokenValue(lightTokens, 'platform-surface'),
+    tokenValue(lightTokens, 'platform-secondary-surface'),
   ) >= 4.5);
   assert.ok(contrastRatio(
     tokenValue(darkTokens, 'platform-ink'),
-    tokenValue(darkTokens, 'platform-surface'),
+    darkOverview,
+  ) >= 4.5);
+  assert.ok(contrastRatio(
+    tokenValue(lightTokens, 'platform-text'),
+    tokenValue(lightTokens, 'platform-secondary-surface'),
+  ) >= 4.5);
+  assert.ok(contrastRatio(
+    tokenValue(darkTokens, 'platform-text'),
+    darkOverview,
   ) >= 4.5);
 });

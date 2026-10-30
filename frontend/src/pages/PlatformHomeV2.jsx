@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { ArrowRight, ArrowUpRight, Bot, Database, FileCheck2, FlaskConical, LineChart } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, BrainCircuit, Database, FileCheck2, FlaskConical, LineChart } from 'lucide-react';
 
 import packageMetadata from '../../package.json';
 import { usePlatformPreferences } from '../app/PlatformPreferences.jsx';
@@ -25,7 +25,7 @@ const copy = {
     featuresTitle: 'Four connected capabilities',
     featuresIntro: 'Start with a compound record, an instrument workbook or an analysis-ready dataset.',
     live: 'Available', beta: 'Beta', planned: 'Planned',
-    featureActions: { database: 'Explore records', processing: 'Open processing', analysis: 'Open analysis', models: 'View current status' },
+    featureActions: { database: 'Explore records', processing: 'Open processing', analysis: 'Open analysis', models: 'Open Model Studio' },
     workflowTitle: 'From raw data to a reviewable result in three steps',
     workflowIntro: 'Each stage has a clear input, a check and an output. Scientific decisions remain visible.',
     advantagesTitle: 'Why FlavorInsight AI',
@@ -54,7 +54,7 @@ const copy = {
     featuresTitle: '四项核心能力',
     featuresIntro: '可以从化合物记录、仪器工作簿或已整理的数据集开始。',
     live: '已上线', beta: '测试中', planned: '规划中',
-    featureActions: { database: '检索记录', processing: '进入处理', analysis: '进入分析', models: '查看当前状态' },
+    featureActions: { database: '检索记录', processing: '进入处理', analysis: '进入分析', models: '进入模型工作台' },
     workflowTitle: '从原始数据到可复核结果，分三步完成',
     workflowIntro: '每一步都有明确的输入、校核与输出，科研判断过程保留可查。',
     advantagesTitle: '为什么选择 FlavorInsight AI',
@@ -107,10 +107,10 @@ const features = [
     imageAltZh: '真实数据分析工作台，显示明确标注的合成示例',
   },
   {
-    id: 'models', route: null, status: 'planned', icon: Bot,
-    en: 'Intelligent models', zh: '智能模型与预测评价',
-    enBody: 'Assisted identification, flavor prediction and blending support are research directions, not deployed features.',
-    zhBody: '未知物辅助鉴定、风味预测和勾调辅助仍属研究规划，尚未作为正式功能上线。',
+    id: 'models', route: 'models', status: 'beta', icon: BrainCircuit,
+    en: 'AI Models & Predictive Evaluation', zh: '智能模型与预测评价',
+    enBody: 'Explore predictive relationships among flavor features, fermentation parameters, and analytical responses through model experiments and evaluation.',
+    zhBody: '整合风味数据、模型实验与性能评价，探索化合物特征、发酵指标和风味响应之间的预测关系。',
   },
 ];
 
@@ -133,7 +133,7 @@ const questions = [
   { id: 'instruments', en: 'Which instruments are supported now?', zh: '当前支持哪些仪器？', enAnswer: 'The active processing workflow supports Shimadzu GC–MS workbooks. GC–O, GC–IMS and GC×GC–MS remain planned.', zhAnswer: '当前可用的是岛津 GC–MS 工作簿处理流程。GC–O、GC–IMS 和 GC×GC–MS 仍处于规划阶段。' },
   { id: 'privacy', en: 'Are original files automatically uploaded?', zh: '原始文件会自动上传吗？', enAnswer: 'No. The Shimadzu workbook is processed in the browser. Database lookup may request external sources when that option is used.', zhAnswer: '不会。岛津工作簿在浏览器内处理；启用外部来源检索时，数据库查询可能请求相应外部服务。' },
   { id: 'sources', en: 'Where do database records come from?', zh: '数据库记录来自哪里？', enAnswer: 'The search workspace labels each available source and keeps record-level source details. Methods and field definitions are linked in Resources.', zhAnswer: '检索工作台标注可用来源，并保留逐条来源信息；方法与字段定义见资源中心。' },
-  { id: 'ai', en: 'Is an AI prediction model deployed?', zh: 'AI 预测模型已经上线了吗？', enAnswer: 'No production AI identification or flavor-prediction model is deployed. The data-analysis workbench is available as a beta local research tool.', zhAnswer: '尚未部署生产级 AI 鉴定或风味预测模型。数据分析工作台目前是测试中的本地科研工具。' },
+  { id: 'ai', en: 'Is an AI prediction model deployed?', zh: 'AI 预测模型已经上线了吗？', enAnswer: 'No production AI identification or flavor-prediction model is deployed. Model Studio is in beta for workspace design and experiment planning; training and prediction are not enabled.', zhAnswer: '尚未部署生产级 AI 鉴定或风味预测模型。模型工作台目前为测试中的页面与实验规划框架，训练和预测尚未开放。' },
 ];
 
 function RouteLink({ route, onNavigate, className, children }) {
@@ -187,9 +187,7 @@ export default function PlatformHomeV2({ onNavigate }) {
               <div className="fi-home__feature-top">{createElement(Icon, { size: 23, strokeWidth: 1.8, 'aria-hidden': true })}<span className={'fi-home__status fi-home__status--' + feature.status}>{t[feature.status]}</span></div>
               <h3>{localText(feature, '')}</h3>
               <p>{localText(feature, 'Body')}</p>
-              {feature.route
-                ? <RouteLink route={feature.route} onNavigate={onNavigate} className="fi-home__feature-link">{t.featureActions[feature.id]}<ArrowRight size={17} aria-hidden="true" /></RouteLink>
-                : <a className="fi-home__feature-link" href="#home-faq-ai" onClick={() => { const faq = document.getElementById('home-faq-ai'); if (faq) faq.open = true; }}>{t.featureActions.models}<ArrowRight size={17} aria-hidden="true" /></a>}
+              <RouteLink route={feature.route} onNavigate={onNavigate} className="fi-home__feature-link">{t.featureActions[feature.id]}<ArrowRight size={17} aria-hidden="true" /></RouteLink>
             </div>
             {feature.image && <img className="fi-home__feature-image" src={base + 'assets/' + feature.image} width="1280" height="720" alt={language === 'zh' ? feature.imageAltZh : feature.imageAltEn} loading="lazy" />}
           </article>;

@@ -155,6 +155,7 @@ export default function App({
   
   const [searchMode, setSearchMode] = useState('single'); // 'single' or 'bulk'
   const [singleQuery, setSingleQuery] = useState(() => casQuery(typeof window === 'undefined' ? '' : window.location.search));
+  const [overviewQuery, setOverviewQuery] = useState('');
   const [bulkQuery, setBulkQuery] = useState('');
   const [selectedMedia, setSelectedMedia] = useState(['空气', '水', '其他介质']);
   const [includeBookResults, setIncludeBookResults] = useState(true);
@@ -280,6 +281,16 @@ export default function App({
     });
   };
 
+  const openCompoundFromOverview = query => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return;
+    resetWorkbenchCandidateSelection();
+    setSearchMode('single');
+    setExactMatch(true);
+    setSingleQuery(normalizedQuery);
+    openSearchView();
+  };
+
   const openHomeView = () => {
     navigateWithFallback('home', () => {
       setCurrentView('home');
@@ -377,7 +388,8 @@ export default function App({
       .replace('觉察阈', 'Detection threshold')
       .replace('识别阈', 'Recognition threshold');
   };
-  const measurementMediaCount = new Set(data.map(item => item.medium).filter(Boolean)).size || 3;
+  const measurementMediaCount = new Set(data.map(item => item.medium).filter(Boolean)).size;
+  const previewRecord = data.find(item => item.cas === '141-78-6');
 
   const accessDate = new Date();
   const accessYear = accessDate.getFullYear();
@@ -1589,8 +1601,8 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
         </Suspense>
       )}
       {currentView === 'home' && (
-      <section className="science-hero">
-        <div className="hero-inner">
+      <section className={embedded ? 'database-overview' : 'science-hero'}>
+        <div className={embedded ? 'database-overview__inner' : 'hero-inner'}>
           {!embedded && (
           <nav className="science-nav" aria-label={isEnglish ? 'Primary navigation' : '主导航'}>
             <a href="#top" className="science-brand" aria-label="HXQLab" onClick={event => { event.preventDefault(); openDatabaseView(); }}>
@@ -1620,48 +1632,56 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
           </nav>
           )}
 
-          <header id="top" className="science-hero-content">
-            <p className="science-module-label">
-              {isEnglish ? 'FlavorInsight AI · Database module' : 'FlavorInsight AI · 数据库模块'}
+          {embedded && <div className="database-overview__breadcrumb" aria-label={isEnglish ? 'Page location' : '当前位置'}>
+            <button type="button" onClick={openHomeView}>{isEnglish ? 'Research workspace' : '科研工作台'}</button>
+            <span aria-hidden="true">/</span>
+            <span>FlavorThresholdDB</span>
+          </div>}
+
+          <div className={embedded ? 'database-overview__hero-grid' : undefined}>
+          <header id="top" className={embedded ? 'database-overview__intro' : 'science-hero-content'}>
+            <p className={embedded ? 'database-overview__label' : 'science-module-label'}>
+              {embedded ? 'FLAVOR RESEARCH DATABASE' : (isEnglish ? 'FlavorInsight AI · Database module' : 'FlavorInsight AI · 数据库模块')}
             </p>
-            <h1>FlavorThresholdDB</h1>
-            <p className="science-subtitle">
-              {isEnglish ? 'An Integrated Flavor Threshold and Descriptor Retrieval Database' : '香气阈值与风味描述检索库'}
+            <h1 lang={isEnglish ? 'en' : 'zh-CN'}>{embedded ? (isEnglish ? 'Explore the evidence behind flavor compounds' : '探索风味化合物的科学证据') : 'FlavorThresholdDB'}</h1>
+            <p className={embedded ? 'database-overview__brand' : 'science-subtitle'}>
+              {embedded ? 'FlavorThresholdDB' : (isEnglish ? 'An Integrated Flavor Threshold and Descriptor Retrieval Database' : '香气阈值与风味描述检索库')}
             </p>
-            <p className="science-description">
-              {isEnglish
-                ? 'Integrates authoritative literature and specialized databases to provide traceable support for compound identification, OAV analysis, and standardized flavor annotation.'
-                : '整合多来源香气阈值与风味描述数据，保留介质、单位、阈值类型及文献来源，为风味化合物注释与 OAV 分析提供可追溯的数据支持。'}
+            <p className={embedded ? 'database-overview__description' : 'science-description'}>
+              {embedded
+                ? (isEnglish
+                  ? 'Search compound identities, odor thresholds and flavor descriptions together with their original media, units and sources.'
+                  : '汇集化合物身份、香气阈值与风味描述，保留原始介质、单位和来源记录，便于检索与科研引用。')
+                : (isEnglish
+                  ? 'Integrates authoritative literature and specialized databases to provide traceable support for compound identification, OAV analysis, and standardized flavor annotation.'
+                  : '整合多来源香气阈值与风味描述数据，保留介质、单位、阈值类型及文献来源，为风味化合物注释与 OAV 分析提供可追溯的数据支持。')}
             </p>
-            {!showCitationExample && (
-              <>
-                <div className="science-actions">
+            {embedded && <form className="database-overview__quick-search" onSubmit={event => { event.preventDefault(); openCompoundFromOverview(overviewQuery); }}>
+              <label htmlFor="database-overview-query">{isEnglish ? 'Quick compound search' : '快速检索化合物'}</label>
+              <div className="database-overview__search-control">
+                <Search size={19} aria-hidden="true" />
+                <input id="database-overview-query" type="search" value={overviewQuery} onChange={event => setOverviewQuery(event.target.value)} placeholder={isEnglish ? 'CAS, Chinese or English name' : '输入 CAS、中文名或英文名'} autoComplete="off" />
+                <button type="submit" disabled={!overviewQuery.trim()}>{isEnglish ? 'Search' : '检索'}</button>
+              </div>
+              <p>{isEnglish ? 'Exact matching opens in the full search workspace.' : '按 Enter 可进入检索工作台，使用现有精确匹配规则。'}</p>
+            </form>}
+            {(!showCitationExample || embedded) && (
+                <div className={embedded ? 'database-overview__actions' : 'science-actions'}>
                   <button type="button" onClick={openSearchView} className="science-primary-action">
                     <Search className="w-5 h-5" />
-                  {isEnglish ? 'Begin your flavor exploration' : '开启风味探索之旅'}
+                    {embedded
+                      ? (isEnglish ? 'Open search workspace' : '进入检索工作台')
+                      : (isEnglish ? 'Begin your flavor exploration' : '开启风味探索之旅')}
                   </button>
                   {embedded && (
                     <button type="button" onClick={openDataSources} className="science-secondary-action">
                       {isEnglish ? 'Sources and citations' : '数据来源与引用'}
                     </button>
                   )}
+                  {embedded && <a className="database-overview__activity-jump" href="#database-activity">
+                    {isEnglish ? 'View visit and search activity' : '查看访问与检索统计'} <span aria-hidden="true">↓</span>
+                  </a>}
                 </div>
-
-                <div className="science-metrics" aria-label={isEnglish ? 'Database coverage' : '数据库数据覆盖'}>
-                  <div>
-                    <span className="science-metric-icon"><Database aria-hidden="true" /></span>
-                    <span className="science-metric-copy"><strong>5</strong><span>{isEnglish ? 'integrated data sources' : '整合数据来源'}</span></span>
-                  </div>
-                  <div>
-                    <span className="science-metric-icon"><FlaskConical aria-hidden="true" /></span>
-                    <span className="science-metric-copy"><strong>{measurementMediaCount}</strong><span>{isEnglish ? 'threshold media categories' : '阈值介质分类'}</span></span>
-                  </div>
-                  <div>
-                    <span className="science-metric-icon"><ShieldCheck aria-hidden="true" /></span>
-                    <span className="science-metric-copy"><strong className="science-metric-word">{isEnglish ? 'Traceable' : '可追溯'}</strong><span>{isEnglish ? 'source records retained' : '保留来源记录'}</span></span>
-                  </div>
-                </div>
-              </>
             )}
 
             {showCitationExample && (
@@ -1709,19 +1729,50 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
               </div>
             )}
           </header>
-          {!showCitationExample && (
+          {embedded && <aside className="database-overview__preview" aria-label={isEnglish ? 'Example record field preview' : '示例记录字段预览'}>
+            <div className="database-overview__preview-top">
+              <span>{isEnglish ? 'Example record · field preview' : '示例记录 · 字段预览'}</span>
+              <Database size={20} aria-hidden="true" />
+            </div>
+            <div className="database-overview__identity">
+              <span>CAS 141-78-6</span>
+              <h2>{previewRecord?.chinese_name || '乙酸乙酯'}</h2>
+              <p>{formatSentenceCaseEnglishName(previewRecord?.english_name || 'Ethyl acetate')}</p>
+            </div>
+            <dl className="database-overview__fields">
+              <div><dt>{isEnglish ? 'Chemical class' : '化学类别'}</dt><dd>{isEnglish ? 'See the structure classification in search results' : '以检索结果中的结构分类为准'}</dd></div>
+              <div><dt>{isEnglish ? 'Threshold fields' : '阈值字段'}</dt><dd>{isEnglish ? 'Medium · type · original value · unit' : '介质 · 类型 · 原始数值 · 单位'}</dd></div>
+              <div><dt>{isEnglish ? 'Odor descriptors' : '气味描述'}</dt><dd>{isEnglish ? 'FEMA and FlavorDB2 records' : 'FEMA 与 FlavorDB2 原始条目'}</dd></div>
+              <div><dt>{isEnglish ? 'Source and citation' : '来源与引用'}</dt><dd>{isEnglish ? 'Review each record and its source' : '逐条核对记录及其来源'}</dd></div>
+            </dl>
+            <button type="button" className="database-overview__example-link" onClick={() => openCompoundFromOverview('141-78-6')}>
+              {isEnglish ? 'View this CAS in the search workspace' : '查看该 CAS 的真实记录'}
+              <ExternalLink size={15} aria-hidden="true" />
+            </button>
+            <p className="database-overview__preview-note">{isEnglish ? 'Fields shown for orientation. No threshold value or source is inferred here.' : '此处仅展示字段结构，不推断具体阈值数值或来源。'}</p>
+          </aside>}
+          </div>
+          {!embedded && !showCitationExample && <div className="science-metrics" aria-label={isEnglish ? 'Database coverage' : '数据库数据覆盖'}>
+            <div>
+              <span className="science-metric-icon"><Database aria-hidden="true" /></span>
+              <span className="science-metric-copy"><strong>5</strong><span>{isEnglish ? 'integrated data sources' : '整合数据来源'}</span></span>
+            </div>
+            <div>
+              <span className="science-metric-icon"><FlaskConical aria-hidden="true" /></span>
+              <span className="science-metric-copy"><strong>{loading ? '…' : (measurementMediaCount || '—')}</strong><span>{isEnglish ? 'threshold media categories' : '阈值介质分类'}</span></span>
+            </div>
+            <div>
+              <span className="science-metric-icon"><ShieldCheck aria-hidden="true" /></span>
+              <span className="science-metric-copy"><strong className="science-metric-word">{isEnglish ? 'Traceable' : '可追溯'}</strong><span>{isEnglish ? 'source records retained' : '保留来源记录'}</span></span>
+            </div>
+          </div>}
+          {(!showCitationExample || embedded) && (
             <SearchInsights
               isEnglish={isEnglish}
-              onSelect={item => {
-                resetWorkbenchCandidateSelection();
-                setSearchMode('single');
-                setExactMatch(true);
-                setSingleQuery(item.cas);
-                openSearchView();
-              }}
+              onSelect={item => openCompoundFromOverview(item.cas)}
             />
           )}
-          <footer className="science-author-footer">
+          <footer className={embedded ? 'database-overview__footer' : 'science-author-footer'}>
             <strong>{isEnglish ? 'Author statement' : '作者申明'}</strong>
             <span>
               {isEnglish

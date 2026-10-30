@@ -19,6 +19,7 @@ import {
 const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.jsx'));
 const DataProcessingPage = lazy(() => import('../pages/DataProcessingPage.jsx'));
 const DataAnalysisPage = lazy(() => import('../pages/DataAnalysisPage.jsx'));
+const AIModelsPage = lazy(() => import('../pages/AIModelsPage.jsx'));
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
 const PLATFORM_ROUTE_TITLES = Object.freeze({
@@ -28,6 +29,7 @@ const PLATFORM_ROUTE_TITLES = Object.freeze({
     search: '香气阈值检索 | FlavorInsight AI',
     processing: '数据处理 | FlavorInsight AI',
     analysis: '数据分析 | FlavorInsight AI',
+    models: '智能模型 | FlavorInsight AI',
     resources: '资源中心 | FlavorInsight AI',
     login: '账号访问 | FlavorInsight AI',
   },
@@ -37,6 +39,7 @@ const PLATFORM_ROUTE_TITLES = Object.freeze({
     search: 'Aroma Threshold Search | FlavorInsight AI',
     processing: 'Data Processing | FlavorInsight AI',
     analysis: 'Data Analysis | FlavorInsight AI',
+    models: 'AI Models | FlavorInsight AI',
     resources: 'Resources | FlavorInsight AI',
     login: 'Account access | FlavorInsight AI',
   },
@@ -162,6 +165,10 @@ function PlatformRoute({ route, onNavigate }) {
 
   if (route === 'analysis') {
     return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><DataAnalysisPage onNavigate={onNavigate} /></Suspense></RouteErrorBoundary>;
+  }
+
+  if (route === 'models') {
+    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIModelsPage onNavigate={onNavigate} /></Suspense></RouteErrorBoundary>;
   }
 
   if (route === 'resources') {

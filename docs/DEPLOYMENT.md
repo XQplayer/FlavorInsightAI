@@ -54,6 +54,14 @@ separately. The default API fallback is `http://127.0.0.1:8787`.
 Local-only files, release candidates, publication media, and backups belong
 under `_local/` and are excluded from Git.
 
+To inspect the same online analytics history in local development, create the
+Git-ignored `frontend/.env.local` with `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` for the deployed Supabase project, then restart Vite.
+Set `VITE_ANALYTICS_READ_ONLY=true` in that file: local previews can read real
+visits and search totals without incrementing production counters or presence.
+Vite development mode is read-only by default; the explicit flag also keeps a
+local production build read-only. Do not commit the local configuration.
+
 ## Rollback
 
 1. Identify the last verified Git tag.

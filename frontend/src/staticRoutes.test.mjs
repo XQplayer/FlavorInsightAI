@@ -11,6 +11,7 @@ const EXPECTED_STATIC_ROUTES = [
   'data-processing',
   'shimadzu-analysis',
   'data-analysis',
+  'ai-models',
   'resources',
   'login',
 ]

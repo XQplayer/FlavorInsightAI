@@ -6,11 +6,12 @@ const source = await readFile(new URL('./pages/PlatformHomeV2.jsx', import.meta.
 const styles = await readFile(new URL('./pages/PlatformHomeV2.css', import.meta.url), 'utf8');
 const app = await readFile(new URL('./app/PlatformApp.jsx', import.meta.url), 'utf8');
 
-test('actual homepage uses four honest module states and three real local screenshots', async () => {
+test('actual homepage routes four modules and distinguishes Beta studio from undeployed prediction', async () => {
   assert.match(app, /PlatformHomeV2\.jsx/);
   assert.equal((source.match(/route: (?:'[^']+'|null), status:/g) ?? []).length, 4);
   assert.match(source, /status: 'beta'/);
-  assert.match(source, /status: 'planned'/);
+  assert.match(source, /id: 'models', route: 'models', status: 'beta'/);
+  assert.match(source, /训练和预测尚未开放/);
   assert.match(source, /No production AI identification or flavor-prediction model is deployed/);
   assert.match(source, /尚未部署生产级 AI 鉴定或风味预测模型/);
   for (const asset of ['product-search-preview.png', 'product-processing-preview.png', 'product-analysis-preview.png']) {
@@ -21,7 +22,7 @@ test('actual homepage uses four honest module states and three real local screen
 });
 
 test('homepage keeps direct workbench routes, contrast and responsive layout', () => {
-  for (const route of ['processing', 'database', 'search', 'analysis', 'resources']) {
+  for (const route of ['processing', 'database', 'search', 'analysis', 'models', 'resources']) {
     assert.match(source, new RegExp(`route: '${route}'|route=\"${route}\"`));
   }
   assert.match(styles, /:focus-visible/);

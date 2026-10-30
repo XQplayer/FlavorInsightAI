@@ -20,14 +20,16 @@ const screenshotRoot = path.join(root, '_local', 'verification', 'platform-ui', 
 const resultPath = path.join(screenshotRoot, 'platform-shell-results.json');
 const servers = [];
 const verificationScope = process.env.CODEX_E2E_SCOPE || 'all';
+const routeFilter = process.env.CODEX_E2E_ROUTE || '';
 
 const ROUTES = Object.freeze([
   { name: 'home', segment: '', heading: /让风味数据成为可解释的科研证据|Make flavor data interpretable research evidence/u, title: /^FlavorInsight AI \|/u, lightweight: true },
-  { name: 'database', segment: 'database/', heading: /^FlavorThresholdDB$/u, title: /^FlavorThresholdDB 数据库 \|/u },
+  { name: 'database', segment: 'database/', heading: /^探索风味化合物的科学证据$/u, title: /^FlavorThresholdDB 数据库 \|/u },
   { name: 'search', segment: 'aroma-threshold/', heading: /香气阈值与风味描述检索/u, title: /^香气阈值检索 \|/u },
   { name: 'processing', segment: 'data-processing/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
   { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
   { name: 'analysis', segment: 'data-analysis/', heading: /^数据分析$/u, title: /^数据分析 \|/u, lightweight: true },
+  { name: 'models', segment: 'ai-models/', heading: /^智能模型与预测评价$/u, title: /^智能模型 \|/u, lightweight: true },
   { name: 'resources', segment: 'resources/', heading: /^资源中心$/u, title: /^资源中心 \|/u, lightweight: true },
   { name: 'login', segment: 'login/', heading: /^FlavorInsight AI$/u, title: /^账号访问 \|/u, lightweight: true },
 ]);
@@ -353,6 +355,25 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
     const screenshot = path.join(screenshotRoot, viewport.name, `${route.name}.png`);
     await fs.mkdir(path.dirname(screenshot), { recursive: true });
     await page.screenshot({ path: screenshot, fullPage: true });
+    if (route.name === 'home') {
+      const modelCard = page.locator('.fi-home__feature--models');
+      assert.match(await modelCard.innerText(), /测试中/u, `${viewport.name}/home: Model Studio is Beta`);
+      assert.match(await modelCard.locator('.fi-home__feature-link').getAttribute('href'), /\/ai-models\/$/u);
+    }
+    if (route.name === 'models') {
+      const tabs = page.getByRole('tablist', { name: '模型工作区' }).getByRole('tab');
+      assert.equal(await tabs.count(), 5, `${viewport.name}/models: five tabs`);
+      for (const name of ['模型训练', '模型评价', '预测应用', '实验记录', '概览']) {
+        const button = tabs.getByText(name, { exact: true });
+        await button.click();
+        assert.equal(await button.getAttribute('aria-selected'), 'true', `${viewport.name}/models: ${name} tab selected`);
+      }
+      await tabs.getByText('模型训练', { exact: true }).click();
+      assert.equal(await page.getByRole('button', { name: '开始训练' }).isDisabled(), true);
+      await page.screenshot({ path: path.join(screenshotRoot, viewport.name, 'models-training.png'), fullPage: true });
+      await tabs.getByText('预测应用', { exact: true }).click();
+      assert.equal(await page.getByRole('button', { name: '导入新样本' }).isDisabled(), true);
+    }
     assertLightweightRequests(route, observed.requests, `${viewport.name}/${route.name}`);
     assertClean(`${viewport.name}/${route.name}`, observed);
     return {
@@ -577,7 +598,7 @@ try {
   const routeResults = [];
   if (verificationScope !== 'interactions') {
     for (const viewport of VIEWPORTS) {
-      for (const route of ROUTES) {
+      for (const route of ROUTES.filter(candidate => !routeFilter || candidate.name === routeFilter)) {
         process.stderr.write(`[platform-e2e] ${viewport.name}/${route.name}\n`);
         routeResults.push(await verifyRoute(browser, viewport, route, baseUrl, proxyOrigin));
       }

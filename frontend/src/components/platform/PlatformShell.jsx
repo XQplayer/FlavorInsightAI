@@ -8,6 +8,7 @@ import {
   House,
   Languages,
   Menu,
+  BrainCircuit,
   Moon,
   PanelsTopLeft,
   Sun,
@@ -25,6 +26,7 @@ const NAV_ITEMS = Object.freeze([
   { route: 'database', icon: Database, labels: { zh: 'FlavorThresholdDB', en: 'FlavorThresholdDB' } },
   { route: 'processing', icon: PanelsTopLeft, labels: { zh: '数据处理', en: 'Data processing' } },
   { route: 'analysis', icon: ChartNoAxesCombined, labels: { zh: '数据分析', en: 'Data analysis' } },
+  { route: 'models', icon: BrainCircuit, labels: { zh: '智能模型', en: 'AI Models' } },
   { route: 'resources', icon: BookOpen, labels: { zh: '资源中心', en: 'Resources' } },
 ]);
 
