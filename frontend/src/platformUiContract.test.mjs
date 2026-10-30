@@ -79,7 +79,9 @@ test('labels language, theme, and account controls and uses Lucide icons only', 
   assert.match(source, /data-language="en"/);
   assert.match(source, /aria-label=\{copy\.themeControl\}/);
   assert.match(source, /aria-label=\{copy\.accountControl\}/);
-  assert.match(source, /Menu,[\s\S]*Moon,[\s\S]*Sun,[\s\S]*UserRound,[\s\S]*X/);
+  for (const icon of ['House', 'Database', 'PanelsTopLeft', 'ChartNoAxesCombined', 'BookOpen', 'Menu', 'Moon', 'Sun', 'UserRound', 'X']) {
+    assert.match(source, new RegExp(`\\b${icon}\\b`));
+  }
   assert.doesNotMatch(source, /[\u{1F300}-\u{1FAFF}]/u);
 });
 
@@ -90,49 +92,55 @@ test('drives the theme control from the provider resolved theme', () => {
   assert.doesNotMatch(source, /darkThemeActive = theme === 'dark'/);
 });
 
-test('uses an operable mobile disclosure and account route', () => {
+test('uses an operable mobile drawer and account route', () => {
   assert.match(source, /aria-expanded=\{mobileMenuOpen\}/);
-  assert.match(source, /dismissTopDisclosureOnEscape/);
-  assert.match(source, /isOutsideDisclosure/);
+  assert.match(source, /className="platform-shell__scrim"/);
+  assert.match(source, /event\.key === 'Escape'/);
+  assert.match(source, /event\.key !== 'Tab'/);
+  assert.match(source, /menuButtonRef\.current\?\.focus\(\)/);
+  assert.match(source, /aria-modal=\{mobileViewport && mobileMenuOpen/);
+  assert.match(source, /inert=\{mobileViewport && !mobileMenuOpen/);
   assert.match(source, /setMobileMenuOpen\(false\)/);
   assert.match(source, /本地模式/);
   assert.match(source, /routeHref\('login', PLATFORM_BASE_PATH\)/);
 });
 
-test('places the mobile menu trigger before its controlled navigation and tracks separate boundaries', () => {
-  const menuTriggerIndex = source.indexOf('className="platform-shell__menu-button"');
-  const navigationIndex = source.indexOf('id="platform-navigation"');
-
-  assert.notEqual(menuTriggerIndex, -1);
-  assert.notEqual(navigationIndex, -1);
-  assert.ok(menuTriggerIndex < navigationIndex);
+test('connects the mobile trigger and collapse button to the shared navigation', () => {
+  assert.match(source, /id="platform-navigation"/);
+  assert.match(source, /aria-controls="platform-navigation"/);
+  assert.match(source, /className="platform-shell__sidebar"/);
+  assert.match(source, /className="platform-shell__menu-button"/);
   assert.match(source, /ref=\{menuButtonRef\}/);
-  assert.match(source, /ref=\{navigationRegionRef\}/);
+  assert.match(source, /ref=\{sidebarRef\}/);
+  assert.match(source, /ref=\{drawerCloseRef\}/);
 });
 
-test('keeps the fixed shell accessible and responsive', () => {
-  assert.match(styles, /var\(--navbar-height,\s*70px\)/);
+test('keeps the fixed sidebar accessible and responsive', () => {
+  assert.match(styles, /grid-template-columns:\s*var\(--shell-sidebar-width\) minmax\(0,\s*1fr\)/);
+  assert.match(styles, /--shell-sidebar-width:\s*256px/);
+  assert.match(styles, /--shell-sidebar-width:\s*72px/);
+  assert.match(styles, /height:\s*100dvh/);
   assert.match(styles, /min-(?:height|width):\s*var\(--control-height,\s*44px\)/);
-  assert.match(styles, /max-width:\s*var\(--container-max,\s*1200px\)/);
-  assert.match(styles, /@media \(max-width:\s*1100px\)/);
+  assert.match(styles, /@media \(max-width:\s*767px\)/);
   assert.match(styles, /:focus-visible/);
   assert.match(styles, /scroll-margin-top:/);
-  assert.match(styles, /overflow-x:\s*(?:clip|hidden)/);
+  assert.doesNotMatch(styles, /overflow-x:\s*(?:clip|hidden)/);
   assert.match(styles, /@media \(prefers-reduced-motion:\s*reduce\)/);
 });
 
-test('keeps fixed-header compensation inside the shell height budget', () => {
+test('removes legacy top-nav compensation without changing the global container token', () => {
   const bodyRule = styles.match(/body\s*\{([^}]*)\}/)?.[1] ?? '';
   const shellRules = [...styles.matchAll(/\.platform-shell\s*\{([^}]*)\}/g)]
     .map(match => match[1]);
 
   assert.doesNotMatch(bodyRule, /padding-top:/);
   assert.match(shellRules[0] ?? '', /box-sizing:\s*border-box/);
-  assert.match(shellRules[0] ?? '', /padding-top:\s*var\(--navbar-height,\s*70px\)/);
+  assert.match(shellRules[0] ?? '', /--navbar-height:\s*0px/);
+  assert.doesNotMatch(shellRules[0] ?? '', /padding-top:/);
   assert.match(shellRules[0] ?? '', /min-height:\s*100vh/);
   assert.match(shellRules[0] ?? '', /min-height:\s*100dvh/);
-  assert.match(shellRules[1] ?? '', /padding-top:\s*60px/);
-  assert.match(shellRules[1] ?? '', /min-height:\s*100dvh/);
+  assert.match(styles, /\.platform-shell__utility-header\s*\{/);
+  assert.doesNotMatch(styles, /--container-max:\s*100%/);
 });
 
 test('presents bilingual evidence-led identity in a concise hero', () => {
@@ -151,10 +159,12 @@ test('uses a real current product screenshot rather than decorative metrics', ()
   assert.doesNotMatch(homeSource, /<svg\b|platform-home__trajectory/);
 });
 
-test('limits floating navigation treatment to brand pages', () => {
-  assert.match(source, /route === 'home' \|\| route === 'login'/);
-  assert.match(source, /platform-shell--brand/);
-  assert.match(styles, /\.platform-shell--brand \.platform-shell__header/);
+test('uses one sidebar across all routes while the home hero fills the remaining area', () => {
+  assert.match(source, /<aside[\s\S]*className="platform-shell__sidebar"/);
+  assert.match(source, /<main className="platform-shell__main"/);
+  assert.match(styles, /\.platform-shell__main-area\s*\{[^}]*grid-column:\s*2/s);
+  assert.match(homeStyles, /\.fi-home__hero\s*\{[^}]*width:\s*100%/s);
+  assert.doesNotMatch(source, /platform-shell--brand|platform-shell--home/);
 });
 
 test('exposes real database, search, and processing destinations', () => {
@@ -191,11 +201,14 @@ test('moves extended explanation out of the homepage and retains a compact foote
 });
 
 test('keeps the homepage responsive and motion restrained', () => {
-  assert.match(homeStyles, /@media \(max-width: 1050px\)/);
+  assert.match(homeStyles, /@container \(max-width: 1000px\)/);
   assert.match(homeStyles, /@media \(max-width: 768px\)/);
   assert.match(homeStyles, /@media \(max-width: 480px\)/);
   assert.match(homeStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(homeStyles, /:focus-visible/);
+  assert.match(homeStyles, /--home-gutter:\s*clamp\(16px,\s*2vw,\s*48px\)/);
+  assert.match(homeStyles, /width:\s*min\(100%,\s*1800px\)/);
+  assert.doesNotMatch(homeStyles, /transform:\s*scale\(/);
 });
 
 test('offers a real bilingual local workbench while AI remains planned', () => {
