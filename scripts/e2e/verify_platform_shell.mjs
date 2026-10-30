@@ -33,10 +33,12 @@ const ROUTES = Object.freeze([
 ]);
 
 const VIEWPORTS = Object.freeze([
-  { name: 'desktop', width: 1440, height: 900 },
-  { name: 'laptop', width: 1024, height: 768 },
-  { name: 'tablet', width: 768, height: 1024 },
   { name: 'mobile', width: 375, height: 812 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'laptop', width: 1024, height: 768 },
+  { name: 'compact-desktop', width: 1366, height: 900 },
+  { name: 'desktop', width: 1920, height: 1080 },
+  { name: 'wide', width: 2560, height: 1440 },
 ]);
 
 async function portIsFree(port) {
@@ -267,11 +269,25 @@ async function assertLayout(page, label) {
     mainCount: document.querySelectorAll('main').length,
     mainIdCount: document.querySelectorAll('#main-content').length,
     title: document.title,
+    sidebar: (() => {
+      const box = document.querySelector('.platform-shell__sidebar').getBoundingClientRect();
+      return { x: box.x, width: box.width };
+    })(),
+    content: (() => {
+      const box = document.querySelector('.platform-shell__main').getBoundingClientRect();
+      return { x: box.x, width: box.width };
+    })(),
   }));
   assert.ok(layout.title.includes('FlavorInsight AI'), `${label}: route title belongs to the platform`);
   assert.ok(layout.documentWidth <= layout.viewportWidth + 1, `${label}: no page-level horizontal overflow (${layout.documentWidth} > ${layout.viewportWidth})`);
   assert.equal(layout.mainCount, 1, `${label}: exactly one main landmark`);
   assert.equal(layout.mainIdCount, 1, `${label}: exactly one #main-content`);
+  const expectedSidebar = layout.viewportWidth < 768 ? 0 : layout.viewportWidth < 1280 ? 72 : 256;
+  assert.ok(Math.abs(layout.content.x - expectedSidebar) <= 1, `${label}: content begins after the sidebar`);
+  assert.ok(Math.abs(layout.content.width - (layout.viewportWidth - expectedSidebar)) <= 1, `${label}: content fills remaining workspace`);
+  if (expectedSidebar) {
+    assert.ok(Math.abs(layout.sidebar.width - expectedSidebar) <= 1, `${label}: sidebar has expected width`);
+  }
   return layout;
 }
 
@@ -322,6 +338,10 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
     await waitForStableRoute(page, observed);
     await assertRouteIdentity(page, route, url, `${viewport.name}/${route.name}`);
     const firstLayout = await assertLayout(page, `${viewport.name}/${route.name}`);
+    if (route.name === 'search') {
+      assert.equal(await page.locator('.platform-shell__nav-link[href$="/database/"]').getAttribute('aria-current'),
+      'page', `${viewport.name}/search: database destination remains selected`);
+    }
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     const refreshedHeading = page.locator('#main-content h1').first();
@@ -374,6 +394,21 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
     await page.locator('#platform-home-title').waitFor({ state: 'visible' });
     await waitForStableRoute(page, observed);
+    assert.equal(Math.round((await page.locator('.platform-shell__sidebar').boundingBox()).width), 256,
+      'wide desktop sidebar starts expanded');
+    await page.getByRole('button', { name: '折叠侧边栏' }).click();
+    assert.equal(Math.round((await page.locator('.platform-shell__sidebar').boundingBox()).width), 72,
+      'desktop collapse changes the actual layout width');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#platform-home-title').waitFor({ state: 'visible' });
+    assert.equal(Math.round((await page.locator('.platform-shell__sidebar').boundingBox()).width), 72,
+      'manual collapse survives refresh');
+    await page.getByRole('button', { name: '展开侧边栏' }).click();
+    assert.equal(Math.round((await page.locator('.platform-shell__sidebar').boundingBox()).width), 256,
+      'desktop sidebar can expand again');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#platform-home-title').waitFor({ state: 'visible' });
+    await waitForStableRoute(page, observed);
 
     await page.keyboard.press('Tab');
     await page.waitForFunction(() => {
@@ -421,6 +456,20 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     await context.close();
   }
 
+  const compactContext = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+  try {
+    const page = await compactContext.newPage();
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+    await page.locator('#platform-home-title').waitFor({ state: 'visible' });
+    assert.equal(Math.round((await page.locator('.platform-shell__sidebar').boundingBox()).width), 72,
+      'medium viewport defaults to an icon rail');
+    await page.getByRole('button', { name: 'Expand sidebar' }).click();
+    assert.equal(Math.round((await page.locator('.platform-shell__main').boundingBox()).x), 256,
+      'expanding the rail reflows content instead of covering it');
+  } finally {
+    await compactContext.close();
+  }
+
   const mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 } });
   await mobileContext.addInitScript(() => {
     if (!localStorage.getItem('flavorinsight:language')) localStorage.setItem('flavorinsight:language', 'zh');
@@ -442,6 +491,9 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
       .getByRole('navigation', { name: '平台主导航' })
       .getByRole('link', { name: '资源中心', exact: true });
     await resourcesLink.waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.activeElement?.classList.contains('platform-shell__drawer-close'));
+    assert.equal(await page.locator('.platform-shell__drawer-close').evaluate(element => document.activeElement === element), true,
+      'drawer opening moves keyboard focus inside');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'open mobile menu does not cause page overflow');
     const menuScreenshot = path.join(screenshotRoot, 'mobile', 'menu-open.png');
     await fs.mkdir(path.dirname(menuScreenshot), { recursive: true });
@@ -449,7 +501,13 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     await page.keyboard.press('Escape');
     assert.equal(await menu.getAttribute('aria-expanded'), 'false', 'Escape closes the mobile menu');
     assert.equal(await menu.getAttribute('aria-label'), '打开导航菜单', 'mobile menu restores its closed-state label');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('platform-shell__menu-button'));
     assert.equal(await menu.evaluate(element => document.activeElement === element), true, 'Escape restores focus to the mobile menu trigger');
+    await page.keyboard.press('Enter');
+    await page.locator('.platform-shell__scrim').click({ position: { x: 320, y: 100 } });
+    assert.equal(await menu.getAttribute('aria-expanded'), 'false', 'backdrop closes the drawer');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('platform-shell__menu-button'));
+    assert.equal(await menu.evaluate(element => document.activeElement === element), true, 'backdrop close restores focus');
     await page.keyboard.press('Enter');
     await resourcesLink.waitFor({ state: 'visible' });
     await resourcesLink.click();
@@ -538,7 +596,7 @@ try {
     viewports: VIEWPORTS,
     routes: ROUTES.map(route => route.name),
     routeResults,
-    interactions: ['skip-link', 'language-persistence', 'theme-persistence', 'desktop-navigation', 'mobile-navigation'],
+    interactions: ['skip-link', 'language-persistence', 'theme-persistence', 'desktop-collapse-persistence', 'medium-rail-reflow', 'mobile-drawer-focus-backdrop', 'desktop-navigation', 'mobile-navigation'],
     servedFromProductionDist: true,
     ports: { proxyPort, staticPort },
   };
