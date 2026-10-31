@@ -51,3 +51,29 @@ test('uses the project water convention for an ordinary source record without a 
     '水中觉察阈值（μg/L）': 80,
   })
 })
+
+test('loads each threshold database once for the entire CAS batch', async () => {
+  let ordinaryLoads = 0
+  let bookLoads = 0
+  const service = createShimadzuWaterDetectionThresholdService({
+    loadThresholds: async () => { ordinaryLoads += 1; return [] },
+    loadBookIndex: async () => { bookLoads += 1; return { records: [] } },
+  })
+  await Promise.all(Array.from({ length: 30 }, (_, index) => service.resolve(`test-${index}`)))
+  assert.equal(ordinaryLoads, 1)
+  assert.equal(bookLoads, 1)
+})
+
+test('reports unavailable threshold data and allows retry instead of caching NA', async () => {
+  let online = false
+  const service = createShimadzuWaterDetectionThresholdService({
+    loadThresholds: async () => {
+      if (!online) throw new Error('database download failed')
+      return [{ cas: '141-78-6', medium: '水', threshold_data: ['Ref (2022) d 1 μg/L'] }]
+    },
+    loadBookIndex: async () => ({ records: [] }),
+  })
+  await assert.rejects(service.resolve('141-78-6'), /database download failed/)
+  online = true
+  assert.equal((await service.resolve('141-78-6'))['水中觉察阈值（μg/L）'], 1)
+})

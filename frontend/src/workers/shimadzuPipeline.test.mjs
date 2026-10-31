@@ -4,9 +4,33 @@ import test from 'node:test'
 
 import JSZip from 'jszip'
 
-import { createPartialFailureArchive, runShimadzuBrowserPipeline } from './shimadzuPipeline.js'
+import { createPartialFailureArchive, runShimadzuBrowserPipeline as runPipeline } from './shimadzuPipeline.js'
+import { createShimadzuWaterDetectionThresholdService } from '../lib/shimadzuWaterDetectionThreshold.js'
+
+// Node has no browser origin: load the real public databases explicitly.
+const waterThresholds = createShimadzuWaterDetectionThresholdService({
+  loadThresholds: async () => JSON.parse(await readFile(new URL('../../public/aroma_data_merged.json', import.meta.url), 'utf8')),
+  loadBookIndex: async () => JSON.parse(await readFile(new URL('../../public/book_flavor_chemistry_index.json', import.meta.url), 'utf8')),
+})
+const runShimadzuBrowserPipeline = options => runPipeline({ resolveWaterDetectionThreshold: waterThresholds.resolve, ...options })
 
 const resource = name => new URL(`../../../resources/shimadzu/templates/${name}`, import.meta.url)
+
+test('warns when identity lookup fails instead of marking an NA-only enrichment as passed', async () => {
+  const [rawBytes, sampleBytes] = await Promise.all([
+    readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),
+    readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')),
+  ])
+  const result = await runShimadzuBrowserPipeline({
+    rawBytes, sampleBytes, enableClassification: true, enableWaterDetectionThreshold: false,
+    enrichCasValues: async values => new Map(values.map(cas => [cas, { identity: {}, audit: { '失败原因': 'PubChem: HTTP_503' } }])),
+  })
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  const manifest = JSON.parse(await zip.file('04_跨样品合并与半定量/manifest.json').async('string'))
+  const stage = JSON.parse(await zip.file('04_跨样品合并与半定量/data.json').async('string'))
+  assert.equal(manifest.severity, 'WARN')
+  assert.ok(stage.issues.some(issue => issue.code === 'COMPOUND_ENRICHMENT_INCOMPLETE'))
+})
 
 test('builds a downloadable partial archive with structured gate details', async () => {
   const zip = new JSZip()

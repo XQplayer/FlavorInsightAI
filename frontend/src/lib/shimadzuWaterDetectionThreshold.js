@@ -1,4 +1,5 @@
 import { V2_WATER_DETECTION_THRESHOLD_COLUMNS } from '../shimadzu-core/v2-identity-columns.mjs'
+import { requestShimadzuJson } from './shimadzuDataRequest.js'
 
 const NA = 'NA'
 
@@ -73,21 +74,34 @@ function result(candidate) {
 export const createShimadzuWaterDetectionThresholdService = ({
   fetchImpl = fetch,
   baseUrl = typeof import.meta.env === 'object' ? import.meta.env.BASE_URL : '/',
-  loadThresholds = () => fetchImpl(`${baseUrl.replace(/\/$/, '')}/aroma_data_merged.json`).then(response => response.ok ? response.json() : []),
-  loadBookIndex = () => fetchImpl(`${baseUrl.replace(/\/$/, '')}/book_flavor_chemistry_index.json`).then(response => response.ok ? response.json() : ({ records: [] })),
+  loadThresholds = () => requestShimadzuJson(`${baseUrl.replace(/\/$/, '')}/aroma_data_merged.json`, { fetchImpl }),
+  loadBookIndex = () => requestShimadzuJson(`${baseUrl.replace(/\/$/, '')}/book_flavor_chemistry_index.json`, { fetchImpl }),
   cache = new Map(),
-} = {}) => ({
+} = {}) => {
+  let sourcePromise
+  const loadSources = () => {
+    if (!sourcePromise) sourcePromise = Promise.all([loadThresholds(), loadBookIndex()]).then(sources => {
+      if (!Array.isArray(sources[0]) || !Array.isArray(sources[1]?.records)) throw new Error('Invalid threshold database')
+      return sources
+    }).catch(error => { sourcePromise = undefined; throw error })
+    return sourcePromise
+  }
+  return {
   async resolve(value) {
     const cas = normalizedCas(value)
     if (!cas) return emptyResult()
     if (!cache.has(cas)) cache.set(cas, (async () => {
-      const [thresholds, bookIndex] = await Promise.all([loadThresholds(), loadBookIndex()])
+      const [thresholds, bookIndex] = await loadSources()
       const ordinary = ordinaryCandidates(thresholds, cas).sort((left, right) => right.year - left.year || left.value - right.value)
       if (ordinary.length) return result(ordinary[0])
       return result(bookCandidates(bookIndex, cas).sort((left, right) => left.value - right.value)[0])
-    })().catch(() => emptyResult()))
+    })().catch(error => {
+      cache.delete(cas)
+      throw Object.assign(new Error(`水中觉察阈值数据库加载失败：${error.message}`), { code: 'WATER_THRESHOLD_DATA_UNAVAILABLE' })
+    }))
     return cache.get(cas)
   },
-})
+  }
+}
 
 export const shimadzuWaterDetectionThresholdService = createShimadzuWaterDetectionThresholdService()

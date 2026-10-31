@@ -5,6 +5,17 @@ import { createShimadzuCasRecoveryService } from './shimadzuCasRecovery.js'
 
 const jsonResponse = body => ({ ok: true, json: async () => body })
 
+test('defaults to a public API outside localhost, including the online worker', async () => {
+  const urls = []
+  const service = createShimadzuCasRecoveryService({ fetchImpl: async url => {
+    urls.push(url)
+    return jsonResponse({ found: false })
+  } })
+  await service.recover({ 'CAS #': '0-00-0', Name: 'Ethanol' })
+  assert.equal(urls.length, 1)
+  assert.ok(urls[0].startsWith('https://flavorthresholddb-api.onrender.com/'))
+})
+
 test('fills a unique CAS only after exact PubChem identity checks', async () => {
   const service = createShimadzuCasRecoveryService({
     fetchImpl: async url => url.includes('pubchem-cas-candidates')

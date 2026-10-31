@@ -114,8 +114,16 @@ async function enrichStage4Data(data, {
   ]
   const emptyIdentity = Object.fromEntries(V2_COMPOUND_IDENTITY_COLUMNS.map(column => [column, 'NA']))
   const emptyThreshold = Object.fromEntries(WATER_DETECTION_THRESHOLD_COLUMNS.map(column => [column, 'NA']))
+  const incomplete = compoundAudit.filter(audit => audit['失败原因'] !== 'NA')
+  const issues = [...(data.issues || []), ...(incomplete.length ? [{
+    severity: 'WARN', code: 'COMPOUND_ENRICHMENT_INCOMPLETE',
+    message: `${incomplete.length} 个化合物的信息查询或分类不完整，详见第四步化合物信息审核表。`,
+    compounds: incomplete.length,
+  }] : [])]
   return {
     ...data,
+    issues,
+    counts: { ...data.counts, issues: issues.length },
     compoundAudit,
     table: {
       columns: ['CAS #', ...extraColumns, ...data.table.columns.filter(column => column !== 'CAS #')],
