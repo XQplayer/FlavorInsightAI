@@ -119,6 +119,8 @@ Shimadzu Stage 4 waits for the public data API to wake up before starting online
 
 Regression checks: `pnpm run test:shimadzu-browser`; after a production build, `pnpm run test:e2e:shimadzu-enrichment` checks the compiled browser worker, real threshold databases and preservation of enrichment in Stage 5/6 workbooks (external API responses are fixtures in this reproducible check).
 
+Set `SHIMADZU_E2E_LIVE=1` when running the enrichment E2E script to check the deployed GitHub Pages worker against the real public data API instead of fixtures. This uses only the public example workbooks and keeps workbook processing inside the test browser.
+
 ```bash
 cd frontend
 pnpm run lint

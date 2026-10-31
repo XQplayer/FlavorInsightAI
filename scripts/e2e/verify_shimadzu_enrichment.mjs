@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const dist = path.join(root, 'frontend/dist')
+const live = process.env.SHIMADZU_E2E_LIVE === '1'
 const { chromium } = await import(process.env.CODEX_E2E_PLAYWRIGHT || pathToFileURL(path.resolve(path.dirname(process.execPath), '../node_modules/playwright/index.mjs')).href)
 const { default: JSZip } = await import(pathToFileURL(path.join(root, 'frontend/node_modules/jszip/lib/index.js')).href)
 const server = http.createServer(async (request, response) => {
@@ -31,7 +32,7 @@ try {
     if (request.url().includes('book_flavor_chemistry_index.json')) bookLoads += 1
     if (request.url().includes('/compound?')) compoundCalls += 1
   })
-  await context.route('https://flavorthresholddb-api.onrender.com/**', async route => {
+  if (!live) await context.route('https://flavorthresholddb-api.onrender.com/**', async route => {
     const url = new URL(route.request().url())
     let body = { found: false }
     if (url.pathname === '/health') body = { ok: true }
@@ -41,18 +42,26 @@ try {
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) })
   })
   const page = await context.newPage()
-  await page.goto(`http://127.0.0.1:${server.address().port}/FlavorInsightAI/`)
-  // Isolate the production worker from unrelated page preloads.
-  await page.setContent('<!doctype html><title>Worker regression</title>')
+  const baseUrl = live ? 'https://xqplayer.github.io/FlavorInsightAI/' : `http://127.0.0.1:${server.address().port}/FlavorInsightAI/`
+  // Keep the real origin without loading unrelated application preloads.
+  await context.route(`${baseUrl}__worker-test`, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Worker regression</title>' }))
+  await page.goto(`${baseUrl}__worker-test`)
   ordinaryLoads = 0
   bookLoads = 0
-  const worker = (await fs.readdir(path.join(dist, 'assets'))).find(name => /^shimadzu\.worker.*\.js$/.test(name))
+  const worker = live ? await page.evaluate(async base => {
+    const html = await (await fetch(base)).text()
+    const main = html.match(/src="([^"]*\/assets\/index-[^"]+\.js)"/)[1]
+    const app = await (await fetch(main)).text()
+    const shimadzu = app.match(/assets\/ShimadzuAnalysisPage-[\w-]+\.js/)[0]
+    const chunk = await (await fetch(`${base}${shimadzu}`)).text()
+    return chunk.match(/shimadzu\.worker-[\w-]+\.js/)[0]
+  }, baseUrl) : (await fs.readdir(path.join(dist, 'assets'))).find(name => /^shimadzu\.worker.*\.js$/.test(name))
   const templates = path.join(root, 'resources/shimadzu/templates')
   const raw = (await fs.readFile(path.join(templates, 'Shimadzu_Raw_Workbook_Example.xlsx'))).toString('base64')
   const samples = (await fs.readFile(path.join(templates, 'Shimadzu_Sample_Internal_Standard_Template.xlsx'))).toString('base64')
   const archive = await page.evaluate(({ worker, raw, samples }) => new Promise((resolve, reject) => {
     const instance = new Worker(`/FlavorInsightAI/assets/${worker}`, { type: 'module' })
-    const timer = setTimeout(() => { instance.terminate(); reject(new Error('worker timed out')) }, 60000)
+    const timer = setTimeout(() => { instance.terminate(); reject(new Error('worker timed out')) }, 180000)
     instance.onerror = event => { clearTimeout(timer); instance.terminate(); reject(new Error(event.message)) }
     instance.onmessage = ({ data }) => {
       if (data.type === 'error') { clearTimeout(timer); instance.terminate(); reject(new Error(JSON.stringify(data.details))) }
@@ -81,7 +90,7 @@ try {
     assert.equal(row?.常用英文名, 'Ethyl acetate')
     assert.equal(row?.化合物分类, '酯类')
   }
-  console.log(JSON.stringify({ productionWorker: worker, status: 'PASS', ordinaryLoads, bookLoads, ethyl }, null, 2))
+  console.log(JSON.stringify({ mode: live ? 'live public API' : 'API fixtures', productionWorker: worker, status: 'PASS', ordinaryLoads, bookLoads, ethyl }, null, 2))
 } finally {
   await browser?.close()
   await new Promise(resolve => server.close(resolve))
