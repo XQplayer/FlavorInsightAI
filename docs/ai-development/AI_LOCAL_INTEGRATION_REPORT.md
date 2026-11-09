@@ -1,0 +1,5 @@
+# Local integration record
+
+Isolated worktree `.worktrees/ai-pca-release`, branch `codex/ai-pca-release`, was created from AI branch `4919de0` and merged current local/remote `main` (`595fb93`) as merge commit `2ed49e8`. Two Shimadzu UI/test conflicts were resolved while preserving AI result links and the main workbench. Dirty root worktree was not changed. No seven-step Worker algorithm or raw research data was edited.
+
+Latest checks: `pnpm run test:analysis` 108/108, `python -m unittest scripts.tests.test_ai_gateway scripts.tests.test_ai_tools services.analysis.tests.test_service -q` 46/46, R reference suite passed, `pnpm run lint` passed, `pnpm run build` passed, `pnpm audit --prod` no known vulnerabilities, local Playwright synthetic PCA passed desktop/mobile, and `git diff --check` passed. A full platform browser/Worker suite has not been rerun after this feature; remote PR CI is the next integration gate. Git commit SHA and remote status are recorded in [AI_ONLINE_RELEASE_REPORT.md](AI_ONLINE_RELEASE_REPORT.md).

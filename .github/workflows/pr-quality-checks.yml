@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v7
       - name: Shimadzu service and HTTP integration
         run: python3 -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
+      - name: AI Gateway permissions and analysis broker contracts
+        run: python3 -m unittest scripts.tests.test_ai_gateway scripts.tests.test_ai_tools services.analysis.tests.test_service -v
 
   verify:
     name: Tests, lint, and build

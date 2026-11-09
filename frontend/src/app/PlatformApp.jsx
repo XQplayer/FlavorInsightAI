@@ -179,7 +179,7 @@ function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavi
   }
 
   if (route === 'assistant') {
-    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIResearchAssistantPage language={language} /></Suspense></RouteErrorBoundary>;
+    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIResearchAssistantPage language={language} onNavigate={onNavigate} /></Suspense></RouteErrorBoundary>;
   }
 
   if (route === 'resources') {

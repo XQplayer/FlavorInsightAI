@@ -10,10 +10,13 @@ import GroupEditor from '../components/analysis/GroupEditor.jsx';
 import RecipePanel from '../components/analysis/RecipePanel.jsx';
 import AnalysisPanel from '../components/analysis/AnalysisPanel.jsx';
 import ResultsPanel from '../components/analysis/ResultsPanel.jsx';
+import PcaAgentPanel from '../components/analysis/PcaAgentPanel.jsx';
 import { downloadFile } from '../analysis/download.mjs';
 import { Select } from '../components/analysis/Controls.jsx';
+import { pcaExplanationExcerpt, pcaExplanationPrompt } from '../analysis/pcaExplanation.mjs';
 import synthetic from '../../../services/analysis/tests/fixtures/synthetic-3groups.json';
 import '../styles/analysis.css';
+const PCA_AGENT_ENABLED = import.meta.env.VITE_AI_PCA_ENABLED === 'true';
 export default function DataAnalysisPage({
   onNavigate
 }) {
@@ -122,6 +125,12 @@ export default function DataAnalysisPage({
       <button onClick={() => exportData('xlsx')}>XLSX</button>
     </>}
   </div>
+ {PCA_AGENT_ENABLED && <PcaAgentPanel dataset={w.dataset} available={available} busy={busy} dirty={w.dirty} t={t} onConfirm={(request, receipt) => {
+    w.setRecipe(request.recipe);
+    w.setAnalysis(request.analysis);
+    w.run(request, receipt);
+    setTab('results');
+  }} />}
  <details className="analysis-snapshots">
     <summary onClick={w.refresh}>
       {t('Saved local snapshots', '已保存本地快照')}
@@ -182,7 +191,11 @@ export default function DataAnalysisPage({
       {tab === 'analysis' && <fieldset disabled={busy}>
         <AnalysisPanel dataset={w.dataset} analysis={w.analysis} onChange={w.setAnalysis} available={available} onRun={() => start()} disabled={busy || w.dirty} t={t} />
       </fieldset>}
-      {tab === 'results' && <ResultsPanel key={w.contextId} runs={w.runs} dataset={w.dataset} recipe={w.recipe} analysis={w.analysis} onRetry={start} disabled={busy || w.dirty || !available.length} t={t} />}
+      {tab === 'results' && <ResultsPanel key={w.contextId} runs={w.runs} dataset={w.dataset} recipe={w.recipe} analysis={w.analysis} onRetry={start} onExplainPca={PCA_AGENT_ENABLED ? run => attempt(() => {
+        const prompt = pcaExplanationPrompt(pcaExplanationExcerpt(run));
+        sessionStorage.setItem('flavor-pca-explanation', prompt);
+        onNavigate?.('assistant');
+      }) : null} disabled={busy || w.dirty || !available.length} t={t} />}
     </> : tab !== 'data' && <p>
       {t('Import data or load the clearly labelled synthetic example first.', '请先导入数据或加载明确标注的合成示例。')}
     </p>}

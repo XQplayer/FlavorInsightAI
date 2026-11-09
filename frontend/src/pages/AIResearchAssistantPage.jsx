@@ -15,6 +15,10 @@ const COPY = {
 }
 
 function initialContext(language) {
+  try {
+    const pcaPrompt = sessionStorage.getItem('flavor-pca-explanation')
+    if (pcaPrompt) { sessionStorage.removeItem('flavor-pca-explanation'); return pcaPrompt }
+  } catch { /* Context can be entered manually if session storage is blocked. */ }
   const params = new URLSearchParams(window.location.search)
   const cas = params.get('cas')
   const taskId = params.get('task_id')
@@ -27,7 +31,7 @@ function MarkdownAnswer({ text }) {
   return <div className="ai-research-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ href, children }) => href?.startsWith('https://') ? <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> : <span>{children}</span>, img: () => null }}>{text}</ReactMarkdown></div>
 }
 
-export default function AIResearchAssistantPage({ language = 'zh' }) {
+export default function AIResearchAssistantPage({ language = 'zh', onNavigate }) {
   const t = COPY[language] || COPY.zh
   const taskContext = new URLSearchParams(window.location.search).get('task_id')
   const [configuration, setConfiguration] = useState(null)
@@ -100,10 +104,18 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
     if (lastUser) send(lastUser.content, messages.at(-1)?.role === 'assistant')
   }
   const copyAnswer = async text => { await navigator.clipboard.writeText(text); setCopied(true); window.setTimeout(() => setCopied(false), 1600) }
+  const planPca = () => {
+    const question = draft.trim() || [...messages].reverse().find(item => item.role === 'user')?.content || ''
+    try { sessionStorage.setItem('flavor-pca-prompt', question.slice(0, 4000)) }
+    catch { /* The analysis page can still accept the question directly. */ }
+    onNavigate?.('analysis')
+  }
 
   return <section className="ai-research-page" aria-labelledby="ai-research-title">
     <header className="ai-research-header"><div><p className="ai-research-eyebrow">FLAVORINSIGHT AI / RESEARCH</p><h1 id="ai-research-title">{t.title}</h1><p>{t.subtitle}</p></div><span className={`ai-research-mode ${configuration?.mode === 'mock' ? 'is-mock' : ''}`}>{configuration?.mode === 'mock' ? t.modeMock : configuration?.mode === 'openai' ? t.modeReal : t.unavailable}</span></header>
     {taskContext && /^[0-9a-f-]{36}$/i.test(taskContext) && <div className="ai-research-task-context" role="note"><strong>{language === 'en' ? 'Task interpretation' : '任务 AI 解读'} · {taskContext.slice(0, 8)}</strong><span>{language === 'en' ? 'The server checks task access and sends only a bounded retained-result excerpt. Missing or expired results remain explicitly unavailable; no raw workbook is sent.' : '服务端核验任务权限，只发送限量的已留存结果摘录。结果缺失或过期会明确标示；不发送原始工作簿。'}</span></div>}
+    {import.meta.env.VITE_AI_PCA_ENABLED === 'true' && <div className="ai-research-task-context"><strong>{language === 'en' ? 'PCA analysis' : 'PCA 分析'}</strong><span>{language === 'en' ? 'Use your local dataset to inspect and confirm parameters before real R computation. Raw values stay in the analysis workbench.' : '使用本地数据检查并确认参数后，由真实 R 引擎计算；原始矩阵保留在分析工作台。'}</span><button type="button" onClick={planPca}>{language === 'en' ? 'Plan PCA with my data' : '用我的数据规划 PCA'}</button></div>}
+    {draft.startsWith('请仅依据以下用户主动提供的') && <div className="ai-research-task-context" role="note">{language === 'en' ? 'A bounded local R result excerpt is ready. Review the draft and press Send to share it with the AI service. The gateway has not independently rechecked this result.' : '有限的本地 R 结果摘要已准备好。请检查输入框并点击“发送”，才会分享给 AI 服务；Gateway 未独立复核该结果。'}</div>}
     <div className="ai-research-layout">
       <aside className="ai-research-history" aria-label={t.conversations}><div className="ai-research-history-head"><h2>{t.conversations}</h2><button type="button" onClick={newConversation}><Plus size={16} />{t.new}</button></div><ul>{conversations.length ? conversations.map(item => <li key={item.id}><button type="button" className={conversationId === item.id ? 'active' : ''} onClick={() => openConversation(item.id)} aria-current={conversationId === item.id ? 'page' : undefined}><MessageCircle size={15} /><span>{item.title}</span></button><button className="ai-research-delete" type="button" aria-label={`${t.delete}: ${item.title}`} onClick={() => deleteConversation(item.id)}><Trash2 size={15} /></button></li>) : <li className="ai-research-empty-history">{t.empty}</li>}</ul><div className="ai-research-knowledge"><BookOpen size={16} /><span>{t.knowledge}</span></div></aside>
       <div className="ai-research-thread"><div className="ai-research-messages" role="log" aria-live="polite" aria-relevant="additions text">

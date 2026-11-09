@@ -40,6 +40,7 @@ export default function ResultsPanel({
   recipe,
   analysis,
   onRetry,
+  onExplainPca,
   disabled,
   t
 }) {
@@ -76,6 +77,7 @@ export default function ResultsPanel({
       <button disabled={disabled} onClick={() => onRetry(run.request)}>
         {t('Retry as NEW run using this exact bound request', '以此绑定请求新建运行重试')}
       </button>
+      {run.status === 'completed' && run.result?.method === 'pca' && onExplainPca && <button type="button" onClick={() => onExplainPca(run)}>{t('Prepare bounded PCA result for AI explanation', '准备有限 PCA 结果供 AI 解读')}</button>}
     </div>
     {run.error && <p role="alert">
       {t(serviceError(run.error, 'en'), serviceError(run.error, 'zh'))}

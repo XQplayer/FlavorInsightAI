@@ -262,6 +262,23 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertEqual(requests[1]["tool_choice"], "auto")
         self.assertTrue(any(event.get("name") == "get_compound_detail" for event in result))
 
+    def test_client_supplied_pca_excerpt_is_not_mistaken_for_private_task_id(self):
+        requests = []
+        events = [
+            {"type": "response.output_text.delta", "delta": "Exploratory PCA only."},
+            {"type": "response.completed", "response": {"output": [], "usage": {"input_tokens": 12, "output_tokens": 5}}},
+        ]
+        def fake_open(request, timeout):
+            requests.append(json.loads(request.data))
+            return io.BytesIO("".join("data: " + json.dumps(item) + "\n\n" for item in events).encode())
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", open_url=fake_open)
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        conversation = gateway.new_conversation(principal)
+        message = 'PCA_RESULT_EXCERPT={"datasetName":"synthetic 22222222-2222-4222-8222-222222222222","explained":[0.8,0.2]}'
+        result = list(gateway.chat(principal, conversation["id"], message))
+        self.assertEqual(requests[0]["tool_choice"], "auto")
+        self.assertTrue(any(event.get("text") == "Exploratory PCA only." for event in result))
+
 
 class GatewayHttpTests(unittest.TestCase):
     @classmethod
