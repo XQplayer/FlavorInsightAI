@@ -17,6 +17,7 @@ const url = process.env.FLAVOR_RLS_TEST_URL || ''
 const token = process.env.FLAVOR_RLS_TEST_MANAGEMENT_TOKEN || ''
 const expectedName = 'FlavorInsightAI-Staging'
 const expectedOrg = "XQplayer's Org"
+const expectedOrgSlug = process.env.SUPABASE_STAGING_ORGANIZATION_SLUG || ''
 const productionRefInMigration = 'nwcoyhavzbygyqeadcnw'
 const root = path.resolve(import.meta.dirname, '../..')
 const migrationDir = path.join(root, 'supabase/migrations')
@@ -62,21 +63,30 @@ async function main() {
   const project = await management(`projects/${ref}`)
   const organizations = await management('organizations')
   const organization = Array.isArray(organizations) ? organizations.find(item => item?.id === project?.organization_id) : null
-  if ((project?.ref || project?.id) !== ref || project?.name !== expectedName || organization?.name !== expectedOrg || !String(project?.status || '').startsWith('ACTIVE')) {
+  const organizationVerified = organization?.name === expectedOrg ||
+    (!organization && expectedOrgSlug && project?.organization_slug === expectedOrgSlug && !!project?.organization_id)
+  if ((project?.ref || project?.id) !== ref || project?.name !== expectedName || !organizationVerified || !String(project?.status || '').startsWith('ACTIVE')) {
     throw new Error('project ref/name/organization/status does not match the active authorized staging project')
   }
-  console.log(`Verified staging project identity: ${expectedName}, ${expectedOrg}, ${ref}`)
+  console.log(`Verified staging project ref/name/status: ${expectedName}, ${ref}`)
+  console.log('Organization verified against authorized name/slug')
 
   const before = await query("select (select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE')::int as public_tables, (select count(*) from auth.users)::int as auth_users, (select count(*) from storage.buckets where id in ('shimadzu-results', 'shimadzu-inputs'))::int as shimadzu_buckets, (select count(*) from pg_policies where schemaname = 'storage' and policyname like 'shimadzu_%')::int as shimadzu_policies, (select count(*) from pg_proc where pronamespace = 'public'::regnamespace and proname in ('is_shimadzu_admin', 'handle_new_shimadzu_user', 'touch_shimadzu_job', 'review_shimadzu_user', 'cleanup_expired_shimadzu_data', 'claim_first_shimadzu_admin'))::int as shimadzu_functions, (select count(*) from pg_trigger where tgrelid = 'auth.users'::regclass and tgname = 'on_auth_user_created_shimadzu')::int as shimadzu_auth_triggers")
+  const historyBefore = await management(`projects/${ref}/database/migrations`)
+  if (!Array.isArray(historyBefore) || historyBefore.length !== 0) {
+    throw new Error('staging migration history is not empty; inspect it before applying migrations')
+  }
   if (['public_tables', 'auth_users', 'shimadzu_buckets', 'shimadzu_policies', 'shimadzu_functions', 'shimadzu_auth_triggers'].some(key => Number(before[key]) !== 0)) {
     throw new Error('staging database contains existing business, Auth or Shimadzu objects; inspect it before applying migrations')
   }
-  console.log('Verified empty public tables, auth users, Shimadzu buckets, policies and functions')
+  console.log('Verified empty public tables, auth users, Shimadzu buckets/policies/functions/triggers and migration history')
 
   const previews = []
   for (const filename of selected) {
     let sql = await readFile(path.join(migrationDir, filename), 'utf8')
     const sourceSha256 = createHash('sha256').update(sql).digest('hex')
+    // The final repository migration has leading comments before BEGIN.
+    sql = sql.replace(/^(?:[ \t]*--[^\r\n]*(?:\r?\n|$)|[ \t]*\r?\n)*/, '')
     if (!/^begin;\s/i.test(sql) || !/\scommit;\s*$/i.test(sql)) throw new Error(`${filename}: expected transaction wrapper is missing`)
     // The original base migration grants a SECURITY DEFINER cleanup function to authenticated.
     // Remove PUBLIC, anon and authenticated execution before the first transaction commits.
@@ -104,6 +114,10 @@ async function main() {
     }, 180000)
     applied.push(item.filename)
     console.log(`Applied ${item.filename}`)
+  }
+  const historyAfter = await management(`projects/${ref}/database/migrations`)
+  if (!Array.isArray(historyAfter) || previews.some(item => !historyAfter.some(entry => entry?.name === item.name))) {
+    throw new Error('migration history does not contain every applied staging migration')
   }
   const after = await query("select (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('profiles', 'shimadzu_jobs', 'shimadzu_job_events') and c.relrowsecurity)::int as rls_tables, (select count(*) from storage.buckets where id in ('shimadzu-results', 'shimadzu-inputs') and public = false)::int as private_buckets, has_function_privilege('authenticated', 'public.cleanup_expired_shimadzu_data()', 'EXECUTE') as authenticated_can_cleanup, has_function_privilege('anon', 'public.cleanup_expired_shimadzu_data()', 'EXECUTE') as anon_can_cleanup")
   if (Number(after.rls_tables) !== 3 || Number(after.private_buckets) !== 2 || after.authenticated_can_cleanup || after.anon_can_cleanup) {

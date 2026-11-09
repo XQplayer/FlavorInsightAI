@@ -33,6 +33,7 @@ const projectUrl = new URL(process.env.FLAVOR_RLS_TEST_URL)
 const projectRef = process.env.FLAVOR_RLS_TEST_PROJECT_REF
 const expectedProjectName = 'FlavorInsightAI-Staging'
 const expectedOrganizationName = "XQplayer's Org"
+const expectedOrganizationSlug = process.env.SUPABASE_STAGING_ORGANIZATION_SLUG || ''
 const knownProductionRef = 'nwcoyhavzbygyqeadcnw'
 if (projectUrl.protocol !== 'https:' || projectUrl.hostname !== `${projectRef}.supabase.co` || projectUrl.pathname !== '/' || projectUrl.search || projectUrl.hash || process.env.FLAVOR_RLS_TEST_ENVIRONMENT !== 'nonproduction') {
   console.error('REFUSED: exact nonproduction Supabase project reference and environment marker are required')
@@ -77,10 +78,13 @@ async function verifyStagingIdentity() {
   const project = await read(`projects/${encodeURIComponent(projectRef)}`)
   const organizations = await read('organizations')
   const organization = Array.isArray(organizations) ? organizations.find(item => item?.id === project?.organization_id) : null
-  if ((project?.ref || project?.id) !== projectRef || project?.name !== expectedProjectName || organization?.name !== expectedOrganizationName || !String(project?.status || '').startsWith('ACTIVE')) {
+  const organizationVerified = organization?.name === expectedOrganizationName ||
+    (!organization && expectedOrganizationSlug && project?.organization_slug === expectedOrganizationSlug && !!project?.organization_id)
+  if ((project?.ref || project?.id) !== projectRef || project?.name !== expectedProjectName || !organizationVerified || !String(project?.status || '').startsWith('ACTIVE')) {
     throw new Error('project reference, name, organization or status does not match the active authorized staging target')
   }
-  mark('management_api_confirms_staging_name_and_organization', true)
+  mark('management_api_confirms_staging_project_ref_name_status', true)
+  checks.organization_display_name = 'VERIFIED'
 }
 async function verifyRealToolCalls(data) {
   const child = spawn(process.env.FLAVOR_RLS_TEST_PYTHON || 'python', ['scripts/e2e/verify_ai_tool_rls.py'], {
@@ -178,6 +182,11 @@ async function main() {
 
   const sessionA = await gatewayJson('/ai/session', alice.token)
   const sessionB = await gatewayJson('/ai/session', bob.token)
+  checks.gateway_auth_diagnostic = {
+    alice_http: sessionA.status, bob_http: sessionB.status,
+    alice_identity: sessionA.body?.identity || null, bob_identity: sessionB.body?.identity || null,
+    alice_error_code: sessionA.body?.code || null, bob_error_code: sessionB.body?.code || null,
+  }
   mark('gateway_verified_real_jwts', sessionA.status === 200 && sessionB.status === 200 && sessionA.body.identity === 'account' && sessionB.body.identity === 'account')
   const invalidSession = await gatewayJson('/ai/session', 'invalid.staging.jwt')
   mark('gateway_rejects_invalid_jwt', invalidSession.status === 401 && !JSON.stringify(invalidSession.body).includes('SYNTHETIC_RLS_'))

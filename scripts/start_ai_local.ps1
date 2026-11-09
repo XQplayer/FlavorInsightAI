@@ -1,4 +1,4 @@
-param([switch]$Check, [string]$ConfigPath = '')
+param([switch]$Check, [string]$ConfigPath = '', [ValidateRange(1024, 65535)][int]$Port = 18887)
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $privateConfig = if ($ConfigPath) { [System.IO.Path]::GetFullPath($ConfigPath) } else { Join-Path $projectRoot '.env.local' }
@@ -43,7 +43,7 @@ if ($Check) {
 }
 
 $env:HOST = '127.0.0.1'
-$env:PORT = '18887'
+$env:PORT = [string]$Port
 $env:PUBLIC_SPECTRUM_INDEX_AUTO_INSTALL = 'false'
 Push-Location $projectRoot
 try { python -u fema_proxy_server.py }
