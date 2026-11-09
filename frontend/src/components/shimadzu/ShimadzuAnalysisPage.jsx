@@ -306,8 +306,14 @@ function FilePicker({ label, hint, file, onChange, inputRef, templateHref, templ
   const slotRef = useRef(null)
   const [dragOver, setDragOver] = useState(false)
   let invalid = false
+  let fileError = ''
   if (file) {
-    try { assertWorkbookFile(file) } catch { invalid = true }
+    try { assertWorkbookFile(file) } catch (value) {
+      invalid = true
+      fileError = value.code === 'WORKBOOK_TOO_LARGE'
+        ? textFor(language, '文件为空或超过 50 MB，请更换文件。', 'The file is empty or exceeds 50 MB. Replace it.')
+        : textFor(language, '仅支持 .xlsx 工作簿，请更换文件。', 'Only .xlsx workbooks are supported. Replace the file.')
+    }
   }
   const slotState = !file ? '' : invalid ? ' has-error' : ' has-file'
   useGSAP(() => {
@@ -327,12 +333,13 @@ function FilePicker({ label, hint, file, onChange, inputRef, templateHref, templ
   }
   const clearFile = () => { onChange(null); if (inputRef.current) inputRef.current.value = '' }
   return <div ref={slotRef} className={`shimadzu-upload-slot${slotState}${dragOver ? ' is-drag-over' : ''}`} onDragOver={event => { event.preventDefault(); setDragOver(true) }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
+    <div className="shimadzu-upload-label"><strong>{label}</strong><span>{file ? invalid ? textFor(language, '未通过', 'Invalid') : textFor(language, '基础检查通过', 'Basic check passed') : textFor(language, '待上传', 'Awaiting upload')}</span></div>
     <label className="shimadzu-file-picker">
-      <input ref={inputRef} type="file" accept=".xlsx" aria-invalid={invalid || undefined} onChange={event => onChange(event.target.files?.[0] || null)} />
+      <input ref={inputRef} type="file" accept=".xlsx" aria-label={label} aria-invalid={invalid || undefined} onChange={event => onChange(event.target.files?.[0] || null)} />
       <span className="shimadzu-file-icon">{invalid ? <AlertCircle aria-hidden="true" /> : file ? <FileCheck2 aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}</span>
       <span className="shimadzu-file-copy">
-        <strong>{file?.name || label}</strong>
-        <small role={invalid ? 'alert' : undefined}>{invalid ? textFor(language, '文件未通过检查；仅接受不超过 50 MB 的 .xlsx 文件。', 'File check failed; only .xlsx files up to 50 MB are accepted.') : file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · .xlsx · ${textFor(language, '格式检查通过', 'Format check passed')}` : hint}</small>
+        <strong>{file?.name || textFor(language, '拖入或点击选择文件', 'Drop or choose a file')}</strong>
+        <small role={invalid ? 'alert' : undefined}>{invalid ? fileError : file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · .xlsx · ${textFor(language, '基础检查通过，结构待检', 'Basic check passed; structure pending')}` : hint}</small>
       </span>
       <span className="shimadzu-file-action">{file ? textFor(language, '更换文件', 'Replace file') : textFor(language, '选择文件', 'Choose file')}</span>
     </label>
@@ -433,7 +440,7 @@ function PreflightPanel({ rawFile, samplesFile, fileReadiness, cvReadiness, engi
     ] },
     { title: textFor(language, '运行环境', 'Runtime'), checks: [
       { label: textFor(language, '浏览器 Worker', 'Browser Worker'), status: engine.state === 'ready' ? 'PASS' : 'FAIL', detail: engine.title },
-      { label: textFor(language, '本地联网代理（按需）', 'Local network proxy (on demand)'), status: proxyState.status, detail: proxyState.message },
+      { label: textFor(language, '本地联网代理（按需）', 'Local network proxy (on demand)'), status: proxyState.status, detail: proxyState.message, optional: proxyState.status === 'pending' },
     ] },
     { title: textFor(language, '参数检查', 'Parameters'), checks: [
       { label: textFor(language, 'CV 数值与功能依赖', 'CV value and feature dependencies'), status: cvReadiness.valid ? 'PASS' : 'FAIL', detail: cvReadiness.message },
@@ -442,8 +449,8 @@ function PreflightPanel({ rawFile, samplesFile, fileReadiness, cvReadiness, engi
   ]
   return <section className="processing-preflight" aria-labelledby="preflight-title">
     <div className="processing-workspace-heading"><div><span>03</span><h2 id="preflight-title">{textFor(language, '运行前预检', 'Preflight checks')}</h2></div><button type="button" onClick={onRecheck}>{textFor(language, '重新检查', 'Recheck')}</button></div>
-    <div className="processing-preflight-groups">{groups.map(group => <section key={group.title} className="processing-preflight-group"><h3>{group.title}</h3><ul>{group.checks.map(check => <li key={check.label} className={`state-${check.status}`}><StageMark status={check.status} /><div><strong>{check.label}</strong><small>{check.detail}</small></div><span>{statusLabel(check.status, language)}</span></li>)}</ul></section>)}</div>
-    <div className="processing-preflight-footer"><button className="shimadzu-run-button" type="submit" disabled={!canStart}>{submitting ? <Loader2 className="spin" /> : <Play />}{startFeedback.buttonLabel}</button></div>
+    <div className="processing-preflight-groups">{groups.map(group => <section key={group.title} className="processing-preflight-group"><h3>{group.title}</h3><ul>{group.checks.map(check => <li key={check.label} className={`state-${check.status}`}><StageMark status={check.status} /><div><strong>{check.label}</strong><small>{check.detail}</small></div><span>{check.optional ? textFor(language, '按需检查', 'On demand') : statusLabel(check.status, language)}</span></li>)}</ul></section>)}</div>
+    <div className="processing-preflight-footer"><button className="shimadzu-run-button" type="submit" disabled={!canStart} aria-busy={submitting}>{submitting ? <Loader2 className="spin" /> : <Play />}{textFor(language, '开始分析', 'Start analysis')}</button>{!canStart && <p role="status" aria-live="polite">{submitting ? startFeedback.message : !rawFile || !samplesFile ? textFor(language, '请先上传两份 Excel 文件', 'Upload both Excel files first') : startFeedback.message}</p>}</div>
   </section>
 }
 
@@ -464,7 +471,8 @@ function ResultsWorkspace({ job, record, selectedTaskId, language, onDownload, h
     <div className="processing-result-grid">{outputItems.map(item => {
       const status = stageStatus(item.stage)
       const generated = isCompletedConsoleStep(status)
-      return <article key={item.stage} className="processing-result-item"><h3>{item.title}</h3><p>{item.detail}</p><span className={`state-${status}`}>{generated ? textFor(language, '已生成', 'Generated') : textFor(language, '未生成', 'Not generated')}</span>{generated && availability.downloadable && <p>{textFor(language, '文件位于完整结果包内。', 'The file is in the complete result package.')}</p>}</article>
+      const label = status === 'running' ? textFor(language, '生成中', 'Generating') : status === 'FAIL' ? textFor(language, '生成失败', 'Failed') : generated && availability.downloadable ? textFor(language, '可查看', 'Available') : generated ? textFor(language, '已生成', 'Generated') : textFor(language, '未生成', 'Not generated')
+      return <article key={item.stage} className="processing-result-item"><div><h3>{item.title}</h3><span className={`state-${status}`}>{label}</span></div><p>{item.detail}</p></article>
     })}</div>
     <div className="processing-result-record"><h3>{textFor(language, '运行参数与证据记录', 'Run parameters and evidence')}</h3><p>{textFor(language, '真实阶段记录、质量证据和运行参数保存在结果包内；当前页面只显示已有任务元数据。', 'Actual stage records, QC evidence, and run parameters are retained in the result archive; this page only shows available task metadata.')}</p><dl><div><dt>{textFor(language, '任务 ID', 'Task ID')}</dt><dd><code>{source.id}</code></dd></div><div><dt>{textFor(language, '结果校验', 'Archive checksum')}</dt><dd><code>{source.archiveSha256 || source.result_sha256 || textFor(language, '暂无记录', 'Unavailable')}</code></dd></div></dl></div>
     <div className="processing-result-download"><h3>{textFor(language, '完整结果包', 'Complete result package')}</h3>{availability.source === 'browser' ? <a className="primary" href={source.downloadUrl} download={source.resultFileName}><Download />{textFor(language, '下载结果 ZIP', 'Download result ZIP')}</a> : availability.source === 'cloud' ? <button type="button" onClick={() => onDownload(record)}><CloudDownload />{textFor(language, '获取私有结果包', 'Get private result package')}</button> : <p>{source.status === 'complete' ? textFor(language, '本地结果包已不在当前浏览器内；若此前未下载，请重新运行。', 'The local archive is no longer in this browser; rerun if it was not downloaded.') : textFor(language, '结果包尚未生成。', 'The result archive has not been generated yet.')}</p>}</div>
@@ -492,7 +500,7 @@ function TaskManager({ history, job, session, isAdmin, interruptedJobIds, langua
   const [adminTab, setAdminTab] = useState(false)
   const records = useMemo(() => {
     const cloudRecords = history.filter(item => adminTab || !isAdmin || item.user_id === session?.user?.id)
-    return filterTaskRecords(job && !cloudRecords.some(item => item.id === job.id) && !adminTab ? [{ id: job.id, name: job.name, status: job.status, created_at: job.started_at || job.updated_at, current_stage: job.next_stage, local: true }, ...cloudRecords] : cloudRecords, { query, status, newestFirst })
+    return filterTaskRecords(job && !cloudRecords.some(item => item.id === job.id) && !adminTab ? [{ id: job.id, name: job.name, status: job.status, progress: Math.round(deriveProcessingStages(job).completed / 7 * 100), created_at: job.started_at || job.updated_at, current_stage: job.next_stage, local: true }, ...cloudRecords] : cloudRecords, { query, status, newestFirst })
   }, [adminTab, history, isAdmin, job, newestFirst, query, session?.user?.id, status])
   const visible = records.slice((page - 1) * 8, page * 8)
   const update = setter => event => { setter(event.target.value); setPage(1) }
@@ -503,7 +511,7 @@ function TaskManager({ history, job, session, isAdmin, interruptedJobIds, langua
     {!visible.length ? <p className="processing-empty">{textFor(language, '当前范围没有符合条件的任务。', 'No tasks match this scope and filter.')}</p> : <ul className="processing-task-list">{visible.map(item => {
       const interrupted = interruptedJobIds.has(item.id)
       const downloadable = resultAvailability(item).downloadable || job?.id === item.id && resultAvailability(job).downloadable
-      return <li key={item.id}><div><strong>{localizedTaskName(item.name, language)}</strong><small>{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false })} · {statusLabel(interrupted ? 'interrupted' : item.status, language)}</small>{adminTab && <small>{textFor(language, '用户', 'User')} {item.user_id}</small>}</div><div className="processing-task-actions"><button type="button" onClick={() => onOpen('monitor', item.id)}>{textFor(language, '运行详情', 'Run details')}</button><button type="button" onClick={() => onOpen('results', item.id)}>{textFor(language, '结果与 QC', 'Results & QC')}</button>{interrupted && <button type="button" onClick={() => onMarkInterrupted(item)}>{textFor(language, '确认中断', 'Confirm interruption')}</button>}{downloadable && !item.local && <button type="button" onClick={() => onDownload(item)}>{textFor(language, '下载', 'Download')}</button>}{downloadable && !item.local && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>{textFor(language, '删除结果', 'Delete result')}</button>}</div></li>
+      return <li key={item.id}><div><strong>{localizedTaskName(item.name, language)}</strong><small>{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false })} · {statusLabel(interrupted ? 'interrupted' : item.status, language)}{Number.isFinite(item.progress) ? ` · ${Math.round(item.progress)}%` : ''}</small>{adminTab && <small>{textFor(language, '用户', 'User')} {item.user_id}</small>}</div><div className="processing-task-actions"><button type="button" onClick={() => onOpen('monitor', item.id)}>{textFor(language, '运行详情', 'Run details')}</button><button type="button" onClick={() => onOpen('results', item.id)}>{textFor(language, '结果与 QC', 'Results & QC')}</button>{interrupted && <button type="button" onClick={() => onMarkInterrupted(item)}>{textFor(language, '确认中断', 'Confirm interruption')}</button>}{downloadable && !item.local && <button type="button" onClick={() => onDownload(item)}>{textFor(language, '下载', 'Download')}</button>}{downloadable && !item.local && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>{textFor(language, '删除结果', 'Delete result')}</button>}</div></li>
     })}</ul>}
     <div className="processing-task-pagination"><button type="button" disabled={page <= 1} onClick={() => setPage(value => value - 1)}>{textFor(language, '上一页', 'Previous')}</button><span>{page} / {Math.max(1, Math.ceil(records.length / 8))}</span><button type="button" disabled={page * 8 >= records.length} onClick={() => setPage(value => value + 1)}>{textFor(language, '下一页', 'Next')}</button></div>
   </section>
@@ -1174,12 +1182,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           {!job ? (
             <form className="shimadzu-setup" onSubmit={submit}>
               <div className="shimadzu-input-region" aria-labelledby="input-title">
-                <div className="shimadzu-region-heading"><div><h3 id="input-title">{textFor(language, '输入文件与模板', 'Input files and templates')}</h3><p>{textFor(language, '正式文件和示例模板采用相同字段结构；阶段 00 将核对工作表、样品映射、平行、矩阵、内标与参数。', 'Production files and templates share the same field structure. Stage 00 validates worksheets, sample mapping, replicates, matrices, internal standards, and parameters.')}</p></div></div>
+                <div className="shimadzu-region-heading"><div><h3 id="input-title">{textFor(language, '输入文件与模板', 'Input files and templates')}</h3><p>{textFor(language, '选择或拖入两份 .xlsx 工作簿；深度结构检查在启动后执行。', 'Choose or drop two .xlsx workbooks; deep structure validation runs after start.')}</p></div></div>
                 <div className="shimadzu-upload-grid">
                   <FilePicker language={language} inputRef={rawInputRef} label={textFor(language, '岛津原始工作簿', 'Shimadzu raw workbook')} hint={textFor(language, '包含 Peak Table、Similarity Search Results 与 Hit #', 'Contains Peak Table, Similarity Search Results, and Hit #')} file={rawFile} onChange={setRawFile} templateHref={api.templateUrl('raw-example')} templateLabel={textFor(language, '下载原始工作簿示例', 'Download raw-workbook example')} />
                   <FilePicker language={language} inputRef={samplesInputRef} label={textFor(language, '样品与内标信息表', 'Sample and internal-standard sheet')} hint={textFor(language, '包含样品分组、形态、内标浓度、添加量与体系', 'Contains sample groups, form, standard concentration, spike amount, and system volume')} file={samplesFile} onChange={setSamplesFile} templateHref={api.templateUrl('sample-info')} templateLabel={textFor(language, '下载样品信息模板', 'Download sample-information template')} />
                 </div>
-                <div className="shimadzu-upload-note"><Upload /><span>{textFor(language, '仅接受 .xlsx，每个文件不超过 50 MB。原始文件不上传云端；活动任务会临时保存在当前浏览器，刷新或重新打开后自动恢复。页面关闭期间不会继续计算。', 'Only .xlsx files up to 50 MB each are accepted. Raw files are not uploaded; active tasks are temporarily stored in this browser and recover after refresh or reopening. Processing does not continue while the page is closed.')}</span></div>
+                <div className="shimadzu-upload-note"><Upload /><span>{textFor(language, '每份不超过 50 MB。原始文件仅在本机处理；刷新后可恢复活动任务，关闭页面期间计算暂停。', 'Up to 50 MB each. Raw files stay on this device; active tasks can resume after refresh, and processing pauses while the page is closed.')}</span></div>
               </div>
         <section id="processing-configuration" className="shimadzu-workbench-region shimadzu-configuration-region" aria-labelledby="analysis-output-configuration-title">
           <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">02</span><h2 id="analysis-output-configuration-title">{textFor(language, '参数配置', 'Parameters')}</h2></div><span>{job ? textFor(language, '任务参数已锁定', 'Task parameters locked') : textFor(language, '连续执行 · 本地优先', 'Continuous run · Local first')}</span></div>
@@ -1190,7 +1198,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                 <div role="listitem"><span>{textFor(language, '执行与留存', 'Execution and retention')}</span><strong>{textFor(language, '浏览器本地连续执行', 'Continuous local browser execution')}</strong><small>{cloud.configured ? textFor(language, '原始文件不上传；结果可选云端留存', 'Raw files stay local; optional cloud result retention') : textFor(language, '本地模式；完成后立即下载结果', 'Local mode; download results immediately after completion')}</small></div>
           </div>
           <details className="shimadzu-configuration-details">
-            <summary>{textFor(language, '高级科研参数与数据导出设置', 'Advanced research parameters and data export settings')}</summary>
+            <summary><span>{textFor(language, '高级科研参数与数据导出', 'Advanced research parameters and exports')}</span><small>{textFor(language, `CAS、阈值${enableEstimatedReferenceOav ? '、OAV' : ''}${enableCvScreening ? '、CV' : ''}`, `CAS, thresholds${enableEstimatedReferenceOav ? ', OAV' : ''}${enableCvScreening ? ', CV' : ''}`)}</small></summary>
             <div className="shimadzu-configuration-grid">
               <div className="shimadzu-settings" aria-labelledby="settings-title">
                 <div className="shimadzu-region-heading"><div><h3 id="settings-title">{textFor(language, '数据导出', 'Data export')}</h3><p>{textFor(language, '分析参数依据已确认的科研规则执行。', 'Analysis parameters follow the confirmed scientific rules.')}</p></div></div>
@@ -1215,7 +1223,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                   </fieldset>
                 )}
                 {!job && (
-                  <fieldset className="shimadzu-cv-field" aria-describedby="oav-help">
+                  <fieldset className="shimadzu-cv-field" aria-describedby={enableEstimatedReferenceOav ? 'oav-help' : undefined}>
                     <legend>{textFor(language, '估算参考 OAV', 'Estimated reference OAV')}</legend>
                     <label className="shimadzu-cv-toggle">
                       <input type="checkbox" checked={enableEstimatedReferenceOav} onChange={event => {
@@ -1225,21 +1233,20 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                       }} />
                       <span><strong>{textFor(language, '启用估算参考 OAV', 'Enable estimated reference OAV')}</strong><small>{textFor(language, '默认关闭；启用后自动使用水中觉察阈值，在第六步后导出。固体样品仅作参考性评价。', 'Off by default; enabling it requires water thresholds and exports after Stage 6. Solid samples are reference-only.')}</small></span>
                     </label>
-                    {enableEstimatedReferenceOav && <p id="oav-help" className="shimadzu-cv-help">{textFor(language, '公式：浓度（μg/mL）×1000÷水中觉察阈值（μg/L）。没有单值阈值时 OAV 写入 NA 并保留原因。此项为参考导出，不自动作为正式 QC 门禁。', 'Formula: concentration (μg/mL) × 1000 ÷ water threshold (μg/L). Missing scalar thresholds yield NA with a reason. This reference export is not an automatic QC gate.')}</p>}
+                    {enableEstimatedReferenceOav && <details id="oav-help" className="shimadzu-parameter-help"><summary>{textFor(language, '查看参考 OAV 的计算与局限', 'View reference OAV method and limits')}</summary><p>{textFor(language, '公式：浓度（μg/mL）×1000÷水中觉察阈值（μg/L）。没有单值阈值时 OAV 写入 NA 并保留原因。此项为参考导出，不自动作为正式 QC 门禁。', 'Formula: concentration (μg/mL) × 1000 ÷ water threshold (μg/L). Missing scalar thresholds yield NA with a reason. This reference export is not an automatic QC gate.')}</p></details>}
                   </fieldset>
                 )}
                 {!job && (
-                  <fieldset className="shimadzu-cv-field" aria-describedby="cv-screening-help">
+                  <fieldset className="shimadzu-cv-field" aria-describedby={enableCvScreening ? 'cv-screening-help' : undefined}>
                     <legend>{textFor(language, 'CV 筛查', 'CV screening')}</legend>
                     <label className="shimadzu-cv-toggle">
                       <input type="checkbox" checked={enableCvScreening} onChange={event => setEnableCvScreening(event.target.checked)} />
                       <span><strong>{textFor(language, '启用 CV 筛查', 'Enable CV screening')}</strong><small>{textFor(language, '默认关闭；仍计算 Mean、SD 和 CV，但不筛查结果。', 'Off by default; mean, SD, and CV are still calculated without filtering results.')}</small></span>
                     </label>
                     {enableCvScreening && <label className="shimadzu-field shimadzu-cv-threshold"><span>{textFor(language, 'CV 阈值 (%)', 'CV threshold (%)')}</span><input type="number" min="0" max="1000" step="1" inputMode="decimal" value={cvThreshold} onChange={event => setCvThreshold(event.target.value)} aria-describedby="cv-screening-help" /></label>}
-                    <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>
+                    {enableCvScreening && <p id="cv-screening-help" className="shimadzu-cv-help">{cvReadiness.message}</p>}
                   </fieldset>
                 )}
-                <dl className="shimadzu-parameter-list"><div><dt>{textFor(language, '身份与结构', 'Identity and structure')}</dt><dd>{enableClassification ? textFor(language, '开启（PubChem + SMARTS）', 'On (PubChem + SMARTS)') : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, '水中觉察阈值', 'Water detection threshold')}</dt><dd>{enableWaterDetectionThreshold ? textFor(language, '开启（本地证据库）', 'On (local evidence database)') : textFor(language, '关闭（不导出阈值列）', 'Off (threshold columns omitted)')}</dd></div><div><dt>{textFor(language, '估算参考 OAV', 'Estimated reference OAV')}</dt><dd>{enableEstimatedReferenceOav ? textFor(language, '开启（第六步后导出）', 'On (exported after Stage 6)') : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, 'CV 筛查', 'CV screening')}</dt><dd>{enableCvScreening ? (language === 'en' ? `On (${cvReadiness.threshold ?? '—'}%)` : `启用（${cvReadiness.threshold ?? '—'}%）`) : textFor(language, '关闭', 'Off')}</dd></div><div><dt>{textFor(language, '响应因子', 'Response factor')}</dt><dd>1</dd></div><div><dt>{textFor(language, '内标参数', 'Internal-standard parameters')}</dt><dd>{textFor(language, '按样品表', 'From sample sheet')}</dd></div></dl>
               </div>
             </div>
           </details>
