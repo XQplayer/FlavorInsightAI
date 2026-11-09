@@ -14,6 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  python-api:
+    name: Python API and service contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Shimadzu service and HTTP integration
+        run: python3 -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
+
   verify:
     name: Tests, lint, and build
     runs-on: ubuntu-latest
@@ -74,3 +84,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: pnpm run build
+
+      - name: Production dependency advisory scan
+        working-directory: frontend
+        continue-on-error: true # Existing lockfile findings are tracked; this scan is visible but not yet a blocking gate.
+        run: pnpm audit --prod

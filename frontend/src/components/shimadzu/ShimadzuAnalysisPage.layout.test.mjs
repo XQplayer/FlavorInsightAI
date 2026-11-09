@@ -107,6 +107,15 @@ test('explains file readiness and disabled start conditions', () => {
   assert.match(source, /startFeedback\.buttonLabel/)
 })
 
+test('announces actual task state and exposes numeric progress to assistive technology', () => {
+  assert.match(source, /taskFeedback\(job, language\)/)
+  assert.match(source, /className="shimadzu-task-feedback"[^>]*role="status"[^>]*aria-live="polite"/)
+  assert.match(source, /role="progressbar"/)
+  assert.match(source, /aria-valuenow=\{Math\.round\(progress\.completed \/ \(progress\.total \|\| 7\) \* 100\)\}/)
+  assert.match(styles, /\.shimadzu-task-feedback/)
+  assert.match(source, /aria-live=\{!job \|\| job\.status === 'running' \? 'polite' : 'off'\}/)
+})
+
 test('keeps implementation terms out of ordinary page copy', () => {
   assert.doesNotMatch(source, /科学规则已经由 skill 固定/)
   assert.doesNotMatch(source, /状态来自各步骤 manifest/)

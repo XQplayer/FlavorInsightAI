@@ -39,6 +39,7 @@ import { analyticsEnabled, supabase } from '../../lib/supabase'
 import { handoffCompletedArchive } from '../../analysis/handoff.mjs'
 import { createDatasetStore } from '../../analysis/storage.mjs'
 import { serviceError } from '../../analysis/client.mjs'
+import { taskFeedback } from './taskFeedback.mjs'
 import './ShimadzuAnalysisPage.css'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
@@ -382,7 +383,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride, language }) {
   return (
     <section id="monitor-overview" className={'shimadzu-monitor' + (job ? ' shimadzu-reveal' : '') + ' state-' + monitorState} aria-labelledby="monitor-title">
       <div className="shimadzu-monitor-toolbar">
-        <div className="shimadzu-monitor-title" role="status" aria-live="polite">
+        <div className="shimadzu-monitor-title" role="status" aria-live={!job || job.status === 'running' ? 'polite' : 'off'}>
           <span className="shimadzu-live-dot" />
           <div><h2 id="monitor-title">{textFor(language, '实时分析监控', 'Live analysis monitor')}</h2><p>{title}</p></div>
         </div>
@@ -412,7 +413,7 @@ function LiveMonitor({ job, capabilities, engine: engineOverride, language }) {
         </div>
         <div id="run-log" className="shimadzu-console">
           <div className="shimadzu-console-heading"><TerminalSquare /><span>{textFor(language, '运行日志', 'Run log')}</span><small>{job?.updated_at ? new Date(job.updated_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false }) : textFor(language, '尚未启动', 'Not started')}</small></div>
-          <pre aria-live="polite">{log || (job ? textFor(language, '任务已建立，等待分析引擎输出。', 'Task created; waiting for analysis-engine output.') : textFor(language, '系统处于待机状态。\n选择两个模板或正式工作簿后开始分析。', 'The system is standing by.\nChoose two templates or production workbooks to start analysis.'))}</pre>
+          <pre aria-live={!job || job.status === 'running' ? 'polite' : 'off'}>{log || (job ? textFor(language, '任务已建立，等待分析引擎输出。', 'Task created; waiting for analysis-engine output.') : textFor(language, '系统处于待机状态。\n选择两个模板或正式工作簿后开始分析。', 'The system is standing by.\nChoose two templates or production workbooks to start analysis.'))}</pre>
         </div>
       </div>
     </section>
@@ -1151,7 +1152,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
               <StageRail job={job} language={language} />
               <section className="shimadzu-job-bar shimadzu-reveal">
                 <div className="shimadzu-job-identity"><span className={`shimadzu-job-badge ${job.status}`}>{statusLabel(job.status, language)}</span><div><h2>{localizedTaskName(job.name, language) || localizedName}</h2><code>{job.id}</code></div></div>
-                <div className="shimadzu-job-progress"><div><span>{textFor(language, '总流程', 'Overall workflow')}</span><strong>{progress.completed} / {progress.total || 7}</strong></div><div className="shimadzu-progress-track"><span style={{ '--progress': progress.completed / (progress.total || 7) }} /></div></div>
+                <div className="shimadzu-job-progress"><div><span>{textFor(language, '总流程', 'Overall workflow')}</span><strong>{progress.completed} / {progress.total || 7}</strong></div><div className="shimadzu-progress-track" role="progressbar" aria-label={textFor(language, '处理进度', 'Processing progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress.completed / (progress.total || 7) * 100)}><span style={{ '--progress': progress.completed / (progress.total || 7) }} /></div></div>
                 <div className="shimadzu-job-actions">
                   {job.status === 'waiting_review' && <button type="button" className="primary" onClick={continueJob}><ChevronRight />{textFor(language, '复核完成，继续', 'Review complete; continue')}</button>}
                   {job.status === 'running' && <button type="button" onClick={cancelJob}><AlertCircle />{textFor(language, '取消分析', 'Cancel analysis')}</button>}
@@ -1169,6 +1170,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                   {job.status === 'cancelled' && job.partialDownloadUrl && <a className="primary" href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results')}</a>}
                   {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
                 </div>
+                <p className="shimadzu-task-feedback" role="status" aria-live="polite" aria-atomic="true">{taskFeedback(job, language)}</p>
               </section>
               {job.error && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code}</strong>{job.error.message}</p>{job.error.details?.stage !== undefined && <small>{job.status === 'cancelled' ? textFor(language, '取消于步骤', 'Cancelled before stage') : textFor(language, '失败步骤', 'Failed stage')}: {Number(job.error.details.stage) + 1} / 7</small>}{job.error.details?.issues?.length > 0 && <ul>{prioritizeShimadzuIssues(job.error.details.issues, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || textFor(language, '质量门禁问题', 'Quality-gate issue')}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}</li>)}</ul>}{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{job.status === 'cancelled' ? textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results') : textFor(language, '下载已完成步骤与错误证据', 'Download completed stages and error evidence')}</a>}</div></div>}
               <WorkspaceTabs language={language} />

@@ -747,6 +747,7 @@
 .shimadzu-job-progress strong { color: var(--sz-ink); font-variant-numeric: tabular-nums; }
 .shimadzu-progress-track { height: 6px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: var(--sz-surface-raised); }
 .shimadzu-progress-track span { width: 100%; height: 100%; display: block; border-radius: inherit; background: var(--sz-accent); transform: scaleX(var(--progress, 0)); transform-origin: left center; transition: transform .4s ease; }
+.shimadzu-task-feedback { grid-column: 1 / -1; min-width: 0; margin: -8px 0 0; color: var(--sz-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 
 .shimadzu-job-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .shimadzu-job-actions button,
@@ -1342,6 +1343,7 @@
 .shimadzu-job-workspace.state-complete { --sz-state-accent: var(--sz-deck-green); }
 .shimadzu-job-bar { border-color: var(--sz-state-accent, var(--sz-deck-line)); background: #101a29; }
 .shimadzu-job-identity h2 { color: #edf4ff; }
+.shimadzu-task-feedback { color: #b7c7de; }
 .shimadzu-job-actions button,
 .shimadzu-job-actions a { border-color: #354865; color: #dce8fa; background: #111b2b; }
 .shimadzu-job-actions .primary { border-color: #3f78ff; color: #fff; background: #2e65e6; }
