@@ -55,4 +55,4 @@
 
 - [x] Run seven frontend scripts, Python API, R references, browser E2E, lint, build and final audit; record the full-browser failure.
 - [x] Check remote branch/PR/run read-only. Leave remote acceptance incomplete without authorization.
-- [ ] Review final diff, verify unchanged research/Worker paths, commit locally, record rollback and clean worktree.
+- [x] Review final diff, verify unchanged tracked research/Worker paths, commit locally, record rollback and clean worktree. External source-file hashes were not recomputed.
