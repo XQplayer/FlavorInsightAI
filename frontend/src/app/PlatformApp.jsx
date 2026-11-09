@@ -15,6 +15,7 @@ import {
   routeHref,
   subscribeToPlatformPopstate,
 } from './platformRoutes.js';
+import { parseProcessingLocation, processingViewHref } from './processingRoutes.js';
 
 const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.jsx'));
 const DataProcessingPage = lazy(() => import('../pages/DataProcessingPage.jsx'));
@@ -123,7 +124,7 @@ function RouteLoading() {
   );
 }
 
-function PlatformRoute({ route, onNavigate }) {
+function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavigate }) {
   const { language, resolvedTheme, setLanguage } = usePlatformPreferences();
 
   useEffect(() => {
@@ -160,6 +161,9 @@ function PlatformRoute({ route, onNavigate }) {
             language={language}
             theme={resolvedTheme}
             onNavigate={onNavigate}
+            processingView={processingLocation.view}
+            selectedTaskId={processingLocation.taskId}
+            onProcessingNavigate={onProcessingNavigate}
           />
         </Suspense>
       </RouteErrorBoundary>
@@ -191,19 +195,32 @@ function PlatformRoute({ route, onNavigate }) {
 
 export default function PlatformApp() {
   const [route, setRoute] = useState(() => parsePlatformRoute(window.location.pathname));
+  const [processingLocation, setProcessingLocation] = useState(() => parseProcessingLocation(window.location.pathname, window.location.search));
 
-  useEffect(() => subscribeToPlatformPopstate(setRoute), []);
+  useEffect(() => subscribeToPlatformPopstate(nextRoute => {
+    setRoute(nextRoute);
+    setProcessingLocation(parseProcessingLocation(window.location.pathname, window.location.search));
+  }), []);
 
   const navigate = useCallback((nextRoute, context = null) => {
     navigatePlatformRoute(nextRoute, { basePath: PLATFORM_BASE_PATH, context });
     setRoute(nextRoute);
+    if (nextRoute === 'processing') setProcessingLocation({ view: 'new', taskId: '' });
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
+  const navigateProcessing = useCallback((view, taskId = processingLocation.taskId) => {
+    const href = processingViewHref(view, PLATFORM_BASE_PATH, taskId);
+    window.history.pushState({ route: 'processing', view, taskId }, '', href);
+    setRoute('processing');
+    setProcessingLocation(parseProcessingLocation(window.location.pathname, window.location.search));
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [processingLocation.taskId]);
+
   return (
     <PlatformPreferencesProvider>
-      <PlatformShell route={route} onNavigate={navigate}>
-        <PlatformRoute route={route} onNavigate={navigate} />
+      <PlatformShell route={route} onNavigate={navigate} processingView={processingLocation.view} selectedTaskId={processingLocation.taskId} onProcessingNavigate={navigateProcessing}>
+        <PlatformRoute route={route} onNavigate={navigate} processingLocation={processingLocation} onProcessingNavigate={navigateProcessing} />
       </PlatformShell>
     </PlatformPreferencesProvider>
   );

@@ -39,10 +39,11 @@ test('the production processing page renders on the Edge server without duplicat
   assert.match(markup, /class="shimadzu-page is-embedded"/);
   assert.match(markup, /data-theme="dark"/);
   assert.match(markup, /data-language="en"/);
-  assert.match(markup, /Instrument data processing/);
+  assert.match(markup, /New analysis/);
   assert.match(markup, /aria-labelledby="analysis-output-configuration-title"/);
   assert.match(markup, /aria-labelledby="data-import-preflight-title"/);
-  assert.match(markup, /aria-labelledby="process-monitor-results-title"/);
+  assert.match(markup, /aria-labelledby="preflight-title"/);
+  assert.doesNotMatch(markup, /aria-labelledby="process-monitor-results-title"/);
   assert.doesNotMatch(markup, /class="shimadzu-header"/);
   assert.doesNotMatch(markup, /<main\b/);
   assert.doesNotMatch(markup, /逐步复核|mode="step"/);

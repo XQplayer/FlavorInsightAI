@@ -26,8 +26,8 @@ const ROUTES = Object.freeze([
   { name: 'home', segment: '', heading: /让风味数据成为可解释的科研证据|Make flavor data interpretable research evidence/u, title: /^FlavorInsight AI \|/u, lightweight: true },
   { name: 'database', segment: 'database/', heading: /^探索风味化合物的科学证据$/u, title: /^FlavorThresholdDB 数据库 \|/u },
   { name: 'search', segment: 'aroma-threshold/', heading: /香气阈值与风味描述检索/u, title: /^香气阈值检索 \|/u },
-  { name: 'processing', segment: 'data-processing/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
-  { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
+  { name: 'processing', segment: 'data-processing/', heading: /^新建分析$/u, title: /^数据处理 \|/u },
+  { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /^新建分析$/u, title: /^数据处理 \|/u },
   { name: 'analysis', segment: 'data-analysis/', heading: /^数据分析$/u, title: /^数据分析 \|/u, lightweight: true },
   { name: 'models', segment: 'ai-models/', heading: /^智能模型与预测评价$/u, title: /^智能模型 \|/u, lightweight: true },
   { name: 'resources', segment: 'resources/', heading: /^资源中心$/u, title: /^资源中心 \|/u, lightweight: true },
@@ -246,6 +246,8 @@ function observePage(page, localOrigins) {
   page.on('requestfailed', request => {
     settleLocalRequest(request);
     const failure = request.failure()?.errorText || 'unknown failure';
+    // Navigation can cancel the optional proxy health probe while leaving the view healthy.
+    if (new URL(request.url()).pathname === '/health' && failure === 'net::ERR_ABORTED') return;
     observed.requestFailures.push(`${request.method()} ${request.url()} :: ${failure}`);
   });
   page.on('response', response => {
@@ -371,30 +373,15 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
       assert.equal(new URL(page.url()).hash, '#home-workflow-title', `${viewport.name}/home: keyboard activates workflow shortcut`);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${viewport.name}/home: no horizontal overflow`);
     }
-    if (route.name === 'processing') {
+    if (route.name === 'processing' || route.name === 'processing-compat') {
       const firstUpload = await page.locator('.shimadzu-upload-slot').first().boundingBox();
       assert.ok(firstUpload && firstUpload.y < viewport.height, `${viewport.name}/processing: upload entry reaches the first viewport`);
-      assert.equal(await page.locator('.shimadzu-workbench-nav a').count(), 3, `${viewport.name}/processing: three work stages remain`);
+      assert.equal(await page.locator('.shimadzu-workbench-nav a').count(), 0, `${viewport.name}/processing: duplicate stage anchors are removed`);
       assert.equal(await page.locator('.shimadzu-configuration-details').getAttribute('open'), null, `${viewport.name}/processing: advanced parameters start collapsed`);
       assert.equal(await page.locator('.shimadzu-upload-slot').count(), 2, `${viewport.name}/processing: two workbook slots remain`);
       const uploadColumns = await page.locator('.shimadzu-upload-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
       assert.equal(uploadColumns, viewport.width > 600 ? 2 : 1, `${viewport.name}/processing: workbook columns follow the viewport`);
-      assert.deepEqual(await page.locator('[data-console-step]').evaluateAll(nodes => nodes.map(node => node.dataset.consoleStep)), ['00', '01', '02', '03', '04', '05', '06', '07'], `${viewport.name}/processing: setup plus seven Worker stages`);
-      assert.equal(await page.locator('.shimadzu-console-disclosure').getAttribute('open'), null, `${viewport.name}/processing: log starts collapsed`);
-      assert.equal(await page.locator('.shimadzu-history-disclosure').getAttribute('open'), null, `${viewport.name}/processing: history starts collapsed`);
-      const monitorBox = await page.locator('#monitor-overview').boundingBox();
-      const consoleBox = await page.locator('.analysis-console').boundingBox();
-      assert.ok(monitorBox && consoleBox && monitorBox.y === consoleBox.y, `${viewport.name}/processing: one task console`);
-      assert.ok(consoleBox.height < (viewport.width < 600 ? 950 : 850), `${viewport.name}/processing: console stays compact`);
-      await page.locator('[data-console-step="07"]').click();
-      assert.match(await page.locator('#console-detail-title').innerText(), /矩阵|Matrix/u, `${viewport.name}/processing: final Worker stage is selectable`);
-      await page.locator('[data-console-step="00"]').click();
-      assert.match(await page.locator('#console-detail-title').innerText(), /输入配置|Input setup/u, `${viewport.name}/processing: input setup is selectable`);
-      await page.locator('.shimadzu-console-disclosure > summary').click();
-      assert.notEqual(await page.locator('.shimadzu-console-disclosure').getAttribute('open'), null, `${viewport.name}/processing: log can be opened`);
-      await page.locator('.shimadzu-history-disclosure > summary').focus();
-      await page.keyboard.press('Enter');
-      assert.notEqual(await page.locator('.shimadzu-history-disclosure').getAttribute('open'), null, `${viewport.name}/processing: history opens with keyboard`);
+      assert.equal(await page.locator('.processing-preflight-group').count(), 3, `${viewport.name}/processing: preflight uses three check groups`);
       await page.locator('.shimadzu-configuration-details > summary').click();
       await page.locator('.shimadzu-configuration-details[open]').waitFor();
       await page.locator('.shimadzu-configuration-details input').first().waitFor({ state: 'visible' });
@@ -514,7 +501,7 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.equal(await page.locator('html').getAttribute('lang'), 'en', 'language preference survives refresh');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark', 'theme preference survives refresh');
     await page.getByRole('link', { name: 'Data processing', exact: true }).click();
-    await page.getByRole('heading', { name: 'Instrument data processing' }).waitFor({ timeout: 45_000 });
+    await page.getByRole('heading', { name: 'New analysis' }).waitFor({ timeout: 45_000 });
     await waitForStableRoute(page, observed);
     assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assert.equal(await page.getByRole('link', { name: 'Data processing', exact: true }).getAttribute('aria-current'), 'page', 'active desktop route is announced');
@@ -524,7 +511,7 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.equal(new URL(page.url()).pathname, '/FlavorInsightAI/');
     assert.ok(['', '#main-content'].includes(new URL(page.url()).hash), 'history preserves only the intentional skip-link anchor');
     await page.goForward({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'Instrument data processing' }).waitFor({ timeout: 45_000 });
+    await page.getByRole('heading', { name: 'New analysis' }).waitFor({ timeout: 45_000 });
     await waitForStableRoute(page, observed);
     assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assertClean('desktop shell interactions', observed);

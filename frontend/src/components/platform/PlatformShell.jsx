@@ -19,6 +19,7 @@ import {
 
 import { usePlatformPreferences } from '../../app/PlatformPreferences.jsx';
 import { routeHref } from '../../app/platformRoutes.js';
+import { processingViewHref } from '../../app/processingRoutes.js';
 import { isNormalLeftClick, nextThemePreference } from './platformShellBehavior.js';
 import './PlatformShell.css';
 
@@ -30,6 +31,12 @@ const NAV_ITEMS = Object.freeze([
   { route: 'models', icon: BrainCircuit, labels: { zh: '智能模型', en: 'AI Models' } },
   { route: 'assistant', icon: MessageSquareText, labels: { zh: 'AI 科研助手', en: 'AI Research Assistant' } },
   { route: 'resources', icon: BookOpen, labels: { zh: '资源中心', en: 'Resources' } },
+]);
+const PROCESSING_NAV = Object.freeze([
+  { view: 'new', zh: '新建分析', en: 'New analysis' },
+  { view: 'monitor', zh: '运行监控', en: 'Run monitor' },
+  { view: 'results', zh: '结果与报告', en: 'Results & reports' },
+  { view: 'tasks', zh: '任务管理', en: 'Task management' },
 ]);
 
 const COPY = Object.freeze({
@@ -65,9 +72,10 @@ function loadSidebarPreference() {
   return null;
 }
 
-export default function PlatformShell({ route, onNavigate, children }) {
+export default function PlatformShell({ route, onNavigate, processingView = 'new', selectedTaskId = '', onProcessingNavigate, children }) {
   const { language, setLanguage, resolvedTheme, setTheme } = usePlatformPreferences();
   const [manualCollapsed, setManualCollapsed] = useState(loadSidebarPreference);
+  const [processingExpanded, setProcessingExpanded] = useState(route === 'processing');
   const [compactViewport, setCompactViewport] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches);
   const [mobileViewport, setMobileViewport] = useState(() =>
@@ -90,6 +98,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
   const pageTitle = route === 'search' || route === 'login'
     ? copy[route]
     : NAV_ITEMS.find(item => item.route === activeRoute)?.labels[language] ?? 'FlavorInsight AI';
+  const processingTitle = PROCESSING_NAV.find(item => item.view === processingView)?.[language] || PROCESSING_NAV[0][language];
 
   useEffect(() => {
     const compact = window.matchMedia('(max-width: 1279px)');
@@ -151,6 +160,29 @@ export default function PlatformShell({ route, onNavigate, children }) {
     onNavigate(destination);
   };
 
+  const handleProcessingParentClick = event => {
+    if (!isNormalLeftClick(event) || typeof onNavigate !== 'function') return;
+    event.preventDefault();
+    if (route !== 'processing') {
+      setProcessingExpanded(true);
+      if (mobileViewport) closeMobileMenu(false);
+      onNavigate('processing');
+      return;
+    }
+    if (collapsed && !mobileViewport) {
+      setManualCollapsed(false);
+      try { window.localStorage.setItem(SIDEBAR_STORAGE_KEY, 'false'); } catch { /* Navigation remains available. */ }
+      setProcessingExpanded(true);
+    } else setProcessingExpanded(value => !value);
+  };
+
+  const handleProcessingChildClick = (event, view) => {
+    if (!isNormalLeftClick(event) || typeof onProcessingNavigate !== 'function') return;
+    event.preventDefault();
+    if (mobileViewport) closeMobileMenu(false);
+    onProcessingNavigate(view, selectedTaskId);
+  };
+
   const toggleSidebar = () => {
     const next = !collapsed;
     setManualCollapsed(next);
@@ -197,13 +229,20 @@ export default function PlatformShell({ route, onNavigate, children }) {
             const label = item.labels[language] ?? item.labels.zh;
             const isActive = activeRoute === item.route;
             return (
+              <div className="platform-shell__nav-group" key={item.route}>
               <a className="platform-shell__nav-link" href={routeHref(item.route, PLATFORM_BASE_PATH)}
-                key={item.route} aria-label={label} title={collapsed && !mobileViewport ? label : undefined}
+                aria-label={label} title={collapsed && !mobileViewport ? label : undefined}
                 aria-current={isActive ? 'page' : undefined}
-                onClick={event => handleRouteClick(event, item.route)}>
+                aria-expanded={item.route === 'processing' ? route === 'processing' && processingExpanded : undefined}
+                onClick={event => item.route === 'processing' ? handleProcessingParentClick(event) : handleRouteClick(event, item.route)}>
                 <Icon aria-hidden="true" size={20} strokeWidth={1.9} />
                 <span className="platform-shell__nav-label">{label}</span>
+                {item.route === 'processing' && <ChevronRight className="platform-shell__nav-chevron" aria-hidden="true" size={15} />}
               </a>
+              {item.route === 'processing' && route === 'processing' && processingExpanded && <nav className="platform-shell__subnav" aria-label={language === 'en' ? 'Data processing workspaces' : '数据处理工作区'}>
+                {PROCESSING_NAV.map(child => <a key={child.view} className="platform-shell__subnav-link" href={processingViewHref(child.view, PLATFORM_BASE_PATH, selectedTaskId)} aria-current={processingView === child.view ? 'page' : undefined} onClick={event => handleProcessingChildClick(event, child.view)}>{child[language] || child.zh}</a>)}
+              </nav>}
+              </div>
             );
           })}
         </nav>
@@ -249,6 +288,7 @@ export default function PlatformShell({ route, onNavigate, children }) {
           <div className="platform-shell__utility-context">
             <span>{copy.workspace}</span>
             <strong>{pageTitle}</strong>
+            {route === 'processing' && <><span aria-hidden="true">/</span><strong aria-current="page">{processingTitle}</strong></>}
           </div>
           <span className="platform-shell__utility-status">{copy.localStatus}</span>
         </header>

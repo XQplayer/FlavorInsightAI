@@ -15,6 +15,8 @@ test('parsePlatformRoute recognizes canonical and compatibility routes', () => {
   assert.equal(parsePlatformRoute('/database/'), 'database');
   assert.equal(parsePlatformRoute('/aroma-threshold/'), 'search');
   assert.equal(parsePlatformRoute('/data-processing/'), 'processing');
+  assert.equal(parsePlatformRoute('/FlavorInsightAI/data-processing/monitor/'), 'processing');
+  assert.equal(parsePlatformRoute('/FlavorInsightAI/data-processing/results/'), 'processing');
   assert.equal(parsePlatformRoute('/shimadzu-analysis/'), 'processing');
   assert.equal(parsePlatformRoute('/data-analysis/'), 'analysis');
   assert.equal(parsePlatformRoute('/FlavorInsightAI/ai-models/'), 'models');

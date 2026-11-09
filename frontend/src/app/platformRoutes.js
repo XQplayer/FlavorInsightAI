@@ -24,6 +24,7 @@ const PLATFORM_ROUTE_BY_SEGMENT = Object.freeze({
 
 export function parsePlatformRoute(pathname) {
   const segments = String(pathname ?? '').split('/').filter(Boolean);
+  if (segments.includes('data-processing') || segments.includes('shimadzu-analysis')) return 'processing';
   const segment = segments.at(-1);
   return Object.hasOwn(PLATFORM_ROUTE_BY_SEGMENT, segment)
     ? PLATFORM_ROUTE_BY_SEGMENT[segment]
