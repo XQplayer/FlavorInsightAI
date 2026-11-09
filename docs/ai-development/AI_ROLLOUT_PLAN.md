@@ -6,3 +6,5 @@
 4. After approval and successful checks, enable AI chat for named admins, then PCA for named testers, then widen only after telemetry and cost review. Feature flag and service rollback must be rehearsed. Roll back frontend by disabling `AI_PCA_ENABLED`; back out code with `git revert` of the release commit. Any DB rollback requires separately reviewed SQL and preservation of data.
 
 Do not infer approval for item 2 from the general goal of online publication.
+
+No production SQL or Secret change has been proposed for execution yet: the hosted task schema, policies, R service endpoint contract and rollback migration are not finished. A later approval request must attach those exact artifacts and identify the production project ref before any write. The current Draft PR is a local pilot and CI candidate only.

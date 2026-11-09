@@ -8,6 +8,6 @@ Production project URL observed in GitHub Actions variables: `https://nwcoyhavzb
 | Storage | Private buckets and owner/admin policies in prior report | Unknown | Private result download closed |
 | AI conversations | Gateway memory-only ownership checks | Production persistence/config unknown | Cross-restart service not ready |
 | PCA tasks | Browser-local data and loopback R broker | No hosted authenticated R broker | Online PCA closed |
-| AI API | Local Responses API verified; Render Python service configured | Public Render `/health` and `/ai/session` timed out in this check | Live chat readiness unknown |
+| AI API | Local Responses API verified; Render Python service configured | Retried public Render `/health`: HTTP 200; `/ai/session`: HTTP 404 | Live chat route absent online |
 
 Required next read-only audit: obtain a production-scoped *read-only* Management credential, verify exact project identity, compare `pg_policies`, table RLS flags, bucket policies and migration history, then run two ordinary **approved production test accounts only after separate test-account approval**. No production database write was made here. The local retention-cron migration embeds another project URL and must not be applied without redesign and review.
