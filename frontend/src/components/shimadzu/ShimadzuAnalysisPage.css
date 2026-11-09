@@ -1952,9 +1952,9 @@
 .processing-preflight-group strong { display: block; color: var(--sz-ink); font-size: 11px; }
 .processing-preflight-group small { display: block; margin-top: 2px; color: var(--sz-muted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
 .processing-preflight-group li > span { color: var(--sz-muted); font-size: 11px; white-space: nowrap; }
-.processing-preflight-footer { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 10px; }
-.processing-preflight-footer p { margin: 0; color: var(--sz-muted); font-size: 12px; }
-.processing-preflight-footer .shimadzu-run-button { width: auto; min-width: 180px; margin: 0; }
+.processing-preflight-footer { display: flex; justify-content: center; align-items: center; margin-top: 16px; }
+.processing-preflight-footer .shimadzu-run-button { width: min(100%, 340px); min-height: 56px; margin: 0; font-size: 16px; }
+.processing-preflight-footer .shimadzu-run-button svg { width: 19px; height: 19px; }
 .processing-workspace-main .analysis-console-statusbar { grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(112px, .65fr)); }
 .analysis-console-status-primary > small { color: var(--sz-muted); font-size: 11px; }
 .processing-results,

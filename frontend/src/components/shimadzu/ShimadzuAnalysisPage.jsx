@@ -443,7 +443,7 @@ function PreflightPanel({ rawFile, samplesFile, fileReadiness, cvReadiness, engi
   return <section className="processing-preflight" aria-labelledby="preflight-title">
     <div className="processing-workspace-heading"><div><span>03</span><h2 id="preflight-title">{textFor(language, '运行前预检', 'Preflight checks')}</h2></div><button type="button" onClick={onRecheck}>{textFor(language, '重新检查', 'Recheck')}</button></div>
     <div className="processing-preflight-groups">{groups.map(group => <section key={group.title} className="processing-preflight-group"><h3>{group.title}</h3><ul>{group.checks.map(check => <li key={check.label} className={`state-${check.status}`}><StageMark status={check.status} /><div><strong>{check.label}</strong><small>{check.detail}</small></div><span>{statusLabel(check.status, language)}</span></li>)}</ul></section>)}</div>
-    <div className="processing-preflight-footer"><p role="status" aria-live="polite">{startFeedback.message}</p><button className="shimadzu-run-button" type="submit" disabled={!canStart}>{submitting ? <Loader2 className="spin" /> : <Play />}{startFeedback.buttonLabel}</button></div>
+    <div className="processing-preflight-footer"><button className="shimadzu-run-button" type="submit" disabled={!canStart}>{submitting ? <Loader2 className="spin" /> : <Play />}{startFeedback.buttonLabel}</button></div>
   </section>
 }
 
@@ -688,7 +688,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       return {
         ready: false,
         buttonLabel: missing.length === 2 ? textFor(language, '请先添加两个 Excel 文件', 'Add both Excel files first') : `${textFor(language, '请添加', 'Add ')}${missing[0]}`,
-        message: `${textFor(language, '还缺少：', 'Missing: ')}${missing.join(language === 'en' ? ', ' : '、')}`,
+        message: textFor(language, '请完成上方文件导入。', 'Complete the file import above.'),
       }
     }
 

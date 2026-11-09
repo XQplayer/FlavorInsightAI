@@ -18,7 +18,7 @@
 ## 浏览器证据
 
 - 重构前：[单页深色桌面截图](screenshots/processing-workspaces/before-desktop.png)，1440×1935。
-- 重构后：[新建分析桌面](screenshots/processing-workspaces/after-desktop-new.png)，1440×1187；首个默认页面高度约减少 39%。[运行监控](screenshots/processing-workspaces/after-desktop-monitor.png)、[结果与报告](screenshots/processing-workspaces/after-desktop-results.png)、[任务管理](screenshots/processing-workspaces/after-desktop-tasks.png)。
+- 重构后：[新建分析桌面](screenshots/processing-workspaces/after-desktop-new.png)，1440×1201；首个默认页面高度约减少 38%。[运行监控](screenshots/processing-workspaces/after-desktop-monitor.png)、[结果与报告](screenshots/processing-workspaces/after-desktop-results.png)、[任务管理](screenshots/processing-workspaces/after-desktop-tasks.png)。预检底部运行按钮已放大并居中，重复的缺失文件句子已移除。
 - 响应式：[平板新建分析](screenshots/processing-workspaces/after-tablet-new.png)、[手机新建分析](screenshots/processing-workspaces/after-mobile-new.png)、[手机运行监控](screenshots/processing-workspaces/after-mobile-monitor.png)。
 - 真实 Worker 演练：[完成状态](screenshots/processing-workspaces/after-runtime-complete.png)、[异常状态](screenshots/processing-workspaces/after-runtime-failed.png)。样例使用仓库内模板；没有使用真实科研数据。
 
