@@ -15,6 +15,7 @@ const copy = {
     title: 'Make flavor data interpretable research evidence.',
     description: 'Connect FlavorThresholdDB, Shimadzu GC–MS processing and statistical analysis in one traceable research workflow.',
     processing: 'Start data processing', database: 'Explore FlavorThresholdDB',
+    pageNavigation: 'On this page', indexWorkspaces: 'Workspaces', indexWorkflow: 'Workflow', indexResources: 'Methods & resources',
     previewTitle: 'See the research workspace',
     previewNote: 'Real interfaces from this platform. The analysis example is synthetic, not experimental evidence.',
     previewDatabase: 'Compound search · CAS 106-30-9',
@@ -26,6 +27,7 @@ const copy = {
     featuresIntro: 'Start with a compound record, an instrument workbook or an analysis-ready dataset.',
     live: 'Available', beta: 'Beta', planned: 'Planned',
     featureActions: { database: 'Explore records', processing: 'Open processing', analysis: 'Open analysis', models: 'Open Model Studio' },
+    modelBoundary: 'Training and prediction are not enabled yet.',
     workflowTitle: 'From raw data to a reviewable result in three steps',
     workflowIntro: 'Each stage has a clear input, a check and an output. Scientific decisions remain visible.',
     advantagesTitle: 'Why FlavorInsight AI',
@@ -44,6 +46,7 @@ const copy = {
     title: '让风味数据成为可解释的科研证据',
     description: '整合 FlavorThresholdDB、岛津 GC–MS 数据处理与统计分析，形成从仪器信号到科研结果的可追溯工作流。',
     processing: '开始数据处理', database: '进入 FlavorThresholdDB',
+    pageNavigation: '本页导航', indexWorkspaces: '工作台', indexWorkflow: '研究流程', indexResources: '方法与资源',
     previewTitle: '看看真实科研工作台',
     previewNote: '展示本平台的真实页面；数据分析示例为合成数据，不代表实验结果。',
     previewDatabase: '化合物检索 · CAS 106-30-9',
@@ -55,6 +58,7 @@ const copy = {
     featuresIntro: '可以从化合物记录、仪器工作簿或已整理的数据集开始。',
     live: '已上线', beta: '测试中', planned: '规划中',
     featureActions: { database: '检索记录', processing: '进入处理', analysis: '进入分析', models: '进入模型工作台' },
+    modelBoundary: '训练和预测尚未开放。',
     workflowTitle: '从原始数据到可复核结果，分三步完成',
     workflowIntro: '每一步都有明确的输入、校核与输出，科研判断过程保留可查。',
     advantagesTitle: '为什么选择 FlavorInsight AI',
@@ -151,6 +155,12 @@ export default function PlatformHomeV2({ onNavigate }) {
   const localText = (item, field) => item[language === 'zh' ? 'zh' + field : 'en' + field];
 
   return <div className="fi-home">
+    <nav className="fi-home__index" aria-label={t.pageNavigation}>
+      <span className="fi-home__index-label">{t.pageNavigation}</span>
+      <a href="#home-features-title">{t.indexWorkspaces}</a>
+      <a href="#home-workflow-title">{t.indexWorkflow}</a>
+      <a href="#home-resource-title">{t.indexResources}</a>
+    </nav>
     <section className="fi-home__hero" aria-labelledby="platform-home-title">
       <div className="fi-home__hero-copy">
         <p className="fi-home__eyebrow">{t.eyebrow} <span>FlavorInsight AI</span></p>
@@ -188,6 +198,7 @@ export default function PlatformHomeV2({ onNavigate }) {
               <h3>{localText(feature, '')}</h3>
               <p>{localText(feature, 'Body')}</p>
               <RouteLink route={feature.route} onNavigate={onNavigate} className="fi-home__feature-link">{t.featureActions[feature.id]}<ArrowRight size={17} aria-hidden="true" /></RouteLink>
+              {feature.id === 'models' && <p className="fi-home__feature-boundary">{t.modelBoundary}</p>}
             </div>
             {feature.image && <img className="fi-home__feature-image" src={base + 'assets/' + feature.image} width="1280" height="720" alt={language === 'zh' ? feature.imageAltZh : feature.imageAltEn} loading="lazy" />}
           </article>;

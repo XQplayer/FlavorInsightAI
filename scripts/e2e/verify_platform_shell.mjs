@@ -359,6 +359,17 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
       const modelCard = page.locator('.fi-home__feature--models');
       assert.match(await modelCard.innerText(), /测试中/u, `${viewport.name}/home: Model Studio is Beta`);
       assert.match(await modelCard.locator('.fi-home__feature-link').getAttribute('href'), /\/ai-models\/$/u);
+      const index = page.getByRole('navigation', { name: '本页导航' });
+      assert.equal(await index.getByRole('link').count(), 3, `${viewport.name}/home: three section shortcuts`);
+      await index.getByRole('link', { name: '工作台' }).click();
+      assert.equal(new URL(page.url()).hash, '#home-features-title', `${viewport.name}/home: workspace shortcut anchors to the directory`);
+      const workspaceHeading = await page.locator('#home-features-title').boundingBox();
+      assert.ok(workspaceHeading && workspaceHeading.y >= 0 && workspaceHeading.y < viewport.height, `${viewport.name}/home: workspace heading enters the viewport`);
+      const workflowLink = index.getByRole('link', { name: '研究流程' });
+      await workflowLink.focus();
+      await page.keyboard.press('Enter');
+      assert.equal(new URL(page.url()).hash, '#home-workflow-title', `${viewport.name}/home: keyboard activates workflow shortcut`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${viewport.name}/home: no horizontal overflow`);
     }
     if (route.name === 'models') {
       const tabs = page.getByRole('tablist', { name: '模型工作区' }).getByRole('tab');
