@@ -371,6 +371,12 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
       assert.equal(new URL(page.url()).hash, '#home-workflow-title', `${viewport.name}/home: keyboard activates workflow shortcut`);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${viewport.name}/home: no horizontal overflow`);
     }
+    if (route.name === 'processing') {
+      const firstUpload = await page.locator('.shimadzu-upload-slot').first().boundingBox();
+      assert.ok(firstUpload && firstUpload.y < viewport.height, `${viewport.name}/processing: upload entry reaches the first viewport`);
+      assert.equal(await page.locator('.shimadzu-workbench-nav a').count(), 3, `${viewport.name}/processing: three work stages remain`);
+      assert.equal(await page.locator('.shimadzu-configuration-details').getAttribute('open'), null, `${viewport.name}/processing: advanced parameters start collapsed`);
+    }
     if (route.name === 'models') {
       const tabs = page.getByRole('tablist', { name: '模型工作区' }).getByRole('tab');
       assert.equal(await tabs.count(), 5, `${viewport.name}/models: five tabs`);

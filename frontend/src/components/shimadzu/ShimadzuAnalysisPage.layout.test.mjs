@@ -207,6 +207,13 @@ test('keeps the full workflow description below the compact control deck header'
   assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-flow-node > small \{ display: block;/)
 })
 
+test('keeps capabilities visible while advanced research settings begin collapsed', () => {
+  const config = source.slice(source.indexOf('<section id="processing-configuration"'), source.indexOf('<section id="processing-import"'))
+  assert.ok(config.indexOf('className="shimadzu-capability-grid"') < config.indexOf('<details className="shimadzu-configuration-details"'))
+  assert.doesNotMatch(config, /<details className="shimadzu-configuration-details" open=/)
+  assert.match(config, /高级科研参数|Advanced research parameters/)
+})
+
 test('uses a compact desktop split setup while preserving the mobile stack', () => {
   assert.match(styles, /@media \(min-width: 1101px\)/)
   assert.match(styles, /\.shimadzu-setup \{ grid-template-columns: minmax\(0, 1\.42fr\) minmax\(330px, \.78fr\); grid-template-areas: "input settings"; gap: 16px; \}/)

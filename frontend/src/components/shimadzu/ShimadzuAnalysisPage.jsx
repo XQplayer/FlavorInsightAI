@@ -1047,14 +1047,14 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>{textFor(language, '浏览器任务恢复', 'Browser task recovery')}</strong>{recoveryNotice}</span></div>}
         <section id="processing-configuration" className="shimadzu-workbench-region shimadzu-configuration-region" aria-labelledby="analysis-output-configuration-title">
           <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">01</span><h2 id="analysis-output-configuration-title">{textFor(language, '分析流程与数据导出配置', 'Analysis workflow and data export configuration')}</h2><p>{textFor(language, '确认当前可运行的分析边界、执行位置与结果字段。', 'Confirm the available analysis scope, execution location, and exported fields.')}</p></div><span>{job ? textFor(language, '任务参数已锁定', 'Task parameters locked') : textFor(language, '连续执行 · 本地优先', 'Continuous run · Local first')}</span></div>
-          <details className="shimadzu-configuration-details" open={!job}>
-            <summary>{job ? textFor(language, '配置已折叠，展开查看本次任务参数', 'Configuration collapsed; expand to view task parameters') : textFor(language, '配置当前处理任务', 'Configure this processing task')}</summary>
-            <div className="shimadzu-configuration-grid">
-              <div className="shimadzu-capability-grid" role="list" aria-label={textFor(language, '当前分析能力', 'Current analysis capabilities')}>
+          <div className="shimadzu-capability-grid" role="list" aria-label={textFor(language, '当前分析能力', 'Current analysis capabilities')}>
                 <div role="listitem"><span>{textFor(language, '分析类型', 'Analysis type')}</span><strong>GC–MS</strong><small>{textFor(language, '当前可用 · GC-O、GC-IMS、GC×GC-MS 规划中', 'Available now · GC-O, GC-IMS, and GC×GC-MS are planned')}</small></div>
                 <div role="listitem"><span>{textFor(language, '仪器', 'Instrument')}</span><strong>Shimadzu</strong><small>{textFor(language, '当前可运行 · 其他厂商适配规划中', 'Available now · Other vendors are planned')}</small></div>
                 <div role="listitem"><span>{textFor(language, '执行与留存', 'Execution and retention')}</span><strong>{textFor(language, '浏览器本地连续执行', 'Continuous local browser execution')}</strong><small>{cloud.configured ? textFor(language, '原始文件不上传；结果可选云端留存', 'Raw files stay local; optional cloud result retention') : textFor(language, '本地模式；完成后立即下载结果', 'Local mode; download results immediately after completion')}</small></div>
-              </div>
+          </div>
+          <details className="shimadzu-configuration-details">
+            <summary>{textFor(language, '高级科研参数与数据导出设置', 'Advanced research parameters and data export settings')}</summary>
+            <div className="shimadzu-configuration-grid">
               <div className="shimadzu-settings" aria-labelledby="settings-title">
                 <div className="shimadzu-region-heading"><div><h3 id="settings-title">{textFor(language, '数据导出', 'Data export')}</h3><p>{textFor(language, '分析参数依据已确认的科研规则执行。', 'Analysis parameters follow the confirmed scientific rules.')}</p></div></div>
                 {!job && <label className="shimadzu-field"><span>{textFor(language, '任务名称', 'Task name')}</span><input value={localizedName} maxLength={120} onChange={event => setName(event.target.value)} /></label>}
