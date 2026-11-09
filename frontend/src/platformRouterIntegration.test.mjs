@@ -21,7 +21,8 @@ test('the entry renders PlatformApp without eagerly importing the database app',
 
 test('PlatformApp owns history navigation and responds to browser popstate', () => {
   assert.match(platformAppSource, /navigatePlatformRoute\(nextRoute,/);
-  assert.match(platformAppSource, /subscribeToPlatformPopstate\(setRoute\)/);
+  assert.match(platformAppSource, /subscribeToPlatformPopstate\(nextRoute =>/);
+  assert.match(platformAppSource, /setProcessingLocation\(parseProcessingLocation\(window\.location\.pathname, window\.location\.search\)\)/);
   assert.match(platformAppSource, /parsePlatformRoute\(window\.location\.pathname\)/);
 });
 

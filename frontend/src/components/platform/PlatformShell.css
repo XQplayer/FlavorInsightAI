@@ -134,6 +134,15 @@ body, #root { min-width: 0; }
 :root[data-theme='dark'] .platform-shell__nav-link[aria-current='page'] { color: #a9c8ff; }
 .platform-shell__nav-label,
 .platform-shell__control-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.platform-shell__nav-group { min-width: 0; }
+.platform-shell__nav-chevron { margin-left: auto; transition: transform var(--motion-fast); }
+.platform-shell__nav-link[aria-expanded='true'] .platform-shell__nav-chevron { transform: rotate(90deg); }
+.platform-shell__subnav { display: grid; gap: 2px; margin: 2px 0 7px 26px; padding-left: 12px; border-left: 1px solid var(--border-default); }
+.platform-shell__subnav-link { min-height: 35px; padding: 7px 10px; border-radius: var(--radius-control, 8px); display: flex; align-items: center; color: var(--text-secondary); font-size: 12px; font-weight: 650; text-decoration: none; }
+.platform-shell__subnav-link:hover { color: var(--text-primary); background: var(--surface-muted); }
+.platform-shell__subnav-link[aria-current='page'] { color: var(--platform-action-hover); background: color-mix(in srgb, var(--platform-action) 12%, var(--surface-panel)); }
+:root[data-theme='dark'] .platform-shell__subnav-link[aria-current='page'] { color: #a9c8ff; }
+.platform-shell__subnav-link:focus-visible { outline: 2px solid var(--platform-action); outline-offset: 2px; }
 
 .platform-shell__controls {
   display: grid;
@@ -180,6 +189,8 @@ body, #root { min-width: 0; }
 .platform-shell.is-collapsed .platform-shell__control-label { display: none; }
 .platform-shell.is-collapsed .platform-shell__nav-link,
 .platform-shell.is-collapsed .platform-shell__utility-link { justify-content: center; padding-inline: 0; }
+.platform-shell.is-collapsed .platform-shell__subnav,
+.platform-shell.is-collapsed .platform-shell__nav-chevron { display: none; }
 .platform-shell.is-collapsed .platform-shell__language { justify-content: center; flex-wrap: wrap; padding: 3px 0; }
 .platform-shell.is-collapsed .platform-shell__language svg { display: none; }
 .platform-shell.is-collapsed .platform-shell__language button { min-width: 27px; padding-inline: 0; }
@@ -261,6 +272,8 @@ body, #root { min-width: 0; }
   .platform-shell.is-collapsed .platform-shell__control-label { display: inline; }
   .platform-shell.is-collapsed .platform-shell__nav-link,
   .platform-shell.is-collapsed .platform-shell__utility-link { justify-content: flex-start; padding-inline: 13px; }
+  .platform-shell.is-collapsed .platform-shell__subnav { display: grid; }
+  .platform-shell.is-collapsed .platform-shell__nav-chevron { display: block; }
   .platform-shell.is-collapsed .platform-shell__language { justify-content: space-between; flex-wrap: nowrap; padding: 3px 7px 3px 13px; }
   .platform-shell.is-collapsed .platform-shell__language svg { display: block; }
   .platform-shell.is-collapsed .platform-shell__language button { min-width: 36px; padding-inline: 5px; }
