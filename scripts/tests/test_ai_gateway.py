@@ -89,6 +89,8 @@ class GatewayUnitTests(unittest.TestCase):
         events = list(gateway.chat(principal, conversation["id"], "CAS 141-78-6"))
         self.assertEqual([event["type"] for event in events], ["start", "tool", "delta", "usage", "done"])
         self.assertEqual(events[-2]["input_tokens"], 40)
+        self.assertEqual(json.loads(requests[0].data)["tool_choice"], {"type": "function", "name": "search_compound"})
+        self.assertEqual(json.loads(requests[1].data)["tool_choice"], "auto")
         self.assertEqual(json.loads(requests[1].data)["input"][-1]["call_id"], "call-1")
         self.assertEqual(json.loads(json.loads(requests[1].data)["input"][-1]["output"])["results"][0]["cas"], "141-78-6")
         self.assertNotIn("server-test-secret", str(events))
@@ -112,6 +114,28 @@ class GatewayUnitTests(unittest.TestCase):
             list(gateway.chat(principal, conversation["id"], "CAS 141-78-6"))
         self.assertEqual(caught.exception.code, "TOOL_LIMIT")
         self.assertEqual(len(gateway.audit), 0)
+
+    def test_estimated_cost_uses_verified_standard_and_cached_rates(self):
+        with patch.dict(os.environ, {"FLAVOR_AI_INPUT_USD_PER_MILLION": "2", "FLAVOR_AI_CACHED_INPUT_USD_PER_MILLION": "0.1", "FLAVOR_AI_OUTPUT_USD_PER_MILLION": "10"}):
+            gateway = AIGateway(mode="mock")
+        usage = gateway._finish(self.owner, "2026-11-10", {"input_tokens": 1000, "cached_input_tokens": 200, "output_tokens": 100})
+        self.assertEqual(usage["cached_input_tokens"], 200)
+        self.assertEqual(usage["estimated_cost_usd"], 0.00262)
+
+    def test_upstream_rate_limit_retries_once_then_fails_without_saving_message(self):
+        attempts = []
+        def limited(request, timeout):
+            attempts.append(timeout)
+            raise HTTPError(request.full_url, 429, "rate limited", {}, None)
+        gateway = AIGateway(mode="openai", model="test", api_key="test", open_url=limited)
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="test")
+        conversation = gateway.new_conversation(principal)
+        with patch("services.ai_gateway.time.sleep"), self.assertRaises(GatewayError) as caught:
+            list(gateway.chat(principal, conversation["id"], "test"))
+        self.assertEqual(caught.exception.code, "OPENAI_UPSTREAM")
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual(gateway.get_conversation(principal, conversation["id"])["messages"], [])
+        self.assertEqual(gateway.active[principal.user_id], 0)
 
 
 class GatewayHttpTests(unittest.TestCase):

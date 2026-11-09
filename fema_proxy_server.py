@@ -1198,15 +1198,18 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(b"data: " + json.dumps(event, ensure_ascii=False).encode("utf-8") + b"\n\n")
                     self.wfile.flush()
             except GatewayError as exc:
-                self.wfile.write(b"data: " + json.dumps({"type": "error", "code": exc.code, "message": str(exc)}, ensure_ascii=False).encode("utf-8") + b"\n\n")
-                self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+                try:
+                    self.wfile.write(b"data: " + json.dumps({"type": "error", "code": exc.code, "message": str(exc)}, ensure_ascii=False).encode("utf-8") + b"\n\n")
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    pass
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 pass
             except Exception:
                 try:
                     self.wfile.write(b'data: {"type":"error","code":"AI_INTERNAL","message":"AI request failed safely"}\n\n')
                     self.wfile.flush()
-                except (BrokenPipeError, ConnectionResetError):
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                     pass
             finally:
                 events.close()

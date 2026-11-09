@@ -56,7 +56,7 @@ class AIGateway:
         self.lock = threading.RLock()
         self.conversations: dict[str, Conversation] = {}
         self.requests = defaultdict(deque)
-        self.daily = defaultdict(lambda: {"requests": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+        self.daily = defaultdict(lambda: {"requests": 0, "input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
         self.active = defaultdict(int)
         self.audit = deque(maxlen=500)
         self.max_chars = min(8000, max(100, int(os.environ.get("FLAVOR_AI_MAX_INPUT_CHARS", "4000"))))
@@ -66,6 +66,7 @@ class AIGateway:
         self.per_day = max(1, int(os.environ.get("FLAVOR_AI_REQUESTS_PER_DAY", "40")))
         self.concurrent = max(1, int(os.environ.get("FLAVOR_AI_CONCURRENT_PER_USER", "2")))
         self.input_rate = float(os.environ.get("FLAVOR_AI_INPUT_USD_PER_MILLION", "0"))
+        self.cached_input_rate = float(os.environ.get("FLAVOR_AI_CACHED_INPUT_USD_PER_MILLION", "0"))
         self.output_rate = float(os.environ.get("FLAVOR_AI_OUTPUT_USD_PER_MILLION", "0"))
 
     def origin(self, value: str | None) -> str:
@@ -155,14 +156,16 @@ class AIGateway:
 
     def _finish(self, principal: Principal, day: str, usage: dict) -> dict:
         input_tokens = int(usage.get("input_tokens") or 0)
+        cached_input_tokens = min(input_tokens, max(0, int(usage.get("cached_input_tokens") or 0)))
         output_tokens = int(usage.get("output_tokens") or 0)
-        cost = (input_tokens * self.input_rate + output_tokens * self.output_rate) / 1_000_000
+        cost = ((input_tokens - cached_input_tokens) * self.input_rate + cached_input_tokens * self.cached_input_rate + output_tokens * self.output_rate) / 1_000_000
         with self.lock:
             account = self.daily[(principal.user_id, day)]
             account["input_tokens"] += input_tokens
+            account["cached_input_tokens"] += cached_input_tokens
             account["output_tokens"] += output_tokens
             account["cost_usd"] += cost
-        return {"input_tokens": input_tokens, "output_tokens": output_tokens, "estimated_cost_usd": round(cost, 8) if self.input_rate and self.output_rate else None}
+        return {"input_tokens": input_tokens, "cached_input_tokens": cached_input_tokens, "output_tokens": output_tokens, "estimated_cost_usd": round(cost, 8) if self.input_rate and self.cached_input_rate and self.output_rate else None}
 
     def _tool(self, name: str, args: dict, principal: Principal) -> dict:
         try:
@@ -194,12 +197,13 @@ class AIGateway:
             yield {"type": "delta", "text": answer[start:start + 48]}
         return answer, sources, {"input_tokens": 0, "output_tokens": 0}
 
-    def _responses(self, input_items: list[dict], principal: Principal):
+    def _responses(self, input_items: list[dict], principal: Principal, force_compound_search: bool = False):
         if not self.api_key or not self.model:
             raise GatewayError("OPENAI_NOT_CONFIGURED", "Set OPENAI_API_KEY and OPENAI_MODEL on the server", 503)
-        answer_parts, sources, total_usage = [], [], {"input_tokens": 0, "output_tokens": 0}
+        answer_parts, sources, total_usage = [], [], {"input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0}
         for _round in range(3):
-            payload = {"model": self.model, "instructions": SYSTEM_PROMPT, "input": input_items, "tools": TOOL_SCHEMAS, "tool_choice": "auto", "stream": True, "store": False, "max_output_tokens": self.max_output_tokens}
+            tool_choice = {"type": "function", "name": "search_compound"} if force_compound_search and _round == 0 else "auto"
+            payload = {"model": self.model, "instructions": SYSTEM_PROMPT, "input": input_items, "tools": TOOL_SCHEMAS, "tool_choice": tool_choice, "stream": True, "store": False, "max_output_tokens": self.max_output_tokens}
             request = Request("https://api.openai.com/v1/responses", data=json.dumps(payload).encode(), headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "Accept": "text/event-stream"}, method="POST")
             for attempt in range(2):
                 try:
@@ -244,6 +248,7 @@ class AIGateway:
                 raise GatewayError("OPENAI_INCOMPLETE", "OpenAI stream ended before completion", 502)
             usage = completed.get("usage") or {}
             total_usage["input_tokens"] += int(usage.get("input_tokens") or 0)
+            total_usage["cached_input_tokens"] += int((usage.get("input_tokens_details") or {}).get("cached_tokens") or 0)
             total_usage["output_tokens"] += int(usage.get("output_tokens") or 0)
             output = completed.get("output") or []
             calls = [item for item in output if item.get("type") == "function_call"]
@@ -285,7 +290,8 @@ class AIGateway:
                 answer_parts, sources, usage = [], [], {}
                 history = [{"role": item["role"], "content": item["content"]} for item in conversation["messages"][-16:]]
                 history.append({"role": "user", "content": message.strip()})
-                generator = self._mock(message, principal) if self.mode == "mock" else self._responses(history, principal)
+                force_compound_search = bool(re.search(r"\b\d{2,7}-\d{2}-\d\b", message))
+                generator = self._mock(message, principal) if self.mode == "mock" else self._responses(history, principal, force_compound_search)
                 while True:
                     try:
                         event = next(generator)
