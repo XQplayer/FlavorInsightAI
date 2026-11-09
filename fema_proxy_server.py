@@ -29,6 +29,7 @@ from spectra_cache import OpenSpectraCache
 from spectra_index_distribution import install_public_index
 from spectra_service import compare_spectra, serialize_spectrum
 from shimadzu_analysis_service import ShimadzuAnalysisError, ShimadzuAnalysisService
+from services.ai_gateway import AIGateway, GatewayError
 
 
 HOST = os.environ.get("HOST", "0.0.0.0")
@@ -38,6 +39,7 @@ PUBCHEM_BASE_URL = "https://pubchem.ncbi.nlm.nih.gov"
 FLAVORDB_BASE_URL = "https://cosylab.iiitd.edu.in/flavordb2"
 PROJECT_ROOT = Path(__file__).resolve().parent
 SHIMADZU_SERVICE = ShimadzuAnalysisService(PROJECT_ROOT / "_local" / "shimadzu")
+AI_GATEWAY = AIGateway()
 CACHE_PATH = Path(
     os.environ.get(
         "FLAVOR_CACHE_PATH",
@@ -1101,8 +1103,149 @@ def query_flavordb(cid: int | str) -> dict:
     }
 
 
+def _ai_verified_public_enrichment(cas: str) -> dict:
+    """Reuse platform PubChem services only when the returned CID lists this CAS."""
+    if not _cas_checksum_valid(cas):
+        return {"status": "identity_unverified"}
+    pubchem = query_pubchem(cas)
+    if not pubchem.get("found") or not pubchem.get("cid"):
+        return {"status": "unavailable"}
+    candidates = query_pubchem_cas_candidates(str(pubchem["cid"]))
+    if cas not in candidates.get("candidates", []):
+        return {"status": "identity_unverified"}
+    volatile = query_pubchem_volatile_properties(str(pubchem["cid"]))
+    return {"status": "verified", "cas": cas, "pubchem": pubchem, "volatile": volatile}
+
+
+AI_GATEWAY.tools.public_enrichment = _ai_verified_public_enrichment
+
+
 class Handler(BaseHTTPRequestHandler):
     cache = load_cache()
+
+    def ai_headers(self, status: int, content_type: str, cookie: str = "") -> None:
+        origin = AI_GATEWAY.origin(self.headers.get("Origin"))
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
+            self.send_header("Vary", "Origin")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
+
+    def ai_json(self, status: int, payload: dict, cookie: str = "") -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.ai_headers(status, "application/json; charset=utf-8", cookie)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def ai_error(self, exc: GatewayError) -> None:
+        try:
+            if exc.code == "ORIGIN_DENIED":
+                body = json.dumps({"error": str(exc), "code": exc.code}).encode()
+                self.send_response(exc.status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            self.ai_json(exc.status, {"error": str(exc), "code": exc.code})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def ai_principal(self):
+        return AI_GATEWAY.principal(self.headers.get("Authorization", ""), self.headers.get("Cookie", ""), self.client_address[0], self.headers.get("Origin", ""))
+
+    def ai_get(self, path: str) -> None:
+        try:
+            if path == "/ai/session":
+                cookie = ""
+                try:
+                    principal = self.ai_principal()
+                except GatewayError as exc:
+                    if exc.code != "AUTH_REQUIRED":
+                        raise
+                    principal, cookie = AI_GATEWAY.create_guest_cookie(self.client_address[0], self.headers.get("Origin", ""))
+                self.ai_json(200, {**AI_GATEWAY.configuration(), "identity": "local_mock" if principal.guest else "account"}, cookie)
+                return
+            principal = self.ai_principal()
+            if path == "/ai/conversations":
+                self.ai_json(200, {"conversations": AI_GATEWAY.list_conversations(principal)})
+            elif path.startswith("/ai/conversations/"):
+                self.ai_json(200, AI_GATEWAY.get_conversation(principal, path.rsplit("/", 1)[-1]))
+            elif path == "/ai/usage":
+                self.ai_json(200, AI_GATEWAY.usage_for_admin(principal))
+            else:
+                self.ai_json(404, {"error": "Not found", "code": "NOT_FOUND"})
+        except GatewayError as exc:
+            self.ai_error(exc)
+
+    def ai_post(self, path: str) -> None:
+        try:
+            principal = self.ai_principal()
+            if path == "/ai/conversations":
+                self.ai_json(201, AI_GATEWAY.new_conversation(principal))
+                return
+            if path != "/ai/chat":
+                self.ai_json(404, {"error": "Not found", "code": "NOT_FOUND"})
+                return
+            try:
+                size = int(self.headers.get("Content-Length", "0"))
+            except ValueError as exc:
+                raise GatewayError("INVALID_BODY", "Invalid request size") from exc
+            if size <= 0 or size > 16_384 or "application/json" not in self.headers.get("Content-Type", ""):
+                raise GatewayError("INVALID_BODY", "Expected a JSON request smaller than 16 KB", 413)
+            try:
+                payload = json.loads(self.rfile.read(size))
+            except ValueError as exc:
+                raise GatewayError("INVALID_BODY", "Malformed JSON") from exc
+            if not isinstance(payload, dict) or set(payload) != {"conversation_id", "message"}:
+                raise GatewayError("INVALID_BODY", "Only conversation_id and message are accepted")
+            events = AI_GATEWAY.chat(principal, payload["conversation_id"], payload["message"])
+            self.ai_headers(200, "text/event-stream; charset=utf-8")
+            self.send_header("X-Accel-Buffering", "no")
+            self.end_headers()
+            try:
+                for event in events:
+                    self.wfile.write(b"data: " + json.dumps(event, ensure_ascii=False).encode("utf-8") + b"\n\n")
+                    self.wfile.flush()
+            except GatewayError as exc:
+                try:
+                    self.wfile.write(b"data: " + json.dumps({"type": "error", "code": exc.code, "message": str(exc)}, ensure_ascii=False).encode("utf-8") + b"\n\n")
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    pass
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass
+            except Exception:
+                try:
+                    self.wfile.write(b'data: {"type":"error","code":"AI_INTERNAL","message":"AI request failed safely"}\n\n')
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    pass
+            finally:
+                events.close()
+        except GatewayError as exc:
+            self.ai_error(exc)
+
+    def do_DELETE(self) -> None:
+        parsed = urlparse(self.path)
+        if not parsed.path.startswith("/ai/"):
+            self.send_json(404, {"error": "Not found"})
+            return
+        try:
+            principal = self.ai_principal()
+            if not parsed.path.startswith("/ai/conversations/"):
+                raise GatewayError("NOT_FOUND", "Not found", 404)
+            AI_GATEWAY.delete_conversation(principal, parsed.path.rsplit("/", 1)[-1])
+            self.ai_json(200, {"ok": True})
+        except GatewayError as exc:
+            self.ai_error(exc)
 
     def send_service_error(self, error: ShimadzuAnalysisError) -> None:
         self.send_json(error.status, {"error": error.message, "code": error.code})
@@ -1149,10 +1292,23 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(chunk)
 
     def do_OPTIONS(self) -> None:
+        if urlparse(self.path).path.startswith("/ai/"):
+            try:
+                self.ai_headers(204, "text/plain")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+                self.send_header("Access-Control-Max-Age", "600")
+                self.end_headers()
+            except GatewayError as exc:
+                self.ai_error(exc)
+            return
         self.send_json(200, {"ok": True})
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path.startswith("/ai/"):
+            self.ai_get(parsed.path)
+            return
         template_parts = parsed.path.strip("/").split("/")
         if len(template_parts) == 3 and template_parts[:2] == ["shimadzu", "templates"]:
             try:
@@ -1605,6 +1761,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path.startswith("/ai/"):
+            self.ai_post(parsed.path)
+            return
         if parsed.path == "/shimadzu/jobs":
             try:
                 content_length = int(self.headers.get("Content-Length", "0"))

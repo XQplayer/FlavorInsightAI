@@ -1,0 +1,7 @@
+# Production readiness decision
+
+**Decision: HOLD online PCA and live AI rollout.** Local synthetic analysis succeeds, but the current R broker binds only `127.0.0.1`, allows only local origins and holds jobs in memory. `render.yaml` starts the Python proxy without R. A read-only public probe returned HTTP 200 from `/health` and HTTP 404 from `/ai/session`, so the online AI route is absent. Browser IndexedDB snapshots are local to each device, not an authorized server dataset. The current planning card is deterministic PCA-intent routing inside Data Analysis; it is **not** a GPT-chosen tool loop or an editable card inside the chat thread. The GPT explanation receives a user-supplied bounded result excerpt; the Gateway does not independently reverify the calculation. These are material gaps against the requested online workflow.
+
+Release prerequisites: design an authenticated hosted R executor with user-bound immutable dataset/version, durable task/result store and quota; validate with two production-like ordinary accounts against production-equivalent RLS; establish production OpenAI mode/model/secret via separately approved secret change; verify Render runtime/health, monitoring, cost and rollback; then pass matching remote CI and canary tests. Private task tools remain disabled until production policy is proven.
+
+The specific high-risk change list for approval is in [AI_ROLLOUT_PLAN.md](AI_ROLLOUT_PLAN.md). No production DB migration, RLS/Storage change or secret operation was performed.

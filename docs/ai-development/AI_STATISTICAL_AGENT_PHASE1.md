@@ -1,0 +1,7 @@
+# Statistical planning pilot
+
+Inputs: a selected immutable local dataset and a natural-language question mentioning PCA/overall patterns. `inspectDataset` counts included samples and numeric variables, groups, units, missing cells, constant features, possible duplicate measurements and explicit biological-unit metadata. It never infers independent biological replication from names. `recommendAnalysis` currently supports exploratory PCA only; unsupported intent fails explicitly. `prepareAnalysis` binds SHA-256 of the dataset and proposes the existing R recipe. The user may edit components, scaling, missing-value strategy, constant-variable policy and centering; `confirmAnalysis` rejects a changed dataset, missing-value ambiguity and unacknowledged mixed units before submitting a real R job.
+
+The planning helpers are deterministic local code, not model function calls. No private dataset is fetched by an Agent and no chatbot card executes computation. The AI page can hand a PCA question to Data Analysis; current local workflow still requires importing/restoring a dataset there. Feature flag defaults off for production builds. This is a useful local pilot, not full acceptance of the requested Agent workflow.
+
+Focused tests: `pnpm run test:analysis` passed 108/108; local browser synthetic case passed planning, confirmation and completed R PCA. Screenshots are ignored local evidence under `_local/verification/ai-pca/`.

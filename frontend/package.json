@@ -19,6 +19,7 @@
     "test:e2e": "node ../scripts/e2e/verify_release_candidate.mjs",
     "test:e2e:platform": "node ../scripts/e2e/verify_platform_shell.mjs",
     "test:e2e:search-workbench": "node ../scripts/e2e/verify_search_results_workbench.mjs",
+    "test:e2e:ai-assistant": "node ../scripts/e2e/verify_ai_assistant.mjs",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
@@ -35,6 +36,8 @@
     "lucide-react": "^1.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.2.2",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },

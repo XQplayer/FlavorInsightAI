@@ -15,6 +15,7 @@ export const STATIC_ROUTE_SEGMENTS = Object.freeze([
   'shimadzu-analysis',
   'data-analysis',
   'ai-models',
+  'ai-assistant',
   'resources',
   'login',
 ])

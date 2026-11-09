@@ -122,7 +122,7 @@ export default function useWorkbench() {
     const timer = setInterval(() => setClock(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [active]);
-  const run = async bound => {
+  const run = async (bound, planReceipt = null) => {
     if (activeRef.current || dirty || !dataset) return;
     const request = structuredClone(bound || {
       dataset,
@@ -141,7 +141,8 @@ export default function useWorkbench() {
         id: localId,
         status: 'queued',
         createdAt,
-        request
+        request,
+        ...(planReceipt ? { planReceipt: structuredClone(planReceipt) } : {})
       },
       work = {
         controller,

@@ -1,0 +1,66 @@
+.ai-research-page { box-sizing: border-box; width: min(1480px, 100%); min-height: calc(100dvh - 96px); margin: 0 auto; padding: clamp(16px, 2.4vw, 32px); color: var(--text-primary); }
+.ai-research-page * { box-sizing: border-box; }
+.ai-research-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 20px; }
+.ai-research-eyebrow { margin: 0 0 8px; color: var(--platform-brand); font-size: 11px; font-weight: 800; letter-spacing: .16em; }
+.ai-research-header h1 { margin: 0; font-size: clamp(27px, 3vw, 36px); line-height: 1.15; }
+.ai-research-header p:last-child { margin: 9px 0 0; color: var(--text-secondary); font-size: 14px; }
+.ai-research-mode { padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 999px; color: var(--text-secondary); background: var(--surface-panel); font-size: 12px; white-space: nowrap; }
+.ai-research-mode.is-mock { color: var(--platform-brand); }
+.ai-research-task-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: -5px 0 16px; padding: 10px 13px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-panel); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.ai-research-task-context strong { color: var(--text-primary); }
+.ai-research-layout { min-height: min(720px, calc(100dvh - 210px)); display: grid; grid-template-columns: 244px minmax(0, 1fr); gap: 14px; }
+.ai-research-history, .ai-research-thread { min-width: 0; border: 1px solid var(--border-default); border-radius: 16px; background: var(--surface-panel); }
+.ai-research-history { display: flex; flex-direction: column; padding: 14px; }
+.ai-research-history-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-research-history-head h2 { margin: 0; font-size: 15px; }
+.ai-research-history button, .ai-research-composer button, .ai-research-suggestions button, .ai-research-copy { font: inherit; cursor: pointer; }
+.ai-research-history-head button { min-height: 32px; border: 1px solid var(--border-default); border-radius: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 5px 7px; color: var(--text-primary); background: var(--surface-workbench); font-size: 11px; }
+.ai-research-history ul { min-height: 0; max-height: 520px; margin: 12px 0; padding: 0; overflow-y: auto; list-style: none; }
+.ai-research-history li:not(.ai-research-empty-history) { display: flex; align-items: center; gap: 3px; margin-bottom: 4px; }
+.ai-research-history li > button:first-child { min-width: 0; flex: 1; min-height: 36px; border: 0; border-radius: 8px; display: flex; align-items: center; gap: 7px; padding: 6px 7px; color: var(--text-secondary); background: transparent; text-align: left; font-size: 12px; }
+.ai-research-history li > button:first-child.active { color: var(--platform-brand); background: color-mix(in srgb, var(--platform-brand) 12%, transparent); }
+.ai-research-history li > button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-research-delete { min-width: 30px; min-height: 30px; border: 0; border-radius: 7px; display: inline-grid; place-items: center; color: var(--text-secondary); background: transparent; }
+.ai-research-delete:hover { color: #d64b54; }
+.ai-research-empty-history { padding: 12px 5px; color: var(--text-secondary); font-size: 12px; }
+.ai-research-knowledge { margin-top: auto; padding: 12px 5px 3px; border-top: 1px solid var(--border-default); display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }
+.ai-research-thread { min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ai-research-messages { min-height: 360px; max-height: min(650px, calc(100dvh - 390px)); flex: 1; padding: clamp(14px, 2vw, 28px); overflow-y: auto; }
+.ai-research-welcome { max-width: 660px; margin: 6vh auto 0; text-align: center; }
+.ai-research-symbol { width: 52px; height: 52px; border-radius: 14px; display: inline-grid; place-items: center; color: #fff; background: var(--platform-brand); font-weight: 850; }
+.ai-research-welcome h2 { margin: 18px 0 7px; font-size: 23px; }
+.ai-research-welcome p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.ai-research-suggestions { margin-top: 24px; display: grid; gap: 8px; }
+.ai-research-suggestions button { min-height: 43px; padding: 9px 14px; border: 1px solid var(--border-default); border-radius: 10px; color: var(--text-primary); background: var(--surface-workbench); text-align: left; font-size: 13px; }
+.ai-research-suggestions button:hover { border-color: var(--platform-brand); }
+.ai-research-message { display: flex; gap: 10px; max-width: 850px; margin: 0 auto 20px; }
+.ai-research-avatar { width: 29px; height: 29px; flex: 0 0 29px; border-radius: 8px; display: grid; place-items: center; color: #fff; background: var(--platform-brand); font-size: 11px; font-weight: 800; }
+.ai-research-message.user .ai-research-avatar { color: var(--text-primary); background: var(--surface-workbench); border: 1px solid var(--border-default); }
+.ai-research-message-body { min-width: 0; max-width: 100%; padding-top: 2px; color: var(--text-primary); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.ai-research-message-body > p { margin: 0; white-space: pre-wrap; }
+.ai-research-markdown > :first-child { margin-top: 0; }
+.ai-research-markdown > :last-child { margin-bottom: 0; }
+.ai-research-markdown pre { max-width: 100%; padding: 12px; border-radius: 9px; overflow-x: auto; color: var(--text-primary); background: var(--surface-workbench); }
+.ai-research-markdown code { font-size: .88em; }
+.ai-research-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.ai-research-markdown th, .ai-research-markdown td { padding: 6px 10px; border: 1px solid var(--border-default); }
+.ai-research-markdown a, .ai-research-sources a { color: var(--platform-brand); }
+.ai-research-tool-events { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.ai-research-tool-events span { padding: 4px 7px; border-radius: 6px; color: var(--platform-brand); background: color-mix(in srgb, var(--platform-brand) 12%, transparent); font-size: 11px; }
+.ai-research-sources { margin-top: 10px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 11px; }
+.ai-research-sources strong { color: var(--text-secondary); }
+.ai-research-copy { margin-top: 9px; padding: 3px 0; border: 0; display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); background: transparent; font-size: 11px; }
+.ai-research-composer { padding: 12px 16px 16px; border-top: 1px solid var(--border-default); }
+.ai-research-status { color: var(--text-secondary); font-size: 11px; }
+.ai-research-status p { margin: 0 0 8px; color: #d64b54; }
+.ai-research-status button { margin-left: 7px; border: 0; display: inline-flex; align-items: center; gap: 4px; color: var(--platform-brand); background: transparent; }
+.ai-research-composer form { display: flex; gap: 8px; align-items: flex-end; }
+.ai-research-composer textarea { min-width: 0; min-height: 76px; flex: 1; resize: vertical; padding: 11px 12px; border: 1px solid var(--border-default); border-radius: 10px; color: var(--text-primary); background: var(--surface-workbench); font: inherit; font-size: 13px; line-height: 1.5; }
+.ai-research-submit { min-height: 42px; padding: 0 14px; border: 0; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px; color: #fff; background: var(--platform-brand); font-weight: 700; white-space: nowrap; }
+.ai-research-submit.stop { background: #bd4651; }
+.ai-research-submit:disabled { opacity: .55; cursor: not-allowed; }
+.ai-research-page :is(button, textarea, a):focus-visible { outline: 3px solid var(--platform-brand); outline-offset: 2px; }
+@media (max-width: 900px) { .ai-research-layout { grid-template-columns: 190px minmax(0, 1fr); } }
+@media (max-width: 700px) { .ai-research-page { padding: 14px; } .ai-research-header { flex-wrap: wrap; } .ai-research-layout { display: flex; flex-direction: column; } .ai-research-history { max-height: 140px; } .ai-research-history ul { display: flex; gap: 5px; overflow-x: auto; margin: 7px 0; } .ai-research-history li:not(.ai-research-empty-history) { min-width: 150px; } .ai-research-history li > button:first-child { min-width: 0; } .ai-research-knowledge { display: none; } .ai-research-messages { min-height: 350px; max-height: 52vh; } .ai-research-welcome { margin-top: 1vh; } .ai-research-composer { padding: 10px; } }
+@media (max-width: 420px) { .ai-research-header h1 { font-size: 26px; } .ai-research-composer form { align-items: stretch; flex-direction: column; } .ai-research-composer textarea { width: 100%; } .ai-research-submit { align-self: flex-end; } }
+@media (prefers-reduced-motion: reduce) { .ai-research-page * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }

@@ -1,5 +1,8 @@
 # 虚拟环境
 .venv/
+.env
+.env.*
+!.env.example
 Scripts/
 Include/
 /Lib/

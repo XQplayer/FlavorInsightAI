@@ -44,6 +44,7 @@ jobs:
           VITE_FEMA_API_URL: ${{ vars.FEMA_API_URL }}
           VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_AI_PCA_ENABLED: ${{ vars.AI_PCA_ENABLED || 'false' }}
         run: pnpm run build
 
       - name: Add SPA fallback

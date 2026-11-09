@@ -1,0 +1,5 @@
+# Independent PCA reference values
+
+`R_LIBS_USER=E:\codex\Projects\FlavorThresholdDB\_local\analysis-r-library D:\R-4.6.0\bin\Rscript.exe --vanilla services/analysis/tests/test_reference_values.R` passed on 2026-11-10 (R 4.6.0; locale startup warnings only). Added a hand-calculated, synthetic 4×2 diagonal example: centered cross-product `diag(8,2)`, sample-covariance eigenvalues `8/3` and `2/3`, PC1/PC2 explained fractions `0.8` and `0.2`. Scores and loadings are compared up to sign, tolerance `1e-12`; adding a constant feature offset checks centering invariance. Existing one-variable, missing/constant and scientific regression checks passed. These values were calculated independently of the program output.
+
+The 24×8 synthetic browser fixture is a workflow test, not an independent truth fixture; its observed PC1/PC2 proportions are recorded only as execution evidence. PCA is exploratory and its score separation is not a significance test. This validates selected PCA cases, not all statistical methods or all real datasets.

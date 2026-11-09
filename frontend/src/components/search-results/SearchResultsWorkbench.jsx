@@ -60,6 +60,7 @@ export default function SearchResultsWorkbench({
   candidateScopeKey,
   onCandidateSelect,
   onRetrySource,
+  onAskAI,
   apiUrl,
   citationText = '',
   onExportCompact,
@@ -387,6 +388,7 @@ export default function SearchResultsWorkbench({
           totalChapterCount={CHAPTERS.length}
           isEnglish={isEnglish}
         />
+        {onAskAI && dossier.identity?.cas && <button type="button" className="search-results-workbench__ask-ai" onClick={() => onAskAI(dossier.identity.cas)}>{isEnglish ? 'Ask AI about this compound' : '询问 AI：此化合物'}</button>}
         <div className="search-results-workbench__layout">
           <ChapterNavigation
             chapters={chapters}
