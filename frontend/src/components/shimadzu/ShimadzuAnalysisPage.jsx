@@ -1175,6 +1175,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
               <button type="button" className="primary" onClick={enterDataAnalysis} disabled={!analysisSelection || analysisHandoffBusy}>{textFor(language, '进入数据分析', 'Enter data analysis')}</button>
               <p>{textFor(language, '验证七阶段与哈希并保存后进入。也可下载 ZIP，在数据分析中上传。', 'Enter after seven-stage/hash verification and local save. ZIP upload in data analysis remains available.')}</p>
             </div>}
+            {job.status === 'complete' && onNavigate && cloud.configured && session && <button type="button" onClick={() => onNavigate('assistant', { task_id: job.id })}>{textFor(language, '询问 AI：解释已保存的任务摘要', 'Ask AI about the saved task summary')}</button>}
             {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
           </div>} />
           <HistoryDisclosure language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />

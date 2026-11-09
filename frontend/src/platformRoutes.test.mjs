@@ -18,6 +18,7 @@ test('parsePlatformRoute recognizes canonical and compatibility routes', () => {
   assert.equal(parsePlatformRoute('/shimadzu-analysis/'), 'processing');
   assert.equal(parsePlatformRoute('/data-analysis/'), 'analysis');
   assert.equal(parsePlatformRoute('/FlavorInsightAI/ai-models/'), 'models');
+  assert.equal(parsePlatformRoute('/FlavorInsightAI/ai-assistant/'), 'assistant');
   assert.equal(parsePlatformRoute('/resources/'), 'resources');
 });
 
@@ -32,6 +33,7 @@ test('routeHref emits canonical paths under the configured base path', () => {
   assert.equal(routeHref('processing', '/FlavorInsightAI'), '/FlavorInsightAI/data-processing/');
   assert.equal(routeHref('login', '/FlavorInsightAI'), '/FlavorInsightAI/login/');
   assert.equal(routeHref('models', '/FlavorInsightAI'), '/FlavorInsightAI/ai-models/');
+  assert.equal(routeHref('assistant', '/FlavorInsightAI'), '/FlavorInsightAI/ai-assistant/');
 });
 
 test('routeHref treats prototype-named route keys as home', () => {

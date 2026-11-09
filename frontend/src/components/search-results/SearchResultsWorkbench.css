@@ -1208,3 +1208,6 @@
   white-space: nowrap;
   border: 0;
 }
+
+.search-results-workbench__ask-ai { margin: 0 0 18px; padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 8px; color: var(--platform-brand); background: var(--surface-panel); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.search-results-workbench__ask-ai:focus-visible { outline: 3px solid var(--platform-brand); outline-offset: 2px; }

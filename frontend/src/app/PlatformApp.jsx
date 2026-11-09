@@ -20,6 +20,7 @@ const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.js
 const DataProcessingPage = lazy(() => import('../pages/DataProcessingPage.jsx'));
 const DataAnalysisPage = lazy(() => import('../pages/DataAnalysisPage.jsx'));
 const AIModelsPage = lazy(() => import('../pages/AIModelsPage.jsx'));
+const AIResearchAssistantPage = lazy(() => import('../pages/AIResearchAssistantPage.jsx'));
 const PLATFORM_BASE_PATH = import.meta.env.BASE_URL;
 
 const PLATFORM_ROUTE_TITLES = Object.freeze({
@@ -30,6 +31,7 @@ const PLATFORM_ROUTE_TITLES = Object.freeze({
     processing: '数据处理 | FlavorInsight AI',
     analysis: '数据分析 | FlavorInsight AI',
     models: '智能模型 | FlavorInsight AI',
+    assistant: 'AI 科研助手 | FlavorInsight AI',
     resources: '资源中心 | FlavorInsight AI',
     login: '账号访问 | FlavorInsight AI',
   },
@@ -40,6 +42,7 @@ const PLATFORM_ROUTE_TITLES = Object.freeze({
     processing: 'Data Processing | FlavorInsight AI',
     analysis: 'Data Analysis | FlavorInsight AI',
     models: 'AI Models | FlavorInsight AI',
+    assistant: 'AI Research Assistant | FlavorInsight AI',
     resources: 'Resources | FlavorInsight AI',
     login: 'Account access | FlavorInsight AI',
   },
@@ -171,6 +174,10 @@ function PlatformRoute({ route, onNavigate }) {
     return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIModelsPage onNavigate={onNavigate} /></Suspense></RouteErrorBoundary>;
   }
 
+  if (route === 'assistant') {
+    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIResearchAssistantPage language={language} /></Suspense></RouteErrorBoundary>;
+  }
+
   if (route === 'resources') {
     return <ResourcesPage />;
   }
@@ -187,8 +194,8 @@ export default function PlatformApp() {
 
   useEffect(() => subscribeToPlatformPopstate(setRoute), []);
 
-  const navigate = useCallback(nextRoute => {
-    navigatePlatformRoute(nextRoute, { basePath: PLATFORM_BASE_PATH });
+  const navigate = useCallback((nextRoute, context = null) => {
+    navigatePlatformRoute(nextRoute, { basePath: PLATFORM_BASE_PATH, context });
     setRoute(nextRoute);
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);

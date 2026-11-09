@@ -52,7 +52,7 @@ test('provides a skip link and a labelled main landmark', () => {
   assert.match(source, /<main[^>]*id="main-content"/);
 });
 
-test('defines the six platform destinations and labels', () => {
+test('defines the seven platform destinations and labels', () => {
   const navigation = source.match(/const NAV_ITEMS = Object\.freeze\(\[[\s\S]*?\]\);/)?.[0] ?? '';
   const destinations = [
     ['home', '首页', 'Home'],
@@ -60,6 +60,7 @@ test('defines the six platform destinations and labels', () => {
     ['processing', '数据处理', 'Data processing'],
     ['analysis', '数据分析', 'Data analysis'],
     ['models', '智能模型', 'AI Models'],
+    ['assistant', 'AI 科研助手', 'AI Research Assistant'],
     ['resources', '资源中心', 'Resources'],
   ];
 
