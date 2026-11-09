@@ -14,6 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  python-api:
+    name: Python API and service contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Shimadzu service and HTTP integration
+        run: python3 -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
+
   verify:
     name: Tests, lint, and build
     runs-on: ubuntu-latest
@@ -63,6 +73,16 @@ jobs:
         working-directory: frontend
         run: pnpm run test:shimadzu-browser
 
+      - name: Analysis import, export, and release security tests
+        working-directory: frontend
+        run: pnpm run test:analysis
+
+      - name: Browser overlap geometry regression
+        run: node --test scripts/e2e/overlapGeometry.test.mjs
+
+      - name: AI development routing contract
+        run: node --test scripts/ai-development/routingContract.test.mjs
+
       - name: Lint
         working-directory: frontend
         run: pnpm run lint
@@ -74,3 +94,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: pnpm run build
+
+      - name: Production dependency advisory scan
+        working-directory: frontend
+        run: pnpm audit --prod

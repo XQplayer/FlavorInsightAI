@@ -26,8 +26,8 @@ const ROUTES = Object.freeze([
   { name: 'home', segment: '', heading: /让风味数据成为可解释的科研证据|Make flavor data interpretable research evidence/u, title: /^FlavorInsight AI \|/u, lightweight: true },
   { name: 'database', segment: 'database/', heading: /^探索风味化合物的科学证据$/u, title: /^FlavorThresholdDB 数据库 \|/u },
   { name: 'search', segment: 'aroma-threshold/', heading: /香气阈值与风味描述检索/u, title: /^香气阈值检索 \|/u },
-  { name: 'processing', segment: 'data-processing/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
-  { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /仪器数据处理平台/u, title: /^数据处理 \|/u },
+  { name: 'processing', segment: 'data-processing/', heading: /^新建分析$/u, title: /^数据处理 \|/u },
+  { name: 'processing-compat', segment: 'shimadzu-analysis/', heading: /^新建分析$/u, title: /^数据处理 \|/u },
   { name: 'analysis', segment: 'data-analysis/', heading: /^数据分析$/u, title: /^数据分析 \|/u, lightweight: true },
   { name: 'models', segment: 'ai-models/', heading: /^智能模型与预测评价$/u, title: /^智能模型 \|/u, lightweight: true },
   { name: 'resources', segment: 'resources/', heading: /^资源中心$/u, title: /^资源中心 \|/u, lightweight: true },
@@ -246,6 +246,8 @@ function observePage(page, localOrigins) {
   page.on('requestfailed', request => {
     settleLocalRequest(request);
     const failure = request.failure()?.errorText || 'unknown failure';
+    // Navigation can cancel the optional proxy health probe while leaving the view healthy.
+    if (new URL(request.url()).pathname === '/health' && failure === 'net::ERR_ABORTED') return;
     observed.requestFailures.push(`${request.method()} ${request.url()} :: ${failure}`);
   });
   page.on('response', response => {
@@ -359,6 +361,46 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
       const modelCard = page.locator('.fi-home__feature--models');
       assert.match(await modelCard.innerText(), /测试中/u, `${viewport.name}/home: Model Studio is Beta`);
       assert.match(await modelCard.locator('.fi-home__feature-link').getAttribute('href'), /\/ai-models\/$/u);
+      const index = page.getByRole('navigation', { name: '本页导航' });
+      assert.equal(await index.getByRole('link').count(), 3, `${viewport.name}/home: three section shortcuts`);
+      await index.getByRole('link', { name: '工作台' }).click();
+      assert.equal(new URL(page.url()).hash, '#home-features-title', `${viewport.name}/home: workspace shortcut anchors to the directory`);
+      const workspaceHeading = await page.locator('#home-features-title').boundingBox();
+      assert.ok(workspaceHeading && workspaceHeading.y >= 0 && workspaceHeading.y < viewport.height, `${viewport.name}/home: workspace heading enters the viewport`);
+      const workflowLink = index.getByRole('link', { name: '研究流程' });
+      await workflowLink.focus();
+      await page.keyboard.press('Enter');
+      assert.equal(new URL(page.url()).hash, '#home-workflow-title', `${viewport.name}/home: keyboard activates workflow shortcut`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${viewport.name}/home: no horizontal overflow`);
+    }
+    if (route.name === 'processing' || route.name === 'processing-compat') {
+      const firstUpload = await page.locator('.shimadzu-upload-slot').first().boundingBox();
+      assert.ok(firstUpload && firstUpload.y < viewport.height, `${viewport.name}/processing: upload entry reaches the first viewport`);
+      assert.equal(await page.locator('.shimadzu-workbench-nav a').count(), 0, `${viewport.name}/processing: duplicate stage anchors are removed`);
+      assert.equal(await page.locator('.shimadzu-configuration-details').getAttribute('open'), null, `${viewport.name}/processing: advanced parameters start collapsed`);
+      assert.equal(await page.locator('.shimadzu-upload-slot').count(), 2, `${viewport.name}/processing: two workbook slots remain`);
+      const uploadColumns = await page.locator('.shimadzu-upload-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+      assert.equal(uploadColumns, viewport.width > 600 ? 2 : 1, `${viewport.name}/processing: workbook columns follow the viewport`);
+      assert.equal(await page.locator('.processing-preflight-group').count(), 3, `${viewport.name}/processing: preflight uses three check groups`);
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      await page.locator('.shimadzu-configuration-details[open]').waitFor();
+      await page.locator('.shimadzu-configuration-details input').first().waitFor({ state: 'visible' });
+      await page.locator('.shimadzu-configuration-details input').first().focus();
+      assert.equal(await page.locator('.shimadzu-configuration-details input').first().evaluate(element => element === document.activeElement), true, `${viewport.name}/processing: expanded parameter input keeps focus`);
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      await page.waitForFunction(() => !document.querySelector('.shimadzu-configuration-details')?.open);
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      await page.locator('.shimadzu-configuration-details[open]').waitFor();
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.locator('.shimadzu-page[data-motion="reduced"]').waitFor();
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      assert.equal(await page.locator('.shimadzu-configuration-details').getAttribute('open'), null, `${viewport.name}/processing: reduced-motion disclosure closes normally`);
+      const workbookInputs = page.locator('.shimadzu-upload-slot input[type="file"]');
+      await workbookInputs.first().setInputFiles({ name: 'invalid.csv', mimeType: 'text/csv', buffer: Buffer.from('invalid') });
+      assert.equal(await page.locator('.shimadzu-upload-slot.has-error').count(), 1, `${viewport.name}/processing: invalid workbook shows an error`);
+      await workbookInputs.first().setInputFiles({ name: 'raw.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('synthetic-stub') });
+      await workbookInputs.nth(1).setInputFiles({ name: 'samples.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('synthetic-stub') });
+      assert.equal(await page.locator('.shimadzu-upload-slot.has-file').count(), 2, `${viewport.name}/processing: selected workbooks are acknowledged`);
     }
     if (route.name === 'models') {
       const tabs = page.getByRole('tablist', { name: '模型工作区' }).getByRole('tab');
@@ -459,7 +501,7 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.equal(await page.locator('html').getAttribute('lang'), 'en', 'language preference survives refresh');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark', 'theme preference survives refresh');
     await page.getByRole('link', { name: 'Data processing', exact: true }).click();
-    await page.getByRole('heading', { name: 'Instrument data processing' }).waitFor({ timeout: 45_000 });
+    await page.getByRole('heading', { name: 'New analysis' }).waitFor({ timeout: 45_000 });
     await waitForStableRoute(page, observed);
     assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assert.equal(await page.getByRole('link', { name: 'Data processing', exact: true }).getAttribute('aria-current'), 'page', 'active desktop route is announced');
@@ -469,7 +511,7 @@ async function verifyShellInteractions(browser, baseUrl, proxyOrigin) {
     assert.equal(new URL(page.url()).pathname, '/FlavorInsightAI/');
     assert.ok(['', '#main-content'].includes(new URL(page.url()).hash), 'history preserves only the intentional skip-link anchor');
     await page.goForward({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'Instrument data processing' }).waitFor({ timeout: 45_000 });
+    await page.getByRole('heading', { name: 'New analysis' }).waitFor({ timeout: 45_000 });
     await waitForStableRoute(page, observed);
     assert.match(page.url(), /\/FlavorInsightAI\/data-processing\/$/);
     assertClean('desktop shell interactions', observed);

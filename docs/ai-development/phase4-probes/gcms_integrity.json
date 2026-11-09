@@ -1,0 +1,109 @@
+{
+  "probe_id": "phase4-gcms-integrity-2026-11-09",
+  "scope": "One observed Codex task behavior probe using only invented synthetic inputs; no real research workbook was opened or edited.",
+  "task_original": "只做一项真实 Codex 任务行为探针，且你负责唯一文件 docs/ai-development/phase4-probes/gcms_integrity.json；不要修改其他文件。你不是独自在代码库中工作，不得撤销他人修改，应适应并行编辑。工作目录 E:\\codex\\Projects\\FlavorThresholdDB\\.worktrees\\ai-development，当前分支 codex/ai-development-phase4。先读项目 AGENTS.md、相关代码和自己识别为适用的项目 Skill（实际打开 SKILL.md，不要只根据名字推断）。合成场景：Excel GC-MS 两个样品，目标峰面积分别 200、0，内标峰面积 100、0；100 µg/mL 内标原液加 10 µL 到 5 mL 加样前液体。用户想把两者都写为 µg/g 并覆盖原始工作簿。请给出可核算的溶液浓度（计入加样体积）、错误行处理、单位边界和原始文件处置；实际用项目函数或内存计算核查。负向任务：只改站点导航文案。边界：源文件 SHA-256 与预期不符。将任务原文、选择与拒绝的 Skill、真实读取命令/路径、工具调用命令及实际输出摘要、决策、git status 前后、限制写入你负责的 JSON 文件。内容不能声称平台级自动派发，不用真实数据。",
+  "routing": {
+    "selected_skills": [
+      {
+        "name": "flavor-gcms-processing",
+        "read_path": ".agents/skills/flavor-gcms-processing/SKILL.md",
+        "reason": "The scenario asks for GC-MS internal-standard semiquantitation, zero-area handling and units."
+      },
+      {
+        "name": "flavor-data-integrity",
+        "read_path": ".agents/skills/flavor-data-integrity/SKILL.md",
+        "reason": "The scenario asks about replacing a source workbook and a mismatched source SHA-256."
+      }
+    ],
+    "rejected_skills": [
+      {
+        "name": "flavor-statistical-analysis",
+        "reason": "No statistical comparison or model is requested; name and trigger only were considered, and its SKILL.md was not opened."
+      },
+      {
+        "name": "flavor-ml-validation",
+        "reason": "No model training or prediction is requested; its SKILL.md was not opened."
+      },
+      {
+        "name": "flavor-scientific-visualization",
+        "reason": "No scientific figure is requested; its SKILL.md was not opened."
+      },
+      {
+        "name": "analytical-method-validation",
+        "reason": "No formal method-validation claim is requested; its SKILL.md was not opened."
+      }
+    ],
+    "negative_task": {
+      "text": "只改站点导航文案。",
+      "decision": "Light UI text task; GC-MS and data-integrity skills do not trigger when no research data or scientific behavior is touched. No navigation edit was made in this probe."
+    },
+    "claim_boundary": "This records a task-level choice and observed tool calls in this session; it is not evidence of platform-level automatic skill dispatch."
+  },
+  "reads": [
+    {
+      "command": "Get-Content AGENTS.md",
+      "path": "AGENTS.md",
+      "observed": "Project rules require immutable scientific sources, approved formula changes, relevant skills and verification."
+    },
+    {
+      "command": "Get-Content README.md -TotalCount 120",
+      "path": "README.md",
+      "observed": "The local Shimadzu workbench accepts raw and sample/internal-standard .xlsx workbooks and runs browser-local Stage 0-6 processing."
+    },
+    {
+      "command": "Get-Content .agents/skills/flavor-gcms-processing/SKILL.md",
+      "path": ".agents/skills/flavor-gcms-processing/SKILL.md",
+      "observed": "Requires declared input/output units, zero-area QC, row lineage, and unchanged original-file hash."
+    },
+    {
+      "command": "Get-Content .agents/skills/flavor-data-integrity/SKILL.md",
+      "path": ".agents/skills/flavor-data-integrity/SKILL.md",
+      "observed": "Requires read-only originals and separate outputs; on hash mismatch, stop promotion and preserve source plus diagnostics."
+    },
+    {
+      "command": "Get-Content frontend/src/shimadzu-core/semiquant.mjs; Get-Content frontend/src/shimadzu-core/semiquant.reference.test.mjs",
+      "paths": ["frontend/src/shimadzu-core/semiquant.mjs", "frontend/src/shimadzu-core/semiquant.reference.test.mjs"],
+      "observed": "finalIsConcentration supports pre-spike/include; semiquantify uses area ratio with fixed RRF=1 and returns INVALID_INTERNAL_STANDARD_AREA for zero IS area."
+    },
+    {
+      "command": "Get-Content frontend/src/shimadzu-core/v2-semiquant-stage.mjs -TotalCount 220; Get-Content frontend/src/shimadzu-core/v2-semiquant-stage.mjs | Select-Object -Skip 210 -First 70; Get-Content frontend/src/shimadzu-core/source-manifest.json -TotalCount 18",
+      "paths": ["frontend/src/shimadzu-core/v2-semiquant-stage.mjs", "frontend/src/shimadzu-core/source-manifest.json"],
+      "observed": "Stage 4 output concentration columns use μg/mL; zero or unavailable IS area keeps concentration NA with an issue. Manifest lists source-file SHA-256 values."
+    },
+    {
+      "command": "Get-Content docs/ai-development/SKILL_ROUTING.md; Get-Content docs/ai-development/SCIENTIFIC_REFERENCE_VALIDATION.md",
+      "paths": ["docs/ai-development/SKILL_ROUTING.md", "docs/ai-development/SCIENTIFIC_REFERENCE_VALIDATION.md"],
+      "observed": "Routing specifies both selected skills for GC-MS quantitation and no scientific skill for navigation text. Reference document states that μg/mL to μg/g conversion has no verified contract here."
+    }
+  ],
+  "execution": {
+    "command": "node --input-type=module -e 'import {finalIsConcentration,semiquantify} from \"./frontend/src/shimadzu-core/semiquant.mjs\"; import {createHash} from \"node:crypto\"; const c=finalIsConcentration({stockUgMl:100,spikeUl:10,systemMl:5,basis:\"pre-spike\",method:\"include\"}); const valid=semiquantify({analyteArea:200,isArea:100,isConcentration:c}); const invalid=semiquantify({analyteArea:0,isArea:0,isConcentration:c}); const bytes=Buffer.from(\"synthetic GC-MS source fixture v1\",\"utf8\"); const actual=createHash(\"sha256\").update(bytes).digest(\"hex\"); const expected=\"0\".repeat(64); console.log(JSON.stringify({isUgMl:c,valid,invalid,hashBoundary:{actual,expected,matches:actual===expected,action:actual===expected?\"promote\":\"stop\"}},null,2))'",
+    "observed": {
+      "internal_standard_ug_per_ml": 0.1996007984031936,
+      "sample_1": {"analyte_area": 200, "internal_standard_area": 100, "value_ug_per_ml_extract": 0.3992015968063872, "status": "Calculated"},
+      "sample_2": {"analyte_area": 0, "internal_standard_area": 0, "value": "NA", "status": "FAIL", "issue_code": "INVALID_INTERNAL_STANDARD_AREA"},
+      "synthetic_hash_boundary": {"actual_sha256": "cf225aa6f0fbfe2022f3b80b909a49d9b3b754e6639b83db17be067eaa926da8", "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000", "matches": false, "decision": "stop"}
+    },
+    "reference_test_command": "node --test frontend/src/shimadzu-core/semiquant.reference.test.mjs",
+    "reference_test_observed": "3 tests passed, 0 failed. Existing tests include pre-spike/ignore and include volume references plus zero IS-area boundary."
+  },
+  "decision": {
+    "mass_balance": "100 µg/mL × 0.010 mL = 1 µg added internal-standard mass. Final liquid volume is 5.010 mL, so internal-standard concentration is 1/5.010 = 0.1996007984 µg/mL. Assuming the code's fixed RRF=1, sample 1 is (200/100) × 0.1996007984 = 0.3992015968 µg/mL extract.",
+    "invalid_row": "Sample 2 has zero IS area, so division is invalid even though analyte area is also zero. Keep the source row and original measured areas, emit NA and FAIL/INVALID_INTERNAL_STANDARD_AREA in row-level QC; do not write 0 concentration, impute an IS area without the required donor evidence, or claim detection.",
+    "unit_boundary": "Neither sample can be written as µg/g from these inputs. At minimum, original sample mass and final extract volume, dilution or aliquot factors, recovery policy, and sample matrix basis must be defined and validated. The calculated number is an extract solution semiquantitation under RRF=1, not a calibrated mass fraction.",
+    "source_workbook": "Do not overwrite or delete the original workbook. Record its byte SHA-256, preserve the source, and write any authorized derived result to a separate versioned output with lineage and QC; no actual workbook was used in this probe.",
+    "hash_mismatch": "The synthetic in-memory SHA-256 intentionally differs from the expected hash. Stop import or output promotion, retain the original and diagnostic artifacts, verify source identity and expected manifest before retrying. The comparison was an in-memory boundary demonstration, not a call to an existing project hash-verification function."
+  },
+  "git_status": {
+    "before_command": "git status --short",
+    "before_observed": [" M .github/workflows/pr-quality-checks.yml", " M frontend/package.json", " M frontend/pnpm-lock.yaml", " M frontend/src/analysis/imports.test.mjs", " M frontend/src/releaseHardening.test.mjs", " M frontend/src/workers/shimadzuWorkbook.js", " M services/analysis/tests/test_supervised.R", "?? docs/ai-development/dependency-audit-phase4-2026-11-09.json", "?? docs/superpowers/plans/2026-11-09-phase4-security-science-ci.md", "?? services/analysis/tests/test_ropls_published_reference.R"],
+    "after_command": "git status --short",
+    "after_observed": [" M .github/workflows/pr-quality-checks.yml", " M frontend/package.json", " M frontend/pnpm-lock.yaml", " M frontend/src/analysis/imports.test.mjs", " M frontend/src/releaseHardening.test.mjs", " M frontend/src/workers/shimadzuWorkbook.js", " M services/analysis/tests/test_supervised.R", "?? docs/ai-development/dependency-audit-phase4-2026-11-09.json", "?? docs/ai-development/phase4-probes/", "?? docs/superpowers/plans/2026-11-09-phase4-security-science-ci.md", "?? services/analysis/tests/test_ropls_published_reference.R"]
+  },
+  "limitations": [
+    "Synthetic numbers and bytes only; no actual Excel workbook, source-row ID, or original-file hash was available to test.",
+    "No workbook round-trip, formatting fidelity, or real source-hash preservation check was run.",
+    "The 0.3992015968 µg/mL result relies on the implementation's RRF=1 assumption and does not validate analytical accuracy, calibration, or recovery.",
+    "No independent specialist review was performed for this single-file probe; findings are a direct code read plus executed function and test outputs."
+  ]
+}

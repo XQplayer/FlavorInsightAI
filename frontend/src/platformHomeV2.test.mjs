@@ -33,6 +33,22 @@ test('homepage keeps direct workbench routes, contrast and responsive layout', (
   assert.match(styles, /--home-hero-base/);
 });
 
+test('homepage offers bilingual in-page navigation to the workspaces, workflow and resources', () => {
+  assert.match(source, /<nav className="fi-home__index" aria-label=\{t\.pageNavigation\}>/);
+  for (const target of ['home-features-title', 'home-workflow-title', 'home-resource-title']) {
+    assert.match(source, new RegExp(`href="#${target}"`));
+  }
+  assert.match(source, /pageNavigation: 'On this page'/);
+  assert.match(source, /pageNavigation: '本页导航'/);
+  assert.match(styles, /\.fi-home__index\s*\{/);
+});
+
+test('model card identifies its beta boundary next to the entry point', () => {
+  assert.match(source, /modelBoundary: 'Training and prediction are not enabled yet\.'/);
+  assert.match(source, /modelBoundary: '训练和预测尚未开放。'/);
+  assert.match(source, /className="fi-home__feature-boundary"/);
+});
+
 test('homepage follows the evidence-first entry sequence without invented metrics', () => {
   for (const section of ['fi-home__hero', 'fi-home__trust', 'fi-home__features', 'fi-home__workflow', 'fi-home__advantages', 'fi-home__faq', 'fi-home__resources', 'fi-home__footer']) {
     assert.match(source, new RegExp(section));

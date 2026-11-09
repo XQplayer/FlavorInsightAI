@@ -6,8 +6,8 @@ test('database keeps Excel import suspended while existing spreadsheet tooling i
   const app = await readFile(new URL('./App.jsx', import.meta.url), 'utf8');
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
-  // SheetJS already exists for the instrument workbench; a global ban misstates the current boundary.
-  assert.equal(pkg.dependencies?.xlsx, '^0.18.5');
+  // The workbook parser is pinned to the patched official SheetJS tarball.
+  assert.equal(pkg.dependencies?.xlsx, 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz');
   assert.doesNotMatch(app, /from ['"]xlsx['"]|XLSX\.read|handleFileUpload|file-upload/);
   const router = await readFile(new URL('./app/PlatformApp.jsx', import.meta.url), 'utf8');
   assert.match(router, /lazy\(\(\) => import\(['"]\.\.\/pages\/DataAnalysisPage\.jsx['"]\)\)/);

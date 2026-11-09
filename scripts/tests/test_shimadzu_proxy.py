@@ -85,7 +85,8 @@ class ShimadzuProxyTests(unittest.TestCase):
     def test_pubchem_candidate_route_uses_cid(self, query_candidates):
         query_candidates.return_value = {"found": True, "cid": "45934107", "candidates": ["914926-20-8"], "source": "PubChem"}
 
-        status, payload = self.request_json("/pubchem-cas-candidates?cid=45934107")
+        with patch.object(fema_proxy_server.Handler, "cache", {}), patch("fema_proxy_server.save_cache"):
+            status, payload = self.request_json("/pubchem-cas-candidates?cid=45934107")
 
         self.assertEqual((status, payload["candidates"]), (200, ["914926-20-8"]))
         query_candidates.assert_called_once_with("45934107")
