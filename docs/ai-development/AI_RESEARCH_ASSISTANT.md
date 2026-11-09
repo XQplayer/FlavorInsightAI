@@ -21,6 +21,20 @@ python fema_proxy_server.py
 
 真实 API 验证需要服务端设置 `FLAVOR_AI_MODE=openai`、`OPENAI_API_KEY` 和该账号已确认可用的 `OPENAI_MODEL`。正式模式默认要求 Supabase 登录，且需设置 `FLAVOR_AI_SUPABASE_URL`、`FLAVOR_AI_SUPABASE_ANON_KEY`。仅本机手动验证可显式设置 `FLAVOR_AI_ALLOW_LOCAL_REAL=true`；该模式的本地会话仍无权读取私有任务，公共服务不得启用。当前尚无密钥与模型权限证据，因此真实 OpenAI 请求未执行。
 
+### 私有配置文件与 Live 切换
+
+在当前独立工作树根目录新建 `.env.local`（完整路径：`E:\codex\Projects\FlavorThresholdDB\.worktrees\ai-research-assistant\.env.local`）。该文件已被 `.gitignore` 排除；不要把内容粘贴进聊天、工单或截图。用文本编辑器填写，`=` 后不加引号：
+
+```dotenv
+FLAVOR_AI_MODE=openai
+FLAVOR_AI_ALLOW_LOCAL_REAL=true
+OPENAI_API_KEY=在本机填写真实密钥
+OPENAI_MODEL=在本机填写账号可用的模型ID
+FLAVOR_AI_ALLOWED_ORIGINS=http://127.0.0.1:5195
+```
+
+停止占用 `18887` 端口的旧 Mock 代理后，在**当前独立工作树**的 PowerShell 中运行 `& .\scripts\start_ai_local.ps1`。启动脚本仅将白名单变量装入当前启动会话和 Python 子进程环境，服务退出后清除启动会话中的 Key；不在命令行参数、日志或 HTTP 响应中输出密钥。`-Check` 只显示配置项是否存在。前端继续用 `5195` 端口访问该代理。切回 Mock 时先停止 Live 服务，再按上面的 Mock 启动命令启动；不要在公共服务上启用本地真实模式。模型清单可用官方 [`GET /v1/models`](https://developers.openai.com/api/reference/resources/models/methods/list) 在本机验证，但清单出现并不等于该模型支持当前 Responses + Function Calling 请求，仍须实际调用验证。
+
 ## API 契约
 
 | 方法 | 路径 | 说明 |
