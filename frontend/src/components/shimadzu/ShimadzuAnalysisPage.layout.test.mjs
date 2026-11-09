@@ -37,7 +37,7 @@ test('exposes the processing workbench as three explicitly labelled regions', ()
   assert.match(source, /<section[^>]+aria-labelledby="data-import-preflight-title"/)
   assert.match(source, /id="data-import-preflight-title"[^>]*>[\s\S]*?数据导入与运行前检查[\s\S]*?Data import and preflight checks/)
   assert.match(source, /<section[^>]+aria-labelledby="process-monitor-results-title"/)
-  assert.match(source, /id="process-monitor-results-title"[^>]*>[\s\S]*?过程监控与结果[\s\S]*?Process monitoring and results/)
+  assert.match(source, /id="process-monitor-results-title"[^>]*>[\s\S]*?分析任务控制台[\s\S]*?Analysis Console/)
 })
 
 test('does not offer step-by-step execution in the integrated workbench', () => {
@@ -46,9 +46,10 @@ test('does not offer step-by-step execution in the integrated workbench', () => 
 })
 
 test('presents a 00 to 07 process rail without changing the seven worker stages', () => {
-  assert.match(source, /const PROCESS_RAIL = \[\.\.\.WORKFLOW, \{ index: 7,/)
-  assert.match(source, /PROCESS_RAIL\.map/)
-  assert.match(source, /PASS: '通过', WARN: '警告', REVIEW: '需复核', FAIL: '失败'/)
+  assert.match(source, /view\.steps\.map/)
+  assert.match(source, /data-console-step=\{step\.number\}/)
+  assert.match(source, /WORKFLOW\[index - 1\]/)
+  assert.doesNotMatch(source, /const PROCESS_RAIL/)
 })
 
 test('uses the approved Shimadzu data control deck shell', () => {
@@ -62,9 +63,9 @@ test('uses the approved Shimadzu data control deck shell', () => {
   assert.doesNotMatch(source, /className="science-language"/)
 })
 
-test('places the setup workspace before the workflow dock', () => {
+test('places the setup workspace before the unified console', () => {
   const setupIndex = source.indexOf('className="shimadzu-setup"')
-  const workflowRenderIndex = source.lastIndexOf('<WorkflowMap job={job} language={language} />')
+  const workflowRenderIndex = source.lastIndexOf('<AnalysisConsole job={job}')
 
   assert.notEqual(setupIndex, -1)
   assert.notEqual(workflowRenderIndex, -1)
@@ -111,9 +112,9 @@ test('announces actual task state and exposes numeric progress to assistive tech
   assert.match(source, /taskFeedback\(job, language\)/)
   assert.match(source, /className="shimadzu-task-feedback"[^>]*role="status"[^>]*aria-live="polite"/)
   assert.match(source, /role="progressbar"/)
-  assert.match(source, /aria-valuenow=\{Math\.round\(progress\.completed \/ \(progress\.total \|\| 7\) \* 100\)\}/)
+  assert.match(source, /aria-valuenow=\{Math\.round\(view\.progress\.completed \/ view\.progress\.total \* 100\)\}/)
   assert.match(styles, /\.shimadzu-task-feedback/)
-  assert.match(source, /aria-live=\{!job \|\| job\.status === 'running' \? 'polite' : 'off'\}/)
+  assert.match(source, /analysis-console-status-primary" role="status" aria-live="polite"/)
 })
 
 test('keeps implementation terms out of ordinary page copy', () => {
@@ -152,12 +153,12 @@ test('exposes opt-in CV screening controls with a bounded decimal threshold', ()
   assert.match(source, /cvThreshold: taskCvThreshold/)
 })
 
-test('keeps the scientific workflow features inside the control deck presentation', () => {
+test('keeps scientific controls and one stage-detail surface in the deck', () => {
   assert.match(source, /data-control-deck-v4/)
-  assert.match(source, /shimadzu-workflow-dock/)
   assert.match(source, /shimadzu-readiness-strip/)
-  assert.match(source, /shimadzu-stage-rail/)
-  assert.match(source, /shimadzu-workspace-tabs/)
+  assert.match(source, /analysis-console-steps/)
+  assert.match(source, /analysis-console-detail/)
+  assert.match(source, /analysis-console-metrics/)
 })
 
 test('exposes an opt-in PubChem SMARTS classification control', () => {
@@ -189,22 +190,23 @@ test('provides English copy for the major processing controls, states, stages an
   for (const copy of [
     'Analysis workflow and data export configuration',
     'Data import and preflight checks',
-    'Process monitoring and results',
+    'Analysis Console',
     'Enable CAS structural classification',
     'Enable water detection thresholds',
-    'Live analysis monitor',
+    'Seven-stage progress',
     'Analysis cancelled',
     'Download cancellation audit and partial results',
-    'Stage status and processing counts',
+    'Run log and stage records',
   ]) assert.match(source, new RegExp(copy))
   assert.match(source, /enLabel: 'Input configuration and inventory'/)
   assert.match(source, /enLabel: 'Statistics, CV, CAS, and QC'/)
 })
 
-test('keeps the full workflow description below the compact control deck header', () => {
+test('shows only the selected method and keeps the console compact', () => {
   assert.doesNotMatch(styles, /\.shimadzu-header \{ padding-top: 64px; \}/)
-  assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-section-intro p \{ display: block;/)
-  assert.match(styles, /\.shimadzu-workflow-dock \.shimadzu-flow-node > small \{ display: block;/)
+  assert.match(source, /selectedStage\?\.description/)
+  assert.match(source, /selectedStage\.work\.map/)
+  assert.match(styles, /\.analysis-console-detail-grid/)
 })
 
 test('keeps capabilities visible while advanced research settings begin collapsed', () => {
@@ -232,23 +234,22 @@ test('provides a task desk entry and exposes stored failure context', () => {
   assert.match(source, /shimadzu-history-error/)
 })
 
-test('keeps sticky work areas below the compact control deck top bar', () => {
-  assert.match(styles, /\.shimadzu-workflow-dock \{ position: sticky; top: 12px;/)
-  assert.match(styles, /\.shimadzu-stage-rail \{ position: sticky; top: 18px;/)
+test('keeps the console in normal flow with local horizontal scrolling', () => {
+  assert.match(styles, /\.analysis-console-steps\s*\{[^}]*overflow-x:\s*auto/)
+  assert.doesNotMatch(source, /<WorkflowMap|<StageRail/)
   assert.match(styles, /scroll-margin-top: 24px/)
 })
 
-test('keeps the idle state lightweight and only mounts the monitor for a job', () => {
-  assert.match(source, /\{!job \? \(/)
+test('keeps an explicit idle console and mounts job actions only for a job', () => {
   assert.match(source, /<AnalysisReadinessStrip/)
-  assert.match(source, /<LiveMonitor job=\{null\}/)
-  assert.match(source, /<LiveMonitor job=\{job\}/)
+  assert.match(source, /<AnalysisConsole job=\{job\}/)
+  assert.match(source, /job \? localizedTaskName/)
+  assert.match(source, /actions=\{job &&/)
 })
 
-test('keeps the workflow dock singular and preserves the research utility surfaces', () => {
-  assert.equal((source.match(/<WorkflowMap job=\{job\} language=\{language\} \/>/g) || []).length, 1)
+test('keeps the console singular and preserves research utility surfaces', () => {
+  assert.equal((source.match(/<AnalysisConsole job=\{job\}/g) || []).length, 1)
   assert.match(source, /<AnalysisSummary/)
-  assert.match(source, /<WorkspaceTabs/)
   assert.match(source, /HistoryPanel/)
   assert.match(source, /AccountPanel/)
 })
@@ -264,12 +265,13 @@ test('defines the dark control deck visual system and desktop work zones', () =>
 })
 
 test('defines explicit control deck treatments for every task terminal state', () => {
-  assert.match(styles, /\.shimadzu-job-workspace\.state-running/)
-  assert.match(styles, /\.shimadzu-job-workspace\.state-waiting_review/)
-  assert.match(styles, /\.shimadzu-job-workspace\.state-failed/)
-  assert.match(styles, /\.shimadzu-job-workspace\.state-complete/)
+  assert.match(source, /state-\$\{view\.state\}/)
+  assert.match(styles, /\.analysis-console-state\.state-running/)
+  assert.match(styles, /\.analysis-console-state\.state-blocked/)
+  assert.match(styles, /\.analysis-console-state\.state-failed/)
+  assert.match(styles, /\.analysis-console-state\.state-complete/)
   assert.match(styles, /\.shimadzu-inline-error/)
-  assert.match(source, /下载已完成步骤与错误证据/)
+  assert.match(source, /下载错误证据与部分结果/)
 })
 
 test('keeps the minimal deck shell and work zones usable at tablet and mobile widths', () => {
@@ -299,7 +301,7 @@ test('maps workbench colors to platform tokens and contains horizontal overflow 
   assert.match(styles, /--sz-page:\s*var\(--platform-canvas/)
   assert.match(styles, /--sz-surface:\s*var\(--platform-surface/)
   assert.match(styles, /\.shimadzu-page\s*\{[\s\S]*overflow-x:\s*clip/)
-  assert.match(styles, /\.shimadzu-stage-rail[\s\S]*overflow-x:\s*auto/)
+  assert.match(styles, /\.analysis-console-steps\s*\{[^}]*overflow-x:\s*auto/)
   assert.match(styles, /\.shimadzu-history-table[\s\S]*overflow-x:\s*auto/)
   assert.match(styles, /\.shimadzu-page\[data-theme='light'\] \.shimadzu-monitor/)
 })
@@ -309,16 +311,29 @@ test('keeps raw workbooks in the browser and never requests cloud input upload',
   assert.doesNotMatch(source, /downloadInputUrl/)
 })
 
+test('uses one Analysis Console with a selectable 00–07 rail and one stage detail', () => {
+  assert.match(source, /分析任务控制台|Analysis Console/)
+  assert.match(source, /deriveAnalysisConsole/)
+  assert.match(source, /className="analysis-console-steps"/)
+  assert.match(source, /className="analysis-console-detail"/)
+  assert.match(source, /aria-pressed=\{selectedStep === index\}/)
+  assert.doesNotMatch(source, /<WorkflowMap job=\{job\}/)
+  assert.doesNotMatch(source, /<StageRail job=\{job\}/)
+  assert.doesNotMatch(source, /<LiveMonitor job=\{job\}/)
+})
+
 test('gives the current task priority while keeping logs and history available on demand', () => {
-  assert.match(source, /<details[^>]*className="[^"]*shimadzu-console-disclosure"/)
+  assert.match(source, /<details[^>]*className="[^"]*analysis-console-log"/)
   assert.match(source, /<details[^>]*className="shimadzu-history-disclosure"/)
-  assert.match(styles, /\.shimadzu-monitor-results-region\s*\{[^}]*display:\s*flex/)
-  assert.match(styles, /\.shimadzu-monitor-results-region\s*>\s*\.shimadzu-workflow-dock\s*\{[^}]*order:\s*2/)
+  assert.match(source, /view\.state === 'failed' \|\| view\.state === 'blocked'/)
+  assert.match(source, /logRef\.current\.open = true/)
+  assert.match(styles, /\.analysis-console-steps\s*\{[^}]*overflow-x:\s*auto/)
 })
 
 test('places workbook inputs side by side on wide screens and keeps the 00–07 flow readable', () => {
   assert.match(styles, /\.shimadzu-page\.is-embedded \.shimadzu-upload-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
-  assert.match(styles, /\.shimadzu-page\.is-embedded \.shimadzu-flow-track\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(styles, /\.analysis-console-steps\s*\{[^}]*grid-template-columns:\s*repeat\(8,/)
+  assert.match(styles, /@media \(max-width: 600px\)[\s\S]*\.analysis-console-detail-grid \{ grid-template-columns: minmax\(0, 1fr\)/)
 })
 
 test('scopes GSAP presentation to the page and honors changing motion preferences', () => {

@@ -28,7 +28,7 @@ import {
   History,
   Moon,
 } from 'lucide-react'
-import { createShimadzuApi, getEnginePresentation, getMonitorStageIndex, getStageProgress } from '../../lib/shimadzuApi'
+import { createShimadzuApi, getStageProgress } from '../../lib/shimadzuApi'
 import { assertWorkbookFile, browserEnginePresentation } from '../../lib/shimadzuBrowserContract'
 import { createShimadzuWorkerClient } from '../../lib/shimadzuWorkerClient'
 import { authCallbackMessage, createShimadzuCloud, shimadzuAuthRedirect } from '../../lib/shimadzuCloud'
@@ -39,6 +39,7 @@ import { handoffCompletedArchive } from '../../analysis/handoff.mjs'
 import { createDatasetStore } from '../../analysis/storage.mjs'
 import { serviceError } from '../../analysis/client.mjs'
 import { taskFeedback } from './taskFeedback.mjs'
+import { deriveAnalysisConsole, isCompletedConsoleStep } from './analysisConsoleModel.mjs'
 import './ShimadzuAnalysisPage.css'
 
 gsap.registerPlugin(useGSAP)
@@ -59,7 +60,6 @@ const WORKFLOW = [
   { index: 5, short: '统计与 QC', label: '统计、CV、CAS 与 QC', description: '计算 Mean、样本 SD、CV，并按设置执行质量检查。', work: ['计算 Mean、SD 和 CV', '按需生成 CV 筛查结果', '检查 NA、重复 CAS、公式与内标回算'], enShort: 'Statistics & QC', enLabel: 'Statistics, CV, CAS, and QC', enDescription: 'Calculate mean, sample SD, and CV, then apply configured quality checks.', enWork: ['Calculate mean, SD, and CV', 'Generate CV-screened results when enabled', 'Check NA values, duplicate CAS, formulas, and standard back-calculation'] },
   { index: 6, short: '矩阵拆分', label: '按矩阵拆分', description: '输出作图准备矩阵与完整项目 CAS 清单。', work: ['按矩阵名称拆分结果', '输出三个平行与 Mean 加 SD 版本', '执行完整性验证并封装结果'], enShort: 'Matrix split', enLabel: 'Matrix-specific outputs', enDescription: 'Produce plot-ready matrices and the complete project CAS inventory.', enWork: ['Split results by matrix name', 'Export triplicate and mean-plus-SD versions', 'Verify completeness and package results'] },
 ]
-const PROCESS_RAIL = [...WORKFLOW, { index: 7, short: '结果包', label: '结果包与审计', description: '封装结果、质量证据与任务记录，供下载和复核。', enShort: 'Result package', enLabel: 'Result package and audit', enDescription: 'Package results, quality evidence, and task records for download and review.' }]
 const localizedStage = (stage, language) => language === 'en'
   ? { ...stage, short: stage.enShort, label: stage.enLabel, description: stage.enDescription, work: stage.enWork || [] }
   : stage
@@ -73,6 +73,16 @@ const STATUS_LABELS_EN = {
   pending: 'Not started', PASS: 'Pass', WARN: 'Warning', REVIEW: 'Review', FAIL: 'Fail',
 }
 const statusLabel = (status, language) => (language === 'en' ? STATUS_LABELS_EN : STATUS_LABELS)[status] || status
+
+const CONSOLE_IO = [
+  { input: '原始工作簿、样品与内标信息表', enInput: 'Raw workbook and sample/internal-standard sheet', output: '输入配置、输入清单和配置报告', enOutput: 'Input configuration, inventory, and configuration report' },
+  { input: '已核验配置与原始峰表', enInput: 'Validated configuration and raw peak tables', output: 'Hit #1 结果清单、CAS 恢复审核表', enOutput: 'Hit #1 results and CAS recovery audit' },
+  { input: 'Hit #1 整理结果', enInput: 'Hit #1 results', output: '筛查后结果清单与筛查报告', enOutput: 'Screened results and screening report' },
+  { input: '筛查结果与样品内标配置', enInput: 'Screened records and sample standards', output: '组峰面积结果与补建剔除报告', enOutput: 'Group peak areas and imputation/removal report' },
+  { input: '平行峰面积与内标参数', enInput: 'Replicate peak areas and standard parameters', output: '峰面积与浓度表、半定量计算报告', enOutput: 'Peak-area/concentration table and semi-quantification report' },
+  { input: '半定量浓度与分组', enInput: 'Semi-quantitative concentrations and groups', output: '三平行、Mean/SD、CAS 清单与 QC 报告', enOutput: 'Triplicates, mean/SD, CAS lists, and QC report' },
+  { input: '统计与 QC 结果、矩阵名称', enInput: 'Statistics/QC results and matrix names', output: '按矩阵拆分的浓度工作簿', enOutput: 'Matrix-specific concentration workbooks' },
+]
 
 const APPROVAL_LABELS = { pending: '等待管理员审批', approved: '已获准使用', rejected: '申请未通过', suspended: '账号已停用' }
 const APPROVAL_LABELS_EN = { pending: 'Awaiting administrator approval', approved: 'Approved', rejected: 'Request rejected', suspended: 'Account suspended' }
@@ -203,10 +213,6 @@ function AnalysisSummary({ job, language }) {
   return <section className="shimadzu-analysis-summary" aria-labelledby="summary-title"><div className="shimadzu-summary-heading"><h2 id="summary-title">{textFor(language, '分析摘要', 'Analysis summary')}</h2><span>{textFor(language, '来自已完成步骤的实际计数', 'Actual counts from completed stages')}</span></div><div className="shimadzu-summary-grid">{metrics.slice(0, 6).map(metric => <div key={metric.key} className="shimadzu-summary-metric"><span>{metric.key}</span><strong>{String(metric.value)}</strong></div>)}</div></section>
 }
 
-function WorkspaceTabs({ language }) {
-  return <nav className="shimadzu-workspace-tabs" aria-label={textFor(language, '任务工作区', 'Task workspace')}><a className="active" href="#monitor-overview" aria-current="page">Overview</a><a href="#stage-details">Stages</a><a href="#run-log">Logs</a></nav>
-}
-
 function TaskDeskEntry({ count, language }) {
   return <a className="shimadzu-deck-utility-link" href="#task-workbench"><History aria-hidden="true" /><span>{textFor(language, '任务台', 'Task desk')}</span>{count > 0 && <b>{count}</b>}</a>
 }
@@ -254,8 +260,6 @@ function HistoryDisclosure(props) {
 }
 
 void HistoryPanelLegacy
-
-const stageStatus = (job, index) => job?.stages?.[index]?.status || 'pending'
 
 const StageMark = ({ status }) => {
   if (status === 'running') return <Loader2 className="spin" aria-hidden="true" />
@@ -324,122 +328,85 @@ function FilePicker({ label, hint, file, onChange, inputRef, templateHref, templ
   </div>
 }
 
-function WorkflowMap({ job, language }) {
-  const activeIndex = job?.stages?.findIndex(stage => stage.status === 'running') ?? -1
-  return (
-    <section className="shimadzu-workflow shimadzu-workflow-dock shimadzu-reveal" aria-labelledby="workflow-title">
-      <div className="shimadzu-section-intro">
-        <div>
-          <h2 id="workflow-title">{textFor(language, '分析思路与七步流程', 'Analysis logic and seven-stage workflow')}</h2>
-          <p>{textFor(language, '先保留原始证据，再逐步收敛化合物与平行样品，最后计算浓度、统计质量并输出作图矩阵。任何阶段未通过门禁，后续步骤都会停止。', 'Preserve source evidence first, then refine compounds and replicate samples before calculating concentrations, QC statistics, and plot-ready matrices. A failed gate stops downstream stages.')}</p>
-        </div>
-        <div className="shimadzu-method-principles" aria-label={textFor(language, '分析原则', 'Analysis principles')}>
-          <span><ShieldCheck />{textFor(language, '原始证据不覆盖', 'Source evidence is preserved')}</span>
-          <span><Layers3 />{textFor(language, '每步独立输出', 'Independent stage outputs')}</span>
-          <span><Gauge />{textFor(language, 'QC 门禁后推进', 'Advance after QC gates')}</span>
-        </div>
-      </div>
-      <div className="shimadzu-flow-track" role="list" aria-label={textFor(language, '岛津气质分析流程图', 'Shimadzu GC-MS analysis workflow')}>
-        {PROCESS_RAIL.map((sourceStage, position) => {
-          const stage = localizedStage(sourceStage, language)
-          const status = stage.index === 7
-            ? (job?.status === 'complete' ? 'PASS' : job?.status === 'failed' ? 'FAIL' : job?.status === 'cancelled' ? 'WARN' : job?.status === 'saving' ? 'running' : 'pending')
-            : stageStatus(job, stage.index)
-          const isActive = stage.index === 7 ? job?.status === 'saving' : activeIndex === stage.index
-          return (
-            <div key={stage.index} className={`shimadzu-flow-node state-${status}${isActive ? ' active' : ''}`} role="listitem" data-testid="workflow-node" aria-current={isActive ? 'step' : undefined}>
-              <div className="shimadzu-flow-node-head">
-                <span className="shimadzu-flow-marker"><StageMark status={status} /></span>
-                <span className="shimadzu-flow-index">{String(stage.index).padStart(2, '0')}</span>
-              </div>
-              <strong>{stage.short}</strong>
-              <small>{stage.description}</small>
-              {position < PROCESS_RAIL.length - 1 && <ChevronRight className="shimadzu-flow-arrow" aria-hidden="true" />}
-            </div>
-          )
-        })}
-      </div>
-    </section>
-  )
+const CONSOLE_STATE_COPY = {
+  pending: ['待开始', 'Waiting'], checking: ['校验中', 'Validating'], running: ['运行中', 'Running'],
+  review: ['等待复核', 'Awaiting review'], blocked: ['QC 阻断', 'QC blocked'],
+  failed: ['运行失败', 'Failed'], finalizing: ['保存结果中', 'Saving results'],
+  complete: ['已完成', 'Complete'], stopped: ['已停止', 'Stopped'],
 }
-
-function StageRail({ job, language }) {
-  const [expanded, setExpanded] = useState(false)
-  return (
-    <aside className={'shimadzu-stage-rail' + (expanded ? ' expanded' : '')} aria-label={textFor(language, '当前任务步骤导航', 'Current task stage navigation')}>
-      <button type="button" className="shimadzu-stage-rail-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}><ChevronRight aria-hidden="true" /><span>{expanded ? textFor(language, '收起步骤', 'Collapse stages') : textFor(language, '展开步骤', 'Expand stages')}</span></button>
-      <ol>
-        {PROCESS_RAIL.map(sourceStage => {
-          const stage = localizedStage(sourceStage, language)
-          const runtime = job?.stages?.[stage.index] || {}
-          const status = stage.index === 7
-            ? (job?.status === 'complete' ? 'PASS' : job?.status === 'failed' ? 'FAIL' : job?.status === 'cancelled' ? 'WARN' : job?.status === 'saving' ? 'running' : 'pending')
-            : runtime.status || 'pending'
-          return <li key={stage.index} className={'state-' + status} aria-label={`${stage.label}: ${statusLabel(status, language)}`}><span className="shimadzu-stage-rail-marker"><StageMark status={status} /></span><span className="shimadzu-stage-rail-index">{String(stage.index).padStart(2, '0')}</span><span className="shimadzu-stage-rail-label">{stage.short}</span></li>
-        })}
-      </ol>
-    </aside>
-  )
+const CONSOLE_GATE_COPY = {
+  pending: ['待检查', 'Pending'], checking: ['检查中', 'Checking'], review: ['需复核', 'Review required'],
+  blocked: ['未通过', 'Blocked'], warning: ['有警告', 'Warnings'], passed: ['已通过', 'Passed'],
+  unknown: ['未完成', 'Incomplete'],
 }
+const consoleCopy = (entries, key, language) => (entries[key] || entries.pending)[language === 'en' ? 1 : 0]
 
-function LiveMonitor({ job, capabilities, engine: engineOverride, language }) {
-  const engine = engineOverride || getEnginePresentation(capabilities)
-  const selectedIndex = getMonitorStageIndex(job, WORKFLOW.length)
-  const stage = localizedStage(WORKFLOW[selectedIndex], language)
-  const liveStage = job?.stages?.[selectedIndex]
-  const log = [...(job?.stages || [])].reverse().find(item => item.log_tail)?.log_tail
-  const monitorState = !job ? 'standby' : job.status
-  const title = !job
-    ? textFor(language, '等待输入文件', 'Waiting for input files')
-    : job.status === 'complete'
-      ? textFor(language, '完整性验证已通过', 'Completeness verification passed')
-      : job.status === 'saving'
-        ? textFor(language, '计算完成，正在保存私有结果包', 'Processing complete; saving the private result package')
-      : job.status === 'waiting_review'
-          ? `${textFor(language, '等待复核', 'Awaiting review')}: ${stage.label}`
-        : job.status === 'failed'
-          ? textFor(language, '流程已在异常节点停止', 'The workflow stopped at an exception')
-          : job.status === 'cancelled'
-            ? textFor(language, '分析已取消，审计包可供下载', 'Analysis cancelled; the audit package is available')
-            : `${textFor(language, '正在执行', 'Running')}: ${stage.label}`
-  return (
-    <section id="monitor-overview" className={'shimadzu-monitor' + (job ? ' shimadzu-reveal' : '') + ' state-' + monitorState} aria-labelledby="monitor-title">
-      <div className="shimadzu-monitor-toolbar">
-        <div className="shimadzu-monitor-title" role="status" aria-live={!job || job.status === 'running' ? 'polite' : 'off'}>
-          <span className="shimadzu-live-dot" />
-          <div><h2 id="monitor-title">{textFor(language, '实时分析监控', 'Live analysis monitor')}</h2><p>{title}</p></div>
-        </div>
-        <span className="shimadzu-engine-chip"><Activity />{engine.chip}</span>
+function AnalysisConsole({ job, engine, fileReadiness, cvReadiness, hasInputFiles, submitting, language, taskName, actions }) {
+  const view = deriveAnalysisConsole({ job, fileReadiness, cvReadiness, hasInputFiles, submitting, engineState: engine.state })
+  const [selection, setSelection] = useState({ jobId: null, index: null })
+  const selectedStep = selection.jobId === (job?.id ?? null) && selection.index !== null ? selection.index : view.activeStep
+  const selectedStage = selectedStep === 0 ? null : localizedStage(WORKFLOW[selectedStep - 1], language)
+  const selectedRuntime = selectedStep === 0 ? null : job?.stages?.[selectedStep - 1]
+  const selectedStatus = view.steps[selectedStep].status
+  const io = selectedStep === 0 ? null : CONSOLE_IO[selectedStep - 1]
+  const logRef = useRef(null)
+  const logJobRef = useRef(job?.id ?? null)
+  const detailRef = useRef(null)
+
+  useEffect(() => {
+    const currentJobId = job?.id ?? null
+    if (logJobRef.current !== currentJobId) {
+      if (logRef.current) logRef.current.open = false
+      logJobRef.current = currentJobId
+    }
+    if (view.state === 'failed' || view.state === 'blocked') {
+      if (logRef.current) logRef.current.open = true
+    }
+  }, [view.state, job?.id])
+
+  const selectStep = index => setSelection({ jobId: job?.id ?? null, index })
+  const showQc = () => { selectStep(6); detailRef.current?.scrollIntoView({ block: 'nearest' }) }
+  const showLog = () => { if (logRef.current) { logRef.current.open = true; logRef.current.scrollIntoView({ block: 'nearest' }) } }
+  const issueList = job?.error?.details?.issues || []
+  const counts = Object.entries(selectedRuntime?.counts || {}).filter(([, value]) => value !== null && value !== undefined && value !== '')
+
+  return <section id="monitor-overview" className={`analysis-console state-${view.state}`} aria-label={textFor(language, '分析任务控制台', 'Analysis Console')}>
+    <div className="analysis-console-statusbar" role="group" aria-label={textFor(language, '当前任务状态', 'Current task state')}>
+      <div className="analysis-console-status-primary" role="status" aria-live="polite">
+        <span className={`analysis-console-state state-${view.state}`}><StageMark status={view.state === 'complete' ? 'PASS' : view.state === 'blocked' || view.state === 'failed' ? 'FAIL' : view.state === 'running' || view.state === 'checking' || view.state === 'finalizing' ? 'running' : 'pending'} />{consoleCopy(CONSOLE_STATE_COPY, view.state, language)}</span>
+        <strong>{job ? localizedTaskName(job.name, language) || taskName : textFor(language, '尚未建立分析任务', 'No analysis task yet')}</strong>
       </div>
-      <div className="shimadzu-monitor-body">
-        <div className="shimadzu-current-work">
-          <p className="shimadzu-monitor-label">{job?.status === 'running' ? textFor(language, '本阶段工作范围', 'Current stage scope') : textFor(language, '当前工作内容', 'Current work')}</p>
-          <h3>{job ? stage.label : textFor(language, '上传文件后建立分析任务', 'Upload files to create an analysis task')}</h3>
-          <ul>
-            {(job ? stage.work : language === 'en' ? ['Validate two .xlsx files', 'Read sample and internal-standard parameters', 'Create stage 0 through stage 6 work directories'] : ['校验两个 .xlsx 文件', '读取样品与内标参数', '建立步骤 0 至步骤 6 作业目录']).map((item, index) => (
-              <li key={item} className={job?.status === 'running' && index === 0 ? 'working' : ''}>
-                {job?.status === 'running' && index === 0
-                  ? <Loader2 className="spin" />
-                  : ['complete', 'waiting_review'].includes(job?.status)
-                    ? <Check />
-                    : <Circle />}
-                {item}
-              </li>
-            ))}
-          </ul>
-          <div className="shimadzu-monitor-metadata">
-            <span>{textFor(language, '节点', 'Node')} <strong>{job ? `${selectedIndex + 1}/7` : '0/7'}</strong></span>
-            <span>{textFor(language, '门禁', 'Gate')} <strong>{liveStage?.can_advance === false ? textFor(language, '停止', 'Stop') : liveStage?.can_advance === true ? textFor(language, '可推进', 'May advance') : textFor(language, '待检查', 'Pending')}</strong></span>
-            <span>{textFor(language, '刷新', 'Refresh')} <strong>1.5 s</strong></span>
-          </div>
-        </div>
-        <details id="run-log" className="shimadzu-console shimadzu-console-disclosure">
-          <summary className="shimadzu-console-heading"><TerminalSquare /><span>{textFor(language, '运行日志', 'Run log')}</span><small>{job?.updated_at ? new Date(job.updated_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false }) : textFor(language, '尚未启动', 'Not started')}</small></summary>
-          <pre aria-live={!job || job.status === 'running' ? 'polite' : 'off'}>{log || (job ? textFor(language, '任务已建立，等待分析引擎输出。', 'Task created; waiting for analysis-engine output.') : textFor(language, '系统处于待机状态。\n选择两个模板或正式工作簿后开始分析。', 'The system is standing by.\nChoose two templates or production workbooks to start analysis.'))}</pre>
-        </details>
+      <div className="analysis-console-stat"><span>{textFor(language, '七步进度', 'Seven-stage progress')}</span><strong>{view.progress.completed}/{view.progress.total}</strong><div className="shimadzu-progress-track" role="progressbar" aria-label={textFor(language, '处理进度', 'Processing progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(view.progress.completed / view.progress.total * 100)}><span style={{ '--progress': view.progress.completed / view.progress.total }} /></div></div>
+      <div className={`analysis-console-stat gate-${view.gate}`}><span>{textFor(language, '质量门禁', 'QC gate')}</span><strong>{consoleCopy(CONSOLE_GATE_COPY, view.gate, language)}</strong></div>
+      <div className={`analysis-console-stat engine-${engine.state}`}><span>{textFor(language, '分析引擎', 'Analysis engine')}</span><strong>{engine.title}</strong></div>
+    </div>
+
+    <nav className="analysis-console-steps" aria-label={textFor(language, '00 输入配置和 01–07 七个分析步骤', '00 input setup and 01–07 seven analysis stages')}>
+      {view.steps.map((step, index) => {
+        const label = index === 0 ? textFor(language, '输入配置', 'Input setup') : index === 1 ? textFor(language, '输入校验', 'Input validation') : localizedStage(WORKFLOW[index - 1], language).short
+        return <button key={step.number} type="button" className={`analysis-console-step state-${step.status}${selectedStep === index ? ' selected' : ''}`} data-console-step={step.number} aria-pressed={selectedStep === index} onClick={() => selectStep(index)}><span className="analysis-console-step-number">{step.number}</span><span className="analysis-console-step-label">{label}</span><span className="analysis-console-step-state"><StageMark status={step.status} />{statusLabel(step.status, language)}</span></button>
+      })}
+    </nav>
+
+    <section id="stage-details" ref={detailRef} className="analysis-console-detail" aria-labelledby="console-detail-title">
+      <div className="analysis-console-detail-heading"><div><span>{view.steps[selectedStep].number} · {statusLabel(selectedStatus, language)}</span><h3 id="console-detail-title">{selectedStage?.label || textFor(language, '输入配置', 'Input setup')}</h3></div>{selectedRuntime?.can_advance === false && <strong className="analysis-console-gate-alert">{textFor(language, '质量门禁已阻断', 'QC gate blocked')}</strong>}</div>
+      <div className="analysis-console-detail-grid">
+        <div><h4>{textFor(language, '算法说明', 'Method')}</h4><p>{selectedStage?.description || textFor(language, '选择两个工作簿并确认科研参数；运行前仅检查文件类型、大小与执行环境。', 'Choose two workbooks and confirm research parameters; preflight checks file type, size, and runtime only.')}</p></div>
+        <div><h4>{textFor(language, '输入', 'Input')}</h4><p>{selectedStage ? language === 'en' ? io.enInput : io.input : textFor(language, '岛津原始工作簿、样品与内标信息表', 'Shimadzu raw workbook and sample/internal-standard sheet')}</p></div>
+        <div><h4>{textFor(language, selectedRuntime && isCompletedConsoleStep(selectedStatus) ? '输出' : '预期输出', selectedRuntime && isCompletedConsoleStep(selectedStatus) ? 'Output' : 'Expected output')}</h4><p>{selectedStage ? language === 'en' ? io.enOutput : io.output : textFor(language, '通过基础预检的输入配置', 'Input setup after basic preflight')}</p></div>
       </div>
+      {selectedStage && <details className="analysis-console-method"><summary>{textFor(language, '查看处理动作', 'View processing actions')}</summary><ul>{selectedStage.work.map(item => <li key={item}>{item}</li>)}</ul></details>}
+      <div className="analysis-console-record"><strong>{textFor(language, '执行记录', 'Execution record')}</strong><span>{selectedStep === 0 ? fileReadiness.message : selectedRuntime ? selectedRuntime.log_tail || statusLabel(selectedStatus, language) : textFor(language, '此步骤尚未执行；没有运行计数或日志。', 'This stage has not run; no counts or log are available.')}</span>{counts.length > 0 && <small>{counts.map(([key, value]) => `${key} ${value}`).join(' · ')}</small>}</div>
     </section>
-  )
+
+    {job?.error && <div className="shimadzu-inline-error analysis-console-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code} · </strong>{job.error.message}</p>{Number.isInteger(job.error.details?.stage) && job.error.details.stage >= 0 && job.error.details.stage < 7 && <small>{textFor(language, '受影响步骤', 'Affected stage')} {String(job.error.details.stage + 1).padStart(2, '0')}/07</small>}{issueList.length > 0 && <ul>{prioritizeShimadzuIssues(issueList, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || textFor(language, '质量门禁问题', 'QC issue')}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}{issue.message ? ` · ${issue.message}` : ''}</li>)}</ul>}{issueList.length > 4 && <small>{textFor(language, `其余 ${issueList.length - 4} 条见错误证据包。`, `${issueList.length - 4} more issues are in the evidence archive.`)}</small>}<p className="analysis-console-recovery">{textFor(language, '检查受影响的原始记录或样品配置，修正后重新导入；保留部分结果以供复核。', 'Check the affected source records or sample configuration, then re-import corrected files; keep partial results for review.')}</p>{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{textFor(language, '下载错误证据与部分结果', 'Download error evidence and partial results')}</a>}</div></div>}
+
+    {job?.status === 'complete' && <div className="analysis-console-results" aria-label={textFor(language, '完成任务的结果入口', 'Completed-task results')}><button type="button" onClick={showQc}>{textFor(language, '查看 QC 摘要', 'View QC summary')}</button><a href={job.downloadUrl} download={job.resultFileName}>{textFor(language, 'QC 报告（ZIP 内）', 'QC report (in ZIP)')}</a><a href={job.downloadUrl} download={job.resultFileName}>{textFor(language, '结果文件（ZIP 内）', 'Result files (in ZIP)')}</a><button type="button" onClick={showLog}>{textFor(language, '任务记录', 'Task record')}</button><a className="primary" href={job.downloadUrl} download={job.resultFileName}><Download />{textFor(language, '下载结果包', 'Download result package')}</a></div>}
+    {actions}
+    <p className="shimadzu-task-feedback" role="status" aria-live="polite" aria-atomic="true">{taskFeedback(job, language) || (submitting ? textFor(language, '正在检查输入文件。', 'Checking input files.') : textFor(language, '选择两个工作簿后建立任务。', 'Choose two workbooks to create a task.'))}</p>
+    {job && <details className="analysis-console-metrics"><summary>{textFor(language, '已完成步骤的实际计数', 'Actual counts from completed stages')}</summary><AnalysisSummary job={job} language={language} /></details>}
+    <details id="run-log" ref={logRef} className="shimadzu-console shimadzu-console-disclosure analysis-console-log"><summary className="shimadzu-console-heading"><TerminalSquare /><span>{textFor(language, '运行日志与步骤记录', 'Run log and stage records')}</span><small>{job?.updated_at ? new Date(job.updated_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false }) : textFor(language, '尚未启动', 'Not started')}</small></summary><ol>{job?.stages?.some(stage => stage.log_tail) ? job.stages.filter(stage => stage.log_tail).map((stage, index) => <li key={stage.index ?? index}><b>{String((stage.index ?? index) + 1).padStart(2, '0')} · {statusLabel(stage.status, language)}</b><span>{stage.log_tail}</span></li>) : <li>{textFor(language, '尚无真实执行日志。', 'No execution log is available yet.')}</li>}</ol></details>
+  </section>
 }
 
 export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh', theme: controlledTheme, onNavigate, onHome }) {
@@ -1194,56 +1161,22 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
         </section>
 
         <section id="processing-monitor" className="shimadzu-workbench-region shimadzu-monitor-results-region" aria-labelledby="process-monitor-results-title">
-          <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">03</span><h2 id="process-monitor-results-title">{textFor(language, '过程监控与结果', 'Process monitoring and results')}</h2><p>{textFor(language, '沿 00–07 流程查看总体进度、联网补充、门禁状态、错误证据和结果包。', 'Follow the 00–07 rail for overall progress, online enrichment, gate status, error evidence, and result packages.')}</p></div><div className="shimadzu-status-legend" aria-label={textFor(language, '状态图例', 'Status legend')}><span className="PASS">PASS</span><span className="WARN">WARN</span><span className="REVIEW">REVIEW</span><span className="FAIL">FAIL</span></div></div>
-          <WorkflowMap job={job} language={language} />
-          {!job ? (
-            <div className="shimadzu-overview-grid">
-              <LiveMonitor job={null} capabilities={null} engine={engine} language={language} />
-            </div>
-          ) : (
-            <>
-            <div className={'shimadzu-job-workspace state-' + job.status}>
-              <StageRail job={job} language={language} />
-              <section className="shimadzu-job-bar shimadzu-reveal">
-                <div className="shimadzu-job-identity"><span className={`shimadzu-job-badge ${job.status}`}>{statusLabel(job.status, language)}</span><div><h2>{localizedTaskName(job.name, language) || localizedName}</h2><code>{job.id}</code></div></div>
-                <div className="shimadzu-job-progress"><div><span>{textFor(language, '总流程', 'Overall workflow')}</span><strong>{progress.completed} / {progress.total || 7}</strong></div><div className="shimadzu-progress-track" role="progressbar" aria-label={textFor(language, '处理进度', 'Processing progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress.completed / (progress.total || 7) * 100)}><span style={{ '--progress': progress.completed / (progress.total || 7) }} /></div></div>
-                <div className="shimadzu-job-actions">
-                  {job.status === 'waiting_review' && <button type="button" className="primary" onClick={continueJob}><ChevronRight />{textFor(language, '复核完成，继续', 'Review complete; continue')}</button>}
-                  {job.status === 'running' && <button type="button" onClick={cancelJob}><AlertCircle />{textFor(language, '取消分析', 'Cancel analysis')}</button>}
-                  {job.status === 'failed' && <button type="button" className="primary" onClick={retryJob}><RotateCcw />{textFor(language, '重新运行', 'Rerun')}</button>}
-                  {job.status === 'cancelled' && <button type="button" className="primary" onClick={retryJob}><RotateCcw />{textFor(language, '重新运行', 'Rerun')}</button>}
-                  {job.status === 'saving' && <span className="shimadzu-saving"><Loader2 className="spin" />{textFor(language, '正在保存结果', 'Saving results')}</span>}
-                  {job.status === 'complete' && <a className="primary" href={job.downloadUrl} download={job.resultFileName}><Download />{textFor(language, '下载结果包', 'Download result package')}</a>}
-                  {job.status === 'complete' && job.downloadUrl?.startsWith('blob:') && onNavigate && <div className="analysis-handoff">
-                    <label>{textFor(language, '进入分析的矩阵', 'Matrix for analysis')}<select aria-label={textFor(language, '进入分析的矩阵', 'Matrix for analysis')} value={analysisSelection} onChange={event => setAnalysisSelection(event.target.value)} disabled={analysisHandoffBusy}>
-                      <option value="">{textFor(language, '请明确选择', 'Choose explicitly')}</option><option value="before-cv">before-cv</option><option value="after-cv">after-cv</option>
-                    </select></label>
-                    <button type="button" className="primary" onClick={enterDataAnalysis} disabled={!analysisSelection || analysisHandoffBusy}>{textFor(language, '进入数据分析', 'Enter data analysis')}</button>
-                    <p>{textFor(language, '验证七阶段与哈希并保存后进入。也可下载 ZIP，在数据分析中上传。', 'Enter after seven-stage/hash verification and local save. ZIP upload in data analysis remains available.')}</p>
-                  </div>}
-                  {job.status === 'cancelled' && job.partialDownloadUrl && <a className="primary" href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results')}</a>}
-                  {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
-                </div>
-                <p className="shimadzu-task-feedback" role="status" aria-live="polite" aria-atomic="true">{taskFeedback(job, language)}</p>
-              </section>
-              {job.error && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code}</strong>{job.error.message}</p>{job.error.details?.stage !== undefined && <small>{job.status === 'cancelled' ? textFor(language, '取消于步骤', 'Cancelled before stage') : textFor(language, '失败步骤', 'Failed stage')}: {Number(job.error.details.stage) + 1} / 7</small>}{job.error.details?.issues?.length > 0 && <ul>{prioritizeShimadzuIssues(job.error.details.issues, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || textFor(language, '质量门禁问题', 'Quality-gate issue')}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}</li>)}</ul>}{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{job.status === 'cancelled' ? textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results') : textFor(language, '下载已完成步骤与错误证据', 'Download completed stages and error evidence')}</a>}</div></div>}
-              <WorkspaceTabs language={language} />
-              <LiveMonitor job={job} capabilities={null} engine={engine} language={language} />
-              <AnalysisSummary job={job} language={language} />
-              <section id="stage-details" className="shimadzu-stage-detail shimadzu-reveal" aria-labelledby="detail-title">
-                <div className="shimadzu-region-heading"><div><h2 id="detail-title">{textFor(language, '步骤状态与处理计数', 'Stage status and processing counts')}</h2><p>{textFor(language, '各步骤的运行状态、警告和待复核项会保留到最终报告。', 'Stage status, warnings, and review items are retained in the final report.')}</p></div></div>
-                <ol>
-                  {WORKFLOW.map(sourceStage => {
-                    const stage = localizedStage(sourceStage, language)
-                    const runtime = job.stages?.[stage.index] || {}
-                    const status = runtime.status || 'pending'
-                    return <li key={stage.index} className={`state-${status}`}><span className="shimadzu-stage-status"><StageMark status={status} /></span><div><p><b>{String(stage.index).padStart(2, '0')}</b><strong>{stage.label}</strong></p><small>{stage.description}</small></div><div className="shimadzu-stage-result"><span>{statusLabel(status, language)}</span>{Object.keys(runtime.counts || {}).length > 0 && <small>{Object.entries(runtime.counts).slice(0, 3).map(([key, value]) => `${key} ${value}`).join(' · ')}</small>}</div></li>
-                  })}
-                </ol>
-              </section>
-            </div>
-            </>
-          )}
+          <div className="analysis-console-heading"><span className="shimadzu-region-index">03</span><h2 id="process-monitor-results-title">{textFor(language, '分析任务控制台', 'Analysis Console')}</h2></div>
+          <AnalysisConsole job={job} engine={engine} fileReadiness={fileReadiness} cvReadiness={cvReadiness} hasInputFiles={Boolean(rawFile && samplesFile)} submitting={submitting} language={language} taskName={localizedName} actions={job && <div className="analysis-console-actions">
+            {job.status === 'waiting_review' && <button type="button" className="primary" onClick={continueJob}><ChevronRight />{textFor(language, '复核完成，继续', 'Review complete; continue')}</button>}
+            {job.status === 'running' && <button type="button" onClick={cancelJob}><AlertCircle />{textFor(language, '取消分析', 'Cancel analysis')}</button>}
+            {['failed', 'cancelled'].includes(job.status) && <button type="button" className="primary" onClick={retryJob}><RotateCcw />{textFor(language, '重新运行', 'Rerun')}</button>}
+            {job.status === 'saving' && <span className="shimadzu-saving"><Loader2 className="spin" />{textFor(language, '正在保存结果', 'Saving results')}</span>}
+            {job.status === 'cancelled' && job.partialDownloadUrl && <a className="primary" href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results')}</a>}
+            {job.status === 'complete' && job.downloadUrl?.startsWith('blob:') && onNavigate && <div className="analysis-handoff">
+              <label>{textFor(language, '进入分析的矩阵', 'Matrix for analysis')}<select aria-label={textFor(language, '进入分析的矩阵', 'Matrix for analysis')} value={analysisSelection} onChange={event => setAnalysisSelection(event.target.value)} disabled={analysisHandoffBusy}>
+                <option value="">{textFor(language, '请明确选择', 'Choose explicitly')}</option><option value="before-cv">before-cv</option><option value="after-cv">after-cv</option>
+              </select></label>
+              <button type="button" className="primary" onClick={enterDataAnalysis} disabled={!analysisSelection || analysisHandoffBusy}>{textFor(language, '进入数据分析', 'Enter data analysis')}</button>
+              <p>{textFor(language, '验证七阶段与哈希并保存后进入。也可下载 ZIP，在数据分析中上传。', 'Enter after seven-stage/hash verification and local save. ZIP upload in data analysis remains available.')}</p>
+            </div>}
+            {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
+          </div>} />
           <HistoryDisclosure language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
           <AccountPanel language={language} cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
         </section>

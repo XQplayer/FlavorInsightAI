@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
+import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -49,20 +50,37 @@ try {
   const desktop = await openPage(1440)
   await chooseInputs(desktop, path.join(root, 'resources/shimadzu/templates/Shimadzu_Raw_Workbook_Example.xlsx'))
   await desktop.locator('.shimadzu-run-button').click()
-  await desktop.locator('.shimadzu-job-workspace.state-complete').waitFor({ timeout: 60_000 })
+  await desktop.locator('.analysis-console.state-complete').waitFor({ timeout: 60_000 })
   assert.match(await desktop.locator('.shimadzu-task-feedback').innerText(), /All seven stages finished|七个步骤已完成/)
   assert.equal(await desktop.getByRole('progressbar').getAttribute('aria-valuenow'), '100')
-  assert.equal(await desktop.locator('.shimadzu-job-bar a[download]').count() > 0, true)
+  assert.equal(await desktop.locator('.analysis-console-results a.primary[download]').count(), 1)
+  assert.equal(await desktop.getByRole('link', { name: /QC report|QC 报告/ }).count(), 1)
+  assert.deepEqual(await desktop.locator('[data-console-step]').evaluateAll(nodes => nodes.map(node => node.dataset.consoleStep)), ['00', '01', '02', '03', '04', '05', '06', '07'])
+  assert.equal(await desktop.locator('[data-console-step="07"]').getAttribute('class').then(value => value.includes('state-PASS')), true)
+  await desktop.getByRole('button', { name: /QC summary|QC 摘要/ }).click()
+  assert.equal(await desktop.locator('[data-console-step="06"]').getAttribute('aria-pressed'), 'true')
+  await desktop.getByRole('button', { name: /Task record|任务记录/ }).click()
+  assert.notEqual(await desktop.locator('.analysis-console-log').getAttribute('open'), null)
+  if (process.env.CODEX_CAPTURE_CONSOLE === '1') {
+    await mkdir(path.join(root, '_local'), { recursive: true })
+    await desktop.locator('.analysis-console').screenshot({ path: path.join(root, '_local/console-runtime-complete.png') })
+  }
   assert.equal(await desktop.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
   await desktop.close()
 
   const mobile = await openPage(390)
   await chooseInputs(mobile, { name: 'invalid.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('invalid workbook') })
   await mobile.locator('.shimadzu-run-button').click()
-  await mobile.locator('.shimadzu-job-workspace.state-failed').waitFor({ timeout: 30_000 })
+  await mobile.locator('.analysis-console.state-failed, .analysis-console.state-blocked').waitFor({ timeout: 30_000 })
   assert.match(await mobile.locator('.shimadzu-task-feedback').innerText(), /error.*rerun|错误.*重新运行/)
   assert.equal(await mobile.locator('.shimadzu-inline-error[role="alert"]').count(), 1)
+  assert.notEqual(await mobile.locator('.analysis-console-log').getAttribute('open'), null)
+  if (process.env.CODEX_CAPTURE_CONSOLE === '1') await mobile.locator('.analysis-console').screenshot({ path: path.join(root, '_local/console-runtime-failed.png') })
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+  await mobile.getByRole('button', { name: /New task|新建任务/ }).click()
+  await mobile.locator('.analysis-console.state-pending').waitFor()
+  assert.equal(await mobile.locator('.analysis-console-log').getAttribute('open'), null)
+  assert.equal(await mobile.locator('.analysis-console-stat').first().locator('strong').innerText(), '0/7')
   await mobile.close()
   console.log('Processing feedback E2E: desktop completion and mobile failure passed')
 } finally {

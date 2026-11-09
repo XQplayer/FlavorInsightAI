@@ -1812,3 +1812,102 @@
   .shimadzu-page.is-embedded .shimadzu-flow-node { min-height: 146px; padding: 10px; }
   .shimadzu-console-disclosure { padding: 0 20px 14px; }
 }
+
+/* One task console: 00 is preflight setup; 01–07 reflect the seven Worker stages. */
+.analysis-console-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.analysis-console-heading h2 { margin: 0; color: var(--sz-ink); font-size: 19px; line-height: 1.3; }
+.analysis-console { min-width: 0; padding: 12px; border: 1px solid var(--sz-line-strong); border-radius: 14px; color: var(--sz-ink); background: var(--sz-surface); }
+.analysis-console-statusbar { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(110px, .6fr) minmax(105px, .55fr) minmax(135px, .85fr); gap: 8px; align-items: stretch; }
+.analysis-console-status-primary,
+.analysis-console-stat { min-width: 0; min-height: 70px; padding: 10px 12px; border: 1px solid var(--sz-line); border-radius: 10px; background: var(--sz-surface-strong); }
+.analysis-console-status-primary { display: flex; align-items: flex-start; flex-direction: column; gap: 5px; }
+.analysis-console-status-primary > strong { min-width: 0; max-width: 100%; overflow: hidden; color: var(--sz-ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.analysis-console-state { display: inline-flex; align-items: center; gap: 5px; color: var(--sz-muted); font-size: 12px; font-weight: 750; }
+.analysis-console-state svg { width: 14px; height: 14px; }
+.analysis-console-state.state-running,
+.analysis-console-state.state-checking,
+.analysis-console-state.state-finalizing { color: var(--sz-accent-deep); }
+.analysis-console-state.state-complete { color: var(--sz-success); }
+.analysis-console-state.state-blocked,
+.analysis-console-state.state-failed { color: var(--sz-danger); }
+.analysis-console-state.state-review { color: var(--sz-warning); }
+.analysis-console-stat > span { display: block; color: var(--sz-muted); font-size: 11px; }
+.analysis-console-stat > strong { display: block; margin-top: 6px; color: var(--sz-ink); font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.analysis-console-stat .shimadzu-progress-track { height: 4px; margin-top: 7px; }
+.analysis-console-stat.gate-blocked > strong { color: var(--sz-danger); }
+.analysis-console-stat.gate-warning > strong,
+.analysis-console-stat.gate-review > strong { color: var(--sz-warning); }
+.analysis-console-stat.gate-passed > strong,
+.analysis-console-stat.engine-ready > strong { color: var(--sz-success); }
+.analysis-console-steps { min-width: 0; margin-top: 10px; padding-bottom: 4px; display: grid; grid-template-columns: repeat(8, minmax(104px, 1fr)); gap: 6px; overflow-x: auto; overscroll-behavior-inline: contain; }
+.analysis-console-step { min-width: 0; min-height: 64px; padding: 8px 9px; border: 1px solid var(--sz-line); border-radius: 9px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; gap: 3px 6px; color: var(--sz-ink); background: var(--sz-surface-strong); text-align: left; cursor: pointer; }
+.analysis-console-step:hover { border-color: var(--sz-accent-line); }
+.analysis-console-step:focus-visible,
+.analysis-console-results :is(a, button):focus-visible,
+.analysis-console-actions :is(a, button, select):focus-visible,
+.analysis-console-log > summary:focus-visible { outline: 3px solid var(--platform-focus, rgb(51 133 255 / .42)); outline-offset: 2px; }
+.analysis-console-step.selected { border-color: var(--sz-accent); background: var(--sz-accent-soft); }
+.analysis-console-step-number { color: var(--sz-muted); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.analysis-console-step-label { min-width: 0; overflow: hidden; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.analysis-console-step-state { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 4px; color: var(--sz-muted); font-size: 11px; }
+.analysis-console-step-state svg { width: 12px; height: 12px; }
+.analysis-console-step.state-running .analysis-console-step-state { color: var(--sz-accent-deep); }
+.analysis-console-step.state-PASS .analysis-console-step-state { color: var(--sz-success); }
+.analysis-console-step.state-FAIL .analysis-console-step-state { color: var(--sz-danger); }
+.analysis-console-step.state-WARN .analysis-console-step-state,
+.analysis-console-step.state-REVIEW .analysis-console-step-state { color: var(--sz-warning); }
+.analysis-console-detail { min-width: 0; margin-top: 10px; padding: 12px; border: 1px solid var(--sz-line); border-radius: 10px; background: var(--sz-surface-strong); }
+.analysis-console-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.analysis-console-detail-heading span { color: var(--sz-accent-deep); font-size: 11px; font-weight: 800; }
+.analysis-console-detail-heading h3 { margin: 2px 0 0; color: var(--sz-ink); font-size: 14px; }
+.analysis-console-gate-alert { color: var(--sz-danger); font-size: 11px; }
+.analysis-console-detail-grid { margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); gap: 8px; }
+.analysis-console-detail-grid > div { min-width: 0; padding: 8px 10px; border: 1px solid var(--sz-line); border-radius: 8px; background: var(--sz-surface); }
+.analysis-console-detail-grid h4 { margin: 0 0 4px; color: var(--sz-muted); font-size: 11px; }
+.analysis-console-detail-grid p { margin: 0; color: var(--sz-ink-2); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.analysis-console-method { margin-top: 8px; color: var(--sz-ink-2); font-size: 12px; }
+.analysis-console-method > summary { width: fit-content; cursor: pointer; }
+.analysis-console-method ul { margin: 6px 0; padding-left: 20px; }
+.analysis-console-record { min-width: 0; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--sz-line); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; color: var(--sz-muted); font-size: 12px; }
+.analysis-console-record strong { color: var(--sz-ink); }
+.analysis-console-record span { overflow-wrap: anywhere; }
+.analysis-console-record small { color: var(--sz-accent-deep); line-height: 1.45; overflow-wrap: anywhere; }
+.analysis-console-error { margin-top: 10px; }
+.analysis-console-recovery { margin: 8px 0; }
+.analysis-console-results,
+.analysis-console-actions { margin-top: 9px; display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.analysis-console-results :is(a, button),
+.analysis-console-actions :is(a, button) { min-height: 34px; padding: 5px 10px; border: 1px solid var(--sz-line-strong); border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; color: var(--sz-ink); background: var(--sz-surface-strong); font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.analysis-console-results .primary,
+.analysis-console-actions .primary { border-color: var(--sz-accent); color: #fff; background: var(--sz-accent); }
+.analysis-console-results svg,
+.analysis-console-actions svg { width: 14px; height: 14px; }
+.analysis-console-actions .analysis-handoff { width: 100%; }
+.analysis-console .shimadzu-task-feedback { margin: 8px 0 0; color: var(--sz-muted); font-size: 12px; }
+.analysis-console-metrics { margin-top: 9px; color: var(--sz-ink-2); font-size: 12px; }
+.analysis-console-metrics > summary { cursor: pointer; }
+.analysis-console-metrics .shimadzu-analysis-summary { margin-top: 6px; }
+.analysis-console-log { margin-top: 9px; padding: 0 10px; border: 1px solid var(--sz-line); border-radius: 8px; background: var(--sz-surface-strong); }
+.analysis-console-log > summary { min-height: 38px; color: var(--sz-ink-2); }
+.analysis-console-log .shimadzu-console-heading span { color: var(--sz-ink); }
+.analysis-console-log ol { max-height: 210px; margin: 0; padding: 7px 0 10px 20px; overflow-y: auto; color: var(--sz-ink-2); font-size: 12px; }
+.analysis-console-log li { margin: 4px 0; }
+.analysis-console-log li b { margin-right: 8px; color: var(--sz-accent-deep); }
+.shimadzu-page[data-theme='light'] .analysis-console-log,
+.shimadzu-page[data-theme='dark'] .analysis-console-log { background: var(--sz-surface-strong); color: var(--sz-ink); }
+
+@media (max-width: 1000px) {
+  .analysis-console-statusbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analysis-console-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analysis-console-detail-grid > div:first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 600px) {
+  .analysis-console { padding: 9px; }
+  .analysis-console-status-primary,
+  .analysis-console-stat { min-height: 62px; padding: 8px; }
+  .analysis-console-steps { grid-template-columns: repeat(8, minmax(104px, 1fr)); }
+  .analysis-console-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .analysis-console-detail-grid > div:first-child { grid-column: auto; }
+  .analysis-console-detail { padding: 10px; }
+}
