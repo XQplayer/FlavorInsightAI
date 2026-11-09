@@ -311,6 +311,12 @@ test('keeps raw workbooks in the browser and never requests cloud input upload',
   assert.doesNotMatch(source, /downloadInputUrl/)
 })
 
+test('completed current and historical tasks expose a scoped AI interpretation route', () => {
+  assert.match(source, /item\.status === 'complete' && onExplain/)
+  assert.match(source, /onExplain=\{onNavigate \? item => onNavigate\('assistant', \{ task_id: item\.id \}\)/)
+  assert.match(source, /job\.status === 'complete' && onNavigate && cloud\.configured && session/)
+})
+
 test('uses one Analysis Console with a selectable 00–07 rail and one stage detail', () => {
   assert.match(source, /分析任务控制台|Analysis Console/)
   assert.match(source, /deriveAnalysisConsole/)

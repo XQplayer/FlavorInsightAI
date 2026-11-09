@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 
 import fema_proxy_server
 from services.ai_gateway import AIGateway, GatewayError
-from services.ai_tools import Principal
+from services.ai_tools import Principal, ResearchTools
 
 
 ORIGIN = "http://127.0.0.1:5174"
@@ -122,6 +122,13 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertEqual(usage["cached_input_tokens"], 200)
         self.assertEqual(usage["estimated_cost_usd"], 0.00262)
 
+    def test_history_is_bounded_without_losing_latest_turn(self):
+        messages = [{"role": "user" if index % 2 == 0 else "assistant", "content": str(index) + "x" * 3900} for index in range(20)]
+        history = AIGateway._bounded_history(messages)
+        self.assertLessEqual(sum(len(item["content"]) for item in history), 12_000)
+        self.assertEqual(history[-1]["content"], messages[-1]["content"])
+        self.assertLess(len(history), 16)
+
     def test_upstream_rate_limit_retries_once_then_fails_without_saving_message(self):
         attempts = []
         def limited(request, timeout):
@@ -136,6 +143,124 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertEqual(len(attempts), 2)
         self.assertEqual(gateway.get_conversation(principal, conversation["id"])["messages"], [])
         self.assertEqual(gateway.active[principal.user_id], 0)
+
+    def test_incomplete_model_response_is_not_persisted_as_success(self):
+        event = b'data: {"type":"response.incomplete","response":{"incomplete_details":{"reason":"max_output_tokens"}}}\n\n'
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", open_url=lambda *_args, **_kwargs: io.BytesIO(event))
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        conversation = gateway.new_conversation(principal)
+        with self.assertRaises(GatewayError) as caught:
+            list(gateway.chat(principal, conversation["id"], "Explain source evidence"))
+        self.assertEqual(caught.exception.code, "OPENAI_OUTPUT_LIMIT")
+        self.assertEqual(gateway.get_conversation(principal, conversation["id"])["messages"], [])
+
+    def test_retry_after_tool_result_does_not_repeat_read_only_tool(self):
+        calls, requests = [], []
+        class CountingTools:
+            def call(self, name, args, principal):
+                calls.append((name, args, principal.user_id))
+                return {"query": "141-78-6", "results": [], "count": 0}
+        first = {"type": "response.completed", "response": {"output": [{"type": "function_call", "name": "search_compound", "arguments": '{"query":"141-78-6"}', "call_id": "c1"}], "usage": {"input_tokens": 10, "output_tokens": 5}}}
+        final = [{"type": "response.output_text.delta", "delta": "No platform record."}, {"type": "response.completed", "response": {"output": [], "usage": {"input_tokens": 20, "output_tokens": 8}}}]
+        def fake_open(request, timeout):
+            requests.append(request)
+            if len(requests) == 2:
+                raise HTTPError(request.full_url, 429, "rate limited", {}, None)
+            payload = [first] if len(requests) == 1 else final
+            return io.BytesIO("".join("data: " + json.dumps(item) + "\n\n" for item in payload).encode())
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", tools=CountingTools(), open_url=fake_open)
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        conversation = gateway.new_conversation(principal)
+        with patch("services.ai_gateway.time.sleep"):
+            events = list(gateway.chat(principal, conversation["id"], "查询 CAS 141-78-6"))
+        self.assertEqual(len(requests), 3)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(events[-1]["type"], "done")
+
+    def test_cancel_live_stream_releases_slot_without_committing_partial_answer(self):
+        event = b'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'
+        upstream = io.BytesIO(event)
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", open_url=lambda *_args, **_kwargs: upstream)
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        conversation = gateway.new_conversation(principal)
+        stream = gateway.chat(principal, conversation["id"], "Explain")
+        self.assertEqual(next(stream)["type"], "start")
+        self.assertEqual(next(stream)["type"], "delta")
+        stream.close()
+        self.assertTrue(upstream.closed)
+        self.assertEqual(gateway.active[principal.user_id], 0)
+        self.assertEqual(gateway.get_conversation(principal, conversation["id"])["messages"], [])
+
+    def test_verified_synthetic_jwts_isolate_conversations_and_tool_arguments(self):
+        alice = "11111111-1111-4111-8111-111111111111"
+        bob = "33333333-3333-4333-8333-333333333333"
+        task = "22222222-2222-4222-8222-222222222222"
+        identities = {"jwt-alice": alice, "jwt-bob": bob}
+        def auth_open(request, timeout):
+            token = request.headers["Authorization"].removeprefix("Bearer ")
+            if token not in identities:
+                raise HTTPError(request.full_url, 401, "invalid", {}, None)
+            return io.BytesIO(json.dumps({"id": identities[token]}).encode())
+        def store_fetch(url, headers):
+            if "/profiles?" in url:
+                return [{"id": identities[headers["Authorization"].removeprefix("Bearer ")], "is_admin": False}]
+            return [{"id": task, "user_id": alice, "status": "complete", "stage_summary": [], "qc_summary": {}}] if headers["Authorization"] == "Bearer jwt-alice" else []
+        tools = ResearchTools(supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", fetch_json=store_fetch)
+        gateway = AIGateway(mode="mock", supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", tools=tools, open_url=auth_open, allowed_origins={ORIGIN})
+        alice_principal = gateway.principal("Bearer jwt-alice", "", "127.0.0.1", ORIGIN)
+        bob_principal = gateway.principal("Bearer jwt-bob", "", "127.0.0.1", ORIGIN)
+        self.assertEqual(gateway._tool("get_analysis_task", {"task_id": task}, alice_principal)["task_id"], task)
+        self.assertEqual(gateway._tool("get_analysis_task", {"task_id": task}, bob_principal)["error"], "TASK_NOT_FOUND")
+        self.assertEqual(gateway._tool("get_analysis_task", {"task_id": task, "user_id": alice}, bob_principal)["error"], "INVALID_ARGUMENT")
+        conversation = gateway.new_conversation(alice_principal)
+        with self.assertRaises(GatewayError) as caught:
+            gateway.get_conversation(bob_principal, conversation["id"])
+        self.assertEqual(caught.exception.status, 404)
+        with self.assertRaises(GatewayError):
+            gateway.principal("Bearer forged-jwt", "", "127.0.0.1", ORIGIN)
+
+    def test_foreign_task_model_call_stops_after_server_denial(self):
+        task = "22222222-2222-4222-8222-222222222222"
+        model_requests = []
+        def fake_open(request, timeout):
+            model_requests.append(json.loads(request.data))
+            event = {"type": "response.completed", "response": {"output": [{"type": "function_call", "name": "get_analysis_summary", "arguments": json.dumps({"task_id": task}), "call_id": "call-1"}], "usage": {"input_tokens": 20, "output_tokens": 5}}}
+            return io.BytesIO(("data: " + json.dumps(event) + "\n\n").encode())
+        tools = ResearchTools(supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", fetch_json=lambda *_: [])
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", tools=tools, open_url=fake_open)
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        conversation = gateway.new_conversation(principal)
+        events = list(gateway.chat(principal, conversation["id"], f"解释任务 {task} 的摘要"))
+        self.assertEqual(model_requests[0]["tool_choice"], {"type": "function", "name": "get_analysis_summary"})
+        self.assertEqual(len(model_requests), 1)
+        self.assertIn("无法读取该任务", "".join(item.get("text", "") for item in events))
+        self.assertFalse(events[-1]["sources"])
+
+    def test_pubchem_enrichment_rejects_unconfirmed_cid(self):
+        with patch.object(fema_proxy_server, "query_pubchem", return_value={"found": True, "cid": 8857}), patch.object(fema_proxy_server, "query_pubchem_cas_candidates", return_value={"candidates": ["other"]}), patch.object(fema_proxy_server, "query_pubchem_volatile_properties") as volatile:
+            self.assertEqual(fema_proxy_server._ai_verified_public_enrichment("141-78-6")["status"], "identity_unverified")
+            volatile.assert_not_called()
+        with patch.object(fema_proxy_server, "query_pubchem", return_value={"found": True, "cid": 8857}), patch.object(fema_proxy_server, "query_pubchem_cas_candidates", return_value={"candidates": ["141-78-6"]}), patch.object(fema_proxy_server, "query_pubchem_volatile_properties", return_value={"status": "ok", "properties": {}}):
+            self.assertEqual(fema_proxy_server._ai_verified_public_enrichment("141-78-6")["status"], "verified")
+
+    def test_deep_cas_question_forces_detail_with_exact_identifier(self):
+        requests = []
+        events = [
+            {"type": "response.completed", "response": {"output": [{"type": "function_call", "name": "get_compound_detail", "arguments": '{"identifier":"141-78-6"}', "call_id": "detail-1"}], "usage": {"input_tokens": 10, "output_tokens": 5}}},
+            {"type": "response.output_text.delta", "delta": "Only source-backed values."},
+            {"type": "response.completed", "response": {"output": [], "usage": {"input_tokens": 20, "output_tokens": 7}}},
+        ]
+        streams = [io.BytesIO(("data: " + json.dumps(events[0]) + "\n\n").encode()), io.BytesIO("".join("data: " + json.dumps(item) + "\n\n" for item in events[1:]).encode())]
+        def fake_open(request, timeout):
+            requests.append(json.loads(request.data))
+            return streams[len(requests) - 1]
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", open_url=fake_open)
+        principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        conversation = gateway.new_conversation(principal)
+        result = list(gateway.chat(principal, conversation["id"], "查询 CAS 141-78-6 的理化性质和蒸气压来源"))
+        self.assertEqual(requests[0]["tool_choice"], {"type": "function", "name": "get_compound_detail"})
+        self.assertEqual(requests[1]["tool_choice"], "auto")
+        self.assertTrue(any(event.get("name") == "get_compound_detail" for event in result))
 
 
 class GatewayHttpTests(unittest.TestCase):

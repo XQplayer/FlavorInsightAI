@@ -1103,6 +1103,23 @@ def query_flavordb(cid: int | str) -> dict:
     }
 
 
+def _ai_verified_public_enrichment(cas: str) -> dict:
+    """Reuse platform PubChem services only when the returned CID lists this CAS."""
+    if not _cas_checksum_valid(cas):
+        return {"status": "identity_unverified"}
+    pubchem = query_pubchem(cas)
+    if not pubchem.get("found") or not pubchem.get("cid"):
+        return {"status": "unavailable"}
+    candidates = query_pubchem_cas_candidates(str(pubchem["cid"]))
+    if cas not in candidates.get("candidates", []):
+        return {"status": "identity_unverified"}
+    volatile = query_pubchem_volatile_properties(str(pubchem["cid"]))
+    return {"status": "verified", "cas": cas, "pubchem": pubchem, "volatile": volatile}
+
+
+AI_GATEWAY.tools.public_enrichment = _ai_verified_public_enrichment
+
+
 class Handler(BaseHTTPRequestHandler):
     cache = load_cache()
 

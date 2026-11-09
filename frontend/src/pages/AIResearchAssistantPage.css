@@ -6,6 +6,8 @@
 .ai-research-header p:last-child { margin: 9px 0 0; color: var(--text-secondary); font-size: 14px; }
 .ai-research-mode { padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 999px; color: var(--text-secondary); background: var(--surface-panel); font-size: 12px; white-space: nowrap; }
 .ai-research-mode.is-mock { color: var(--platform-brand); }
+.ai-research-task-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: -5px 0 16px; padding: 10px 13px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-panel); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.ai-research-task-context strong { color: var(--text-primary); }
 .ai-research-layout { min-height: min(720px, calc(100dvh - 210px)); display: grid; grid-template-columns: 244px minmax(0, 1fr); gap: 14px; }
 .ai-research-history, .ai-research-thread { min-width: 0; border: 1px solid var(--border-default); border-radius: 16px; background: var(--surface-panel); }
 .ai-research-history { display: flex; flex-direction: column; padding: 14px; }

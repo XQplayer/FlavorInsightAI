@@ -19,7 +19,7 @@ function initialContext(language) {
   const cas = params.get('cas')
   const taskId = params.get('task_id')
   if (cas && /^\d{2,7}-\d{2}-\d$/.test(cas)) return language === 'en' ? `Look up CAS ${cas} and explain its platform evidence.` : `查询 CAS ${cas} 并说明平台证据。`
-  if (taskId && /^[0-9a-f-]{36}$/i.test(taskId)) return language === 'en' ? `Explain the available summary and QC for my task ${taskId}.` : `解释我的任务 ${taskId} 的可用摘要与 QC。`
+  if (taskId && /^[0-9a-f-]{36}$/i.test(taskId)) return language === 'en' ? `Interpret the available results, semi-quantitative units, limitations and QC for my task ${taskId}. Use get_analysis_summary first; report unavailable evidence explicitly.` : `解读我的任务 ${taskId} 的已有结果、半定量单位、限制和 QC。请先调用 get_analysis_summary；缺失证据要明确说明。`
   return ''
 }
 
@@ -29,6 +29,7 @@ function MarkdownAnswer({ text }) {
 
 export default function AIResearchAssistantPage({ language = 'zh' }) {
   const t = COPY[language] || COPY.zh
+  const taskContext = new URLSearchParams(window.location.search).get('task_id')
   const [configuration, setConfiguration] = useState(null)
   const [conversationId, setConversationId] = useState(null)
   const [conversations, setConversations] = useState([])
@@ -102,6 +103,7 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
 
   return <section className="ai-research-page" aria-labelledby="ai-research-title">
     <header className="ai-research-header"><div><p className="ai-research-eyebrow">FLAVORINSIGHT AI / RESEARCH</p><h1 id="ai-research-title">{t.title}</h1><p>{t.subtitle}</p></div><span className={`ai-research-mode ${configuration?.mode === 'mock' ? 'is-mock' : ''}`}>{configuration?.mode === 'mock' ? t.modeMock : configuration?.mode === 'openai' ? t.modeReal : t.unavailable}</span></header>
+    {taskContext && /^[0-9a-f-]{36}$/i.test(taskContext) && <div className="ai-research-task-context" role="note"><strong>{language === 'en' ? 'Task interpretation' : '任务 AI 解读'} · {taskContext.slice(0, 8)}</strong><span>{language === 'en' ? 'The server checks task access and sends only a bounded retained-result excerpt. Missing or expired results remain explicitly unavailable; no raw workbook is sent.' : '服务端核验任务权限，只发送限量的已留存结果摘录。结果缺失或过期会明确标示；不发送原始工作簿。'}</span></div>}
     <div className="ai-research-layout">
       <aside className="ai-research-history" aria-label={t.conversations}><div className="ai-research-history-head"><h2>{t.conversations}</h2><button type="button" onClick={newConversation}><Plus size={16} />{t.new}</button></div><ul>{conversations.length ? conversations.map(item => <li key={item.id}><button type="button" className={conversationId === item.id ? 'active' : ''} onClick={() => openConversation(item.id)} aria-current={conversationId === item.id ? 'page' : undefined}><MessageCircle size={15} /><span>{item.title}</span></button><button className="ai-research-delete" type="button" aria-label={`${t.delete}: ${item.title}`} onClick={() => deleteConversation(item.id)}><Trash2 size={15} /></button></li>) : <li className="ai-research-empty-history">{t.empty}</li>}</ul><div className="ai-research-knowledge"><BookOpen size={16} /><span>{t.knowledge}</span></div></aside>
       <div className="ai-research-thread"><div className="ai-research-messages" role="log" aria-live="polite" aria-relevant="additions text">
