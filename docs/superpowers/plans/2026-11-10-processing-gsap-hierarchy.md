@@ -20,6 +20,6 @@
 
 ## Batch 3 — GSAP and responsive completion
 
-- [ ] Add animation lifecycle/reduced-motion tests. Replace broad ScrollTrigger reveals with scoped entry timeline, panel/import/preflight/progress/result microinteractions.
-- [ ] Verify keyboard access, cleanup, no repeated entry playback, real status ownership, bundle, theme and viewport screenshots.
-- [ ] Run full affected tests, build/lint, independent code review, diff/data check; commit and report rollback.
+- [x] Add animation lifecycle/reduced-motion tests. Replace broad ScrollTrigger reveals with scoped entry timeline, panel/import/preflight/progress/result microinteractions.
+- [x] Verify keyboard access, cleanup, no repeated entry playback on job updates, real status ownership, bundle, theme and viewport screenshots.
+- [x] Run full affected tests, build/lint, code review, diff/data check; commit and report rollback. Review is by the implementing agent, not an independent agent.

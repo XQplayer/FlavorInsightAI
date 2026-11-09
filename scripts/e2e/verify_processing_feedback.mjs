@@ -30,8 +30,10 @@ async function chooseInputs(page, raw) {
   const inputs = page.locator('input[type="file"]')
   await inputs.nth(0).setInputFiles(raw)
   await inputs.nth(1).setInputFiles(sample)
+  await page.locator('.shimadzu-configuration-details > summary').click()
   await page.getByRole('checkbox', { name: /Enable CAS structural classification|启用 CAS 结构分类/ }).uncheck()
   await page.getByRole('checkbox', { name: /Enable water detection thresholds|启用水中觉察阈值/ }).uncheck()
+  await page.locator('.shimadzu-configuration-details > summary').click()
 }
 
 try {

@@ -390,6 +390,25 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
       await page.locator('.shimadzu-history-disclosure > summary').focus();
       await page.keyboard.press('Enter');
       assert.notEqual(await page.locator('.shimadzu-history-disclosure').getAttribute('open'), null, `${viewport.name}/processing: history opens with keyboard`);
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      await page.locator('.shimadzu-configuration-details[open]').waitFor();
+      await page.locator('.shimadzu-configuration-details input').first().waitFor({ state: 'visible' });
+      await page.locator('.shimadzu-configuration-details input').first().focus();
+      assert.equal(await page.locator('.shimadzu-configuration-details input').first().evaluate(element => element === document.activeElement), true, `${viewport.name}/processing: expanded parameter input keeps focus`);
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      await page.waitForFunction(() => !document.querySelector('.shimadzu-configuration-details')?.open);
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      await page.locator('.shimadzu-configuration-details[open]').waitFor();
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.locator('.shimadzu-page[data-motion="reduced"]').waitFor();
+      await page.locator('.shimadzu-configuration-details > summary').click();
+      assert.equal(await page.locator('.shimadzu-configuration-details').getAttribute('open'), null, `${viewport.name}/processing: reduced-motion disclosure closes normally`);
+      const workbookInputs = page.locator('.shimadzu-upload-slot input[type="file"]');
+      await workbookInputs.first().setInputFiles({ name: 'invalid.csv', mimeType: 'text/csv', buffer: Buffer.from('invalid') });
+      assert.equal(await page.locator('.shimadzu-upload-slot.has-error').count(), 1, `${viewport.name}/processing: invalid workbook shows an error`);
+      await workbookInputs.first().setInputFiles({ name: 'raw.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('synthetic-stub') });
+      await workbookInputs.nth(1).setInputFiles({ name: 'samples.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('synthetic-stub') });
+      assert.equal(await page.locator('.shimadzu-upload-slot.has-file').count(), 2, `${viewport.name}/processing: selected workbooks are acknowledged`);
     }
     if (route.name === 'models') {
       const tabs = page.getByRole('tablist', { name: '模型工作区' }).getByRole('tab');

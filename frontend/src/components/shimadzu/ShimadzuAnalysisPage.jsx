@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
   Activity,
   AlertCircle,
@@ -42,7 +41,7 @@ import { serviceError } from '../../analysis/client.mjs'
 import { taskFeedback } from './taskFeedback.mjs'
 import './ShimadzuAnalysisPage.css'
 
-gsap.registerPlugin(useGSAP, ScrollTrigger)
+gsap.registerPlugin(useGSAP)
 
 const API_BASE = (import.meta.env.VITE_FEMA_API_URL || 'http://127.0.0.1:8787').replace(/\/$/, '')
 const THEME_STORAGE_KEY = 'shimadzu-analysis-theme'
@@ -294,20 +293,36 @@ const jobFromStoredTask = (task, status = 'running', language = 'zh') => {
   }
 }
 
-const FilePicker = ({ label, hint, file, onChange, inputRef, templateHref, templateLabel, language }) => (
-  <div className={`shimadzu-upload-slot${file ? ' has-file' : ''}`}>
+function FilePicker({ label, hint, file, onChange, inputRef, templateHref, templateLabel, language }) {
+  const slotRef = useRef(null)
+  let invalid = false
+  if (file) {
+    try { assertWorkbookFile(file) } catch { invalid = true }
+  }
+  const slotState = !file ? '' : invalid ? ' has-error' : ' has-file'
+  useGSAP(() => {
+    if (!file || invalid || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    gsap.fromTo(slotRef.current, { boxShadow: '0 0 0 0 rgb(39 120 93 / 0)' }, {
+      boxShadow: '0 0 0 4px rgb(39 120 93 / .18)',
+      duration: .22,
+      repeat: 1,
+      yoyo: true,
+      clearProps: 'boxShadow',
+    })
+  }, { scope: slotRef, dependencies: [file, invalid], revertOnUpdate: true })
+  return <div ref={slotRef} className={`shimadzu-upload-slot${slotState}`}>
     <label className="shimadzu-file-picker">
-      <input ref={inputRef} type="file" accept=".xlsx" onChange={event => onChange(event.target.files?.[0] || null)} />
-      <span className="shimadzu-file-icon">{file ? <FileCheck2 aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}</span>
+      <input ref={inputRef} type="file" accept=".xlsx" aria-invalid={invalid || undefined} onChange={event => onChange(event.target.files?.[0] || null)} />
+      <span className="shimadzu-file-icon">{invalid ? <AlertCircle aria-hidden="true" /> : file ? <FileCheck2 aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}</span>
       <span className="shimadzu-file-copy">
         <strong>{file?.name || label}</strong>
-        <small>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · ${textFor(language, '已准备', 'Ready')}` : hint}</small>
+        <small role={invalid ? 'alert' : undefined}>{invalid ? textFor(language, '文件未通过检查；仅接受不超过 50 MB 的 .xlsx 文件。', 'File check failed; only .xlsx files up to 50 MB are accepted.') : file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · ${textFor(language, '已准备', 'Ready')}` : hint}</small>
       </span>
       <span className="shimadzu-file-action">{file ? textFor(language, '更换文件', 'Replace file') : textFor(language, '选择文件', 'Choose file')}</span>
     </label>
     <TemplateLink href={templateHref}>{templateLabel}</TemplateLink>
   </div>
-)
+}
 
 function WorkflowMap({ job, language }) {
   const activeIndex = job?.stages?.findIndex(stage => stage.status === 'running') ?? -1
@@ -432,6 +447,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const cloud = useMemo(() => createShimadzuCloud(supabase), [])
   const taskStore = useMemo(() => typeof document === 'undefined' ? null : createShimadzuTaskStore(), [])
   const pageRef = useRef(null)
+  const previousProgressRef = useRef(0)
   const rawInputRef = useRef(null)
   const samplesInputRef = useRef(null)
   const workerClientRef = useRef(null)
@@ -446,7 +462,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const taskScopeRef = useRef('local')
   const resumeFromStageRef = useRef(0)
   const restoreScopeRef = useRef('')
-  const [reducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [standaloneTheme, setTheme] = useState(() => {
     try {
       return window.localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'
@@ -501,6 +517,13 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     }
   }, [theme])
 
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const syncMotion = () => setReducedMotion(preference.matches)
+    preference.addEventListener('change', syncMotion)
+    return () => preference.removeEventListener('change', syncMotion)
+  }, [])
+
   const refreshCloud = async (knownSession = undefined) => {
     if (!cloud.configured) return
     setCloudLoading(true); setCloudError('')
@@ -538,41 +561,39 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloud])
 
-  useGSAP(() => {
-    const revealTargets = gsap.utils.toArray('.shimadzu-reveal')
-    const heroTargets = gsap.utils.toArray('.shimadzu-hero-animate')
+  useGSAP((_, contextSafe) => {
+    const mm = gsap.matchMedia()
+    mm.add({ animate: '(prefers-reduced-motion: no-preference)', desktop: '(min-width: 769px)' }, conditions => {
+      if (!conditions.animate) return
+      const targets = embedded
+        ? ['.shimadzu-embedded-intro', '.shimadzu-workbench-nav', '.shimadzu-configuration-region', '.shimadzu-import-region']
+        : ['.shimadzu-hero-animate', '.shimadzu-workflow']
+      gsap.timeline({ defaults: { duration: conditions.desktop ? .36 : .26, ease: 'power2.out' } })
+        .from(targets, { autoAlpha: 0, y: conditions.desktop ? 12 : 7, stagger: .065, clearProps: 'opacity,visibility,transform' })
+    })
 
-    // A data workbench must remain readable before scrolling (and in full-page
-    // captures); keep the presentation animation only on the standalone deck.
-    if (reducedMotion || embedded) {
-      gsap.set([...heroTargets, ...revealTargets, '.shimadzu-flow-node'], { autoAlpha: 1, x: 0, y: 0, clearProps: 'transform' })
-      return
-    }
-
-    gsap.timeline({ defaults: { duration: 0.76, ease: 'power3.out' } })
-      .from(heroTargets, { autoAlpha: 0, y: 20, stagger: 0.08 })
-      .from('.shimadzu-workflow', { autoAlpha: 0, y: 24 }, '-=0.34')
-      .from('.shimadzu-flow-node', { autoAlpha: 0, y: 12, stagger: 0.055, duration: 0.58 }, '-=0.46')
-
-    revealTargets
-      .filter(element => !element.classList.contains('shimadzu-workflow'))
-      .forEach((element, index) => {
-        gsap.from(element, {
-          autoAlpha: 0,
-          y: 26,
-          duration: 0.82,
-          ease: 'power3.out',
-          scrollTrigger: {
-            id: `shimadzu-reveal-${index}`,
-            trigger: element,
-            start: 'clamp(top 90%)',
-            once: true,
-          },
-        })
-      })
-
-    ScrollTrigger.refresh()
-  }, { scope: pageRef, dependencies: [Boolean(job), reducedMotion, embedded], revertOnUpdate: true })
+    const details = pageRef.current?.querySelector('.shimadzu-configuration-details')
+    const summary = details?.querySelector('summary')
+    const panel = details?.querySelector('.shimadzu-configuration-grid')
+    if (!details || !summary || !panel) return () => mm.revert()
+    const toggleAdvanced = contextSafe(event => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      event.preventDefault()
+      gsap.killTweensOf(panel)
+      if (details.open) {
+        if (panel.contains(document.activeElement)) summary.focus()
+        gsap.to(panel, { height: 0, autoAlpha: 0, duration: .2, ease: 'power2.inOut', onComplete: () => {
+          details.open = false
+          gsap.set(panel, { clearProps: 'height,opacity,visibility,overflow' })
+        } })
+      } else {
+        details.open = true
+        gsap.fromTo(panel, { height: 0, autoAlpha: 0, overflow: 'hidden' }, { height: 'auto', autoAlpha: 1, duration: .26, ease: 'power2.out', clearProps: 'height,opacity,visibility,overflow' })
+      }
+    })
+    summary.addEventListener('click', toggleAdvanced)
+    return () => { summary.removeEventListener('click', toggleAdvanced); mm.revert() }
+  }, { scope: pageRef })
 
   const progress = getStageProgress(job)
   const engineBase = browserEnginePresentation()
@@ -615,6 +636,33 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     }
     return { valid: true, threshold, message: language === 'en' ? `Results will be screened at CV ${threshold}%.` : `将按 CV ${threshold}% 执行筛查。` }
   }, [cvThreshold, enableCvScreening, language])
+
+  useGSAP(() => {
+    if (reducedMotion) return
+    const strip = pageRef.current?.querySelector('.shimadzu-readiness-strip')
+    if (strip) gsap.fromTo(strip, { autoAlpha: .65, y: 3 }, { autoAlpha: 1, y: 0, duration: .2, clearProps: 'opacity,visibility,transform' })
+  }, { scope: pageRef, dependencies: [fileReadiness.ready, cvReadiness.valid, reducedMotion], revertOnUpdate: true })
+
+  useGSAP(() => {
+    const next = progress.completed / (progress.total || 7)
+    const previous = previousProgressRef.current
+    previousProgressRef.current = next
+    const fill = pageRef.current?.querySelector('.shimadzu-progress-track span')
+    if (!fill || reducedMotion || previous === next) return
+    gsap.fromTo(fill, { scaleX: previous }, { scaleX: next, duration: .38, ease: 'power2.out', clearProps: 'transform' })
+  }, { scope: pageRef, dependencies: [progress.completed, progress.total, reducedMotion], revertOnUpdate: true })
+
+  useGSAP(() => {
+    if (job?.status !== 'complete' || reducedMotion) return
+    const result = pageRef.current?.querySelector('.shimadzu-analysis-summary')
+    if (result) gsap.fromTo(result, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: .3, clearProps: 'opacity,visibility,transform' })
+  }, { scope: pageRef, dependencies: [job?.status, reducedMotion], revertOnUpdate: true })
+
+  useGSAP(() => {
+    if (!error || reducedMotion) return
+    const alert = pageRef.current?.querySelector('.shimadzu-alert[role="alert"]')
+    if (alert) gsap.fromTo(alert, { autoAlpha: .5 }, { autoAlpha: 1, duration: .2, clearProps: 'opacity,visibility' })
+  }, { scope: pageRef, dependencies: [error, reducedMotion], revertOnUpdate: true })
   const startFeedback = useMemo(() => {
     if (submitting) return { buttonLabel: textFor(language, '正在建立任务', 'Creating task'), message: textFor(language, '正在读取文件并建立分析任务。', 'Reading files and creating the analysis task.') }
     if (!fileReadiness.ready) return fileReadiness

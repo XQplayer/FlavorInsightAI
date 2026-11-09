@@ -1798,6 +1798,10 @@
 .shimadzu-history-disclosure > summary svg { width: 16px; height: 16px; color: var(--sz-accent-deep); }
 .shimadzu-history-disclosure > summary span { margin-left: auto; color: var(--sz-muted); }
 .shimadzu-history-disclosure > .shimadzu-history { margin-top: 8px; }
+.shimadzu-upload-slot.has-error { border-color: var(--sz-danger); box-shadow: 0 0 0 2px var(--sz-danger-soft); }
+.shimadzu-upload-slot.has-error .shimadzu-file-icon,
+.shimadzu-upload-slot.has-error .shimadzu-file-copy small { color: var(--sz-danger); }
+.shimadzu-page[data-motion='full'] .shimadzu-progress-track span { transition: none; }
 
 @media (max-width: 900px) {
   .shimadzu-page.is-embedded .shimadzu-flow-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }

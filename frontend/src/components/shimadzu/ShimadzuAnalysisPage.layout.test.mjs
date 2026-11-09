@@ -320,3 +320,12 @@ test('places workbook inputs side by side on wide screens and keeps the 00–07 
   assert.match(styles, /\.shimadzu-page\.is-embedded \.shimadzu-upload-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
   assert.match(styles, /\.shimadzu-page\.is-embedded \.shimadzu-flow-track\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/)
 })
+
+test('scopes GSAP presentation to the page and honors changing motion preferences', () => {
+  assert.match(source, /gsap\.matchMedia\(\)/)
+  assert.match(source, /prefers-reduced-motion: reduce/)
+  assert.match(source, /useGSAP\([\s\S]*scope: pageRef/)
+  assert.doesNotMatch(source, /import \{ ScrollTrigger \}/)
+  assert.match(source, /summary\.focus\(\)/)
+  assert.match(source, /getStageProgress\(job\)/)
+})
