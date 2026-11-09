@@ -37,7 +37,7 @@ cd ..
 python -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
 ```
 
-Observed locally: seven frontend suites **359/359**, Python **15/15**, lint/build exit 0, audit exit 0 with no known advisories. The frozen install succeeded. Local Node is **26.13.0**, pnpm **11.25.0**, Python **3.13**; CI Node is 22 and Python is the current `ubuntu-latest` default, so exact environment parity and Action versions still need a real run. The separate complete browser E2E failed at `verify_release_candidate.mjs:311` with `desktop: fixed bottom element overlaps main content`; see `QUALITY_GATES_V3.md`. The raw local log is ignored by Git; the failure assertion is retained here.
+Observed locally at the initial phase 4 commit: seven frontend suites **359/359**, Python **15/15**, lint/build exit 0, audit exit 0 with no known advisories. The frozen install succeeded. Local Node is **26.13.0**, pnpm **11.25.0**, Python **3.13**; CI Node is 22 and Python is the current `ubuntu-latest` default, so exact environment parity and Action versions still need a real run. The original complete browser E2E failed at `verify_release_candidate.mjs:311` with `desktop: fixed bottom element overlaps main content`. **Closeout update:** the assertion misclassified a horizontally adjacent fixed sidebar. After a two-axis geometry check, full desktop/tablet/mobile browser E2E passed locally, and small geometry/routing-contract checks were added to the PR workflow. This remains local evidence; remote CI state is still **NOT ACCEPTED**. See `PHASE4_ACCEPTANCE.md` for current results.
 
 ## Required authorized operation and follow-through
 

@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "probe_date": "2026-11-09",
+  "scope": "Read-only task diagnosis and routing validation; no application edit, commit, or platform-dispatch claim",
+  "canonical_policy": "docs/ai-development/SKILL_ROUTING.md",
+  "repository_context": {
+    "worktree": "E:/codex/Projects/FlavorThresholdDB/.worktrees/ai-development",
+    "branch": "codex/ai-development-phase4",
+    "initial_status": "Existing modified routing/docs and E2E files, plus untracked overlapGeometry.mjs and overlapGeometry.test.mjs; preserved without edits",
+    "nested_agents_md": "No AGENTS.md found in frontend, scripts, or docs/ai-development",
+    "automatic_dispatch_verified": false,
+    "independent_reviewer_dispatched": false
+  },
+  "common_reads": [
+    "AGENTS.md",
+    "README.md",
+    "docs/ai-development/SKILL_ROUTING.md",
+    "docs/ai-development/UNIFIED_SKILL_ROUTING.md",
+    "docs/ai-development/SKILL_REGISTRY.md",
+    "docs/ai-development/DEVELOPMENT_WORKFLOW.md",
+    "docs/ai-development/QUALITY_GATES.md",
+    "E:/codex/codex-personal-skills/verification-before-completion/SKILL.md"
+  ],
+  "cases": [
+    {
+      "id": "A",
+      "prompt": "首页导航文字微调，别改科研数据",
+      "primary_route": 1,
+      "route_name": "Frontend / UI / GSAP",
+      "level": "L1",
+      "reason": "A single reversible navigation copy change; no scientific values, persistence, authentication, or animation semantics are requested.",
+      "contract": {
+        "input": "An exact replacement label would be needed for an edit; the probe contains no replacement string.",
+        "output": "Navigation display copy only, if specified in a future task.",
+        "dependencies": "PlatformShell NAV_ITEMS, bilingual labels, platform UI contract tests.",
+        "failure_behavior": "Preserve existing label until exact requested wording is known; do not invent copy.",
+        "acceptance": "Requested label displays in applicable locale; routes and accessible names remain correct; research data is untouched."
+      },
+      "actual_reads": [
+        "frontend/src/components/platform/PlatformShell.jsx",
+        "frontend/src/components/platform/PlatformShell.css",
+        "frontend/src/platformRoutes.test.mjs",
+        "frontend/src/platformUiContract.test.mjs",
+        "frontend/package.json"
+      ],
+      "skill_files_read": [
+        "E:/codex/codex-personal-skills/verification-before-completion/SKILL.md"
+      ],
+      "other_applicable_roles": [
+        "Frontend developer serial self-check for localization and accessible name; no separate agent dispatched."
+      ],
+      "gates": {
+        "executed": ["pnpm run test:platform from frontend: 31/31 pass, exit 0"],
+        "future_edit_required": ["Update exact label assertions in platformUiContract.test.mjs as appropriate", "Check Chinese and English navigation and keyboard use at desktop and mobile widths", "Run focused frontend lint; build if bundled output changes"],
+        "not_required_for_probe": ["Scientific reference fixture", "API integration", "Dependency audit", "Production deployment gate"]
+      },
+      "deliberately_not_used": [
+        "gsap-react and gsap-core: copy only, no animation",
+        "flavor-data-integrity and other scientific skills: no research files or calculations touched",
+        "systematic-debugging: no defect reported",
+        "browser-testing-with-devtools: no live browser investigation needed for classification"
+      ],
+      "result": "Route and source/test boundary validated. No label edited because replacement wording was absent."
+    },
+    {
+      "id": "B",
+      "prompt": "完整浏览器验收说桌面固定底部元素遮挡主内容，请定位原因并判断如何安全修复，同时检查手机和平板。",
+      "primary_route": 5,
+      "route_name": "Software fault diagnosis",
+      "level": "L2",
+      "reason": "The reported failure needs reproduction and root-cause analysis before deciding whether UI or E2E code should change. The bounded regression affects responsive layout verification.",
+      "contract": {
+        "input": "A release-candidate E2E assertion that a fixed bottom element overlaps #main-content on desktop.",
+        "output": "Cause classification and safe correction proposal covering desktop, tablet, and mobile.",
+        "dependencies": "verify_release_candidate.mjs, overlapGeometry.mjs, overlapGeometry.test.mjs, PlatformShell.css, Playwright for full runtime confirmation.",
+        "failure_behavior": "Do not alter the application layout or suppress the assertion without geometric evidence; retain a failing regression if a real overlap is found.",
+        "acceptance": "A rectangle intersection test rejects edge-adjacent sidebars and offscreen drawers, detects a bottom bar crossing main content, and the full browser E2E confirms all three viewport layouts."
+      },
+      "actual_reads": [
+        "scripts/e2e/verify_release_candidate.mjs",
+        "scripts/e2e/overlapGeometry.mjs",
+        "scripts/e2e/overlapGeometry.test.mjs",
+        "scripts/e2e/verify_platform_shell.mjs",
+        "frontend/src/components/platform/PlatformShell.css",
+        "frontend/src/components/platform/PlatformShell.jsx",
+        "docs/ai-development/phase4-e2e-local.log",
+        "docs/ai-development/phase4-e2e-closure.log",
+        "_local/verification/release-candidate-results.json"
+      ],
+      "skill_files_read": [
+        "E:/codex/codex-personal-skills/systematic-debugging/SKILL.md",
+        "E:/codex/codex-personal-skills/verification-before-completion/SKILL.md",
+        "E:/codex/codex-owned-skills/plugins-cache/agent-skills/agent-skills/0.6.15/skills/frontend-ui-engineering/SKILL.md",
+        "E:/codex/codex-owned-skills/plugins-cache/agent-skills/agent-skills/0.6.15/skills/browser-testing-with-devtools/SKILL.md"
+      ],
+      "other_applicable_roles": [
+        "Frontend UI specialist checklist for responsive layout and keyboard access",
+        "Browser testing specialist checklist for DOM rectangle, screenshot, console, and viewport inspection; Chrome DevTools MCP unavailable in this session, so Playwright is the documented fallback for a full run",
+        "Serial self-review only; no independent agent review claimed"
+      ],
+      "diagnosis": {
+        "historical_failure": "phase4-e2e-local.log records desktop: fixed bottom element overlaps main content (true !== false).",
+        "old_test_cause": "git diff of verify_release_candidate.mjs shows the previous assertion compared vertical bounds only. A full-height fixed sidebar touches the viewport bottom and vertically intersects main content even when its right edge equals the main content's left edge.",
+        "current_guard": "rectanglesOverlap uses strict intersection on left/right and top/bottom; verify_release_candidate.mjs now applies it to DOMRect JSON and includes tablet 768x1024 between desktop 1280x800 and mobile 375x667.",
+        "geometry_fixture": "sidebar [0,256] adjacent to main [256,1280] is false; crossing bottom bar [256,1280] is true; offscreen mobile drawer [-256,0] adjacent to main [0,375] is false.",
+        "visual_overlap_established": false,
+        "conclusion": "The reported desktop failure is explained by a false-positive vertical-only assertion, not established visual occlusion. Existing CSS places the sidebar in a separate grid column. A live browser inspection is still needed to exclude every other fixed-element scenario.",
+        "safe_fix": "Keep full two-axis rectangle intersection and regression fixtures; do not move or remove the fixed sidebar merely to satisfy the old assertion. If a later live DOM measurement identifies a genuinely covering element, fix that element's placement and add a failing browser regression before changing CSS."
+      },
+      "gates": {
+        "executed": ["node --test scripts/e2e/overlapGeometry.test.mjs: 3/3 pass, exit 0"],
+        "existing_artifact_only": "The prior release-candidate-results.json and phase4-e2e-closure.log show fixedBottomOverlap=false and overflow=false at desktop, tablet, and mobile; this probe did not create those results.",
+        "not_executed_here": ["Full pnpm run test:e2e browser run", "Fresh screenshots and keyboard walkthrough at each viewport", "Frontend lint/build, because no application or E2E code was changed by this probe"],
+        "future_fix_required": ["Reproduce in browser with measured DOM rectangles and screenshot", "Failing regression before a code fix", "Desktop/tablet/mobile E2E plus keyboard/accessibility, adjacent platform tests, lint/build", "Diff review and rollback"]
+      },
+      "deliberately_not_used": [
+        "GSAP skills: no animation requested",
+        "Scientific data and model skills: failure is layout/test geometry, not research logic",
+        "Security and deployment specialists: no auth, secrets, build pipeline, or release operation",
+        "Chrome DevTools MCP execution: no such exposed tool; its SKILL.md was read as guidance only"
+      ],
+      "limits": "Focused geometry fixtures and prior browser artifacts do not constitute a fresh full-browser verification; no actual production-page occlusion is claimed."
+    }
+  ],
+  "edge_cases": [
+    {
+      "prompt": "给真实任务状态加动画",
+      "primary_route": 1,
+      "level": "L2",
+      "skill_files_read": [
+        "E:/codex/codex-personal-skills/gsap-react/SKILL.md",
+        "E:/codex/codex-personal-skills/gsap-core/SKILL.md"
+      ],
+      "trigger": "Actual React UI animation, unlike ordinary copy. gsap and @gsap/react are declared in frontend/package.json.",
+      "constraints": ["Animation must derive from the real task state rather than invented progress", "Use scoped React refs/useGSAP with cleanup", "Honor prefers-reduced-motion with zero-duration or skipped animation", "Verify state transitions, interruption/re-render, keyboard use, and desktop/tablet/mobile"],
+      "execution": "Routing boundary only; no animation was implemented or run."
+    },
+    {
+      "prompt": "纯导航文案修改",
+      "primary_route": 1,
+      "level": "L1",
+      "not_selected": ["gsap-react", "gsap-core", "scientific skills"],
+      "reason": "Text replacement has no animation or research-data trigger."
+    },
+    {
+      "tool": "Chrome DevTools MCP",
+      "availability_check": "ALL_TOOLS name/description search for Chrome DevTools returned only mcp__rea__list_browser_targets, not a Chrome DevTools MCP tool.",
+      "fallback": "Use repository Playwright E2E for live DOM, screenshot, and viewport checks; only the focused Node geometry test was actually run in this probe."
+    }
+  ],
+  "executed_commands": [
+    {
+      "command": "git status --short --branch",
+      "exit_code": 0,
+      "output_excerpt": "## codex/ai-development-phase4; existing modified docs and verify_release_candidate.mjs; untracked overlapGeometry.mjs and overlapGeometry.test.mjs"
+    },
+    {
+      "command": "git diff -- scripts/e2e/verify_release_candidate.mjs",
+      "exit_code": 0,
+      "output_excerpt": "Previous vertical-only overlap predicate replaced with rectanglesOverlap(rect, mainRect); tablet viewport added."
+    },
+    {
+      "command": "node --test scripts/e2e/overlapGeometry.test.mjs",
+      "exit_code": 0,
+      "output_excerpt": "fixed sidebar adjacent to main content is not an overlap; fixed bottom element crossing main content is an overlap; offscreen drawer does not overlap mobile content; tests 3, pass 3, fail 0, duration_ms 145.6114"
+    },
+    {
+      "command": "pnpm run test:platform",
+      "cwd": "frontend",
+      "exit_code": 0,
+      "output_excerpt": "tests 31, pass 31, fail 0, duration_ms 234.742"
+    },
+    {
+      "command": "rg -n -C 3 'fixed bottom element overlaps main content|fixedBottomOverlap|overlap' docs/ai-development/phase4-e2e-closure.log docs/ai-development/phase4-e2e-local.log docs/ai-development/phase4-processing-e2e-local.log _local/verification/release-candidate-results.json",
+      "exit_code": 0,
+      "output_excerpt": "Earlier local log: desktop assertion true !== false. Existing closure log and results JSON: fixedBottomOverlap false at desktop, tablet and mobile."
+    }
+  ],
+  "changed_files": ["docs/ai-development/routing-probes/ui_debug.json"],
+  "rollback": "Delete docs/ai-development/routing-probes/ui_debug.json; no application file was edited by this probe."
+}

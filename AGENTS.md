@@ -2,12 +2,11 @@
 
 These rules apply to this repository. Read this file, the relevant README/docs, and the affected code before each task. Follow any more specific `AGENTS.md` in a subdirectory if one is added later.
 
-## Route work by size
+## Route every natural-language development request
 
-- Light: one small, reversible change; inspect, edit, run focused checks.
-- Standard: bounded feature or bug; state inputs, outputs, dependencies and acceptance criteria; plan, implement, test and review.
-- Full: cross-module, scientific, security or deployment work; use a separate worktree, a written spec and plan, specialist review where available, and integration checks. See `docs/ai-development/SKILL_ROUTING.md`.
-- Load only skills relevant to the task. Superpowers is the process workflow; specialist skills add domain checks. An unavailable skill or agent must be reported as unavailable, never simulated as an independent review.
+- Apply the single canonical decision policy in `docs/ai-development/SKILL_ROUTING.md` without asking the user to restate it: classify the task into the six domain routes, assign L1–L4 by impact, identify affected code and tests, then load only matching Skills. `docs/ai-development/UNIFIED_SKILL_ROUTING.md` is its short entry point, not a second policy.
+- L1: one small reversible text/style/local interaction change; inspect, edit, focused check. L2: bounded feature or bug; state inputs, outputs, dependencies and acceptance criteria, then plan, implement, test and review. L3: cross-module or scientific/model work; written plan, isolated worktree when needed, specialist checks and integration tests. L4: production, migration, sensitive permissions, or core scientific rule replacement; impact/backup/rollback review and separate authorization before the risky operation.
+- Superpowers is the sole primary development workflow. Engineering, scientific, GSAP and security Skills supply task-specific checks; never start competing global process workflows together. A missing Skill or agent is reported as unavailable with a safe documented fallback, never simulated as an independent review.
 
 ## Scientific integrity
 
@@ -24,4 +23,4 @@ These rules apply to this repository. Read this file, the relevant README/docs, 
 - At completion report changed files, commands and results, remaining issues, and a practical rollback path. Distinguish checks run from checks planned or unavailable.
 - Do not deploy production, delete data, or change sensitive configuration without explicit authorization.
 
-The operational workflow and gate matrix are in `docs/ai-development/DEVELOPMENT_WORKFLOW.md` and `QUALITY_GATES.md`.
+The operational workflow and gate matrix are in `docs/ai-development/DEVELOPMENT_WORKFLOW.md` and `QUALITY_GATES.md`. There is no automatic production deployment or remote push/PR permission implied by task routing.

@@ -77,6 +77,12 @@ jobs:
         working-directory: frontend
         run: pnpm run test:analysis
 
+      - name: Browser overlap geometry regression
+        run: node --test scripts/e2e/overlapGeometry.test.mjs
+
+      - name: AI development routing contract
+        run: node --test scripts/ai-development/routingContract.test.mjs
+
       - name: Lint
         working-directory: frontend
         run: pnpm run lint

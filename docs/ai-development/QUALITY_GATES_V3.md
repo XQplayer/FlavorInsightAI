@@ -1,6 +1,6 @@
 # Quality gates v3 — phase 4 observed state
 
-Gate state applies to the phase 4 local branch on 2026-11-09; remote and production acceptance remain separate. Required commands run from the isolated worktree unless otherwise stated.
+This table records the initial phase 4 local snapshot at commit `a3e25bb`. The full-browser failure below was resolved in the subsequent local closeout; see `PHASE4_ACCEPTANCE.md` for current results. Remote and production acceptance remain separate. Required commands run from the isolated worktree unless otherwise stated.
 
 | Gate | Command / evidence | Actual state | Promotion rule and open risk |
 | --- | --- | --- | --- |
