@@ -308,3 +308,15 @@ test('keeps raw workbooks in the browser and never requests cloud input upload',
   assert.doesNotMatch(source, /uploadInputs/)
   assert.doesNotMatch(source, /downloadInputUrl/)
 })
+
+test('gives the current task priority while keeping logs and history available on demand', () => {
+  assert.match(source, /<details[^>]*className="[^"]*shimadzu-console-disclosure"/)
+  assert.match(source, /<details[^>]*className="shimadzu-history-disclosure"/)
+  assert.match(styles, /\.shimadzu-monitor-results-region\s*\{[^}]*display:\s*flex/)
+  assert.match(styles, /\.shimadzu-monitor-results-region\s*>\s*\.shimadzu-workflow-dock\s*\{[^}]*order:\s*2/)
+})
+
+test('places workbook inputs side by side on wide screens and keeps the 00–07 flow readable', () => {
+  assert.match(styles, /\.shimadzu-page\.is-embedded \.shimadzu-upload-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(styles, /\.shimadzu-page\.is-embedded \.shimadzu-flow-track\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/)
+})

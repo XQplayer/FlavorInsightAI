@@ -230,9 +230,9 @@ function HistoryPanelLegacy({ jobs, interruptedJobIds, onDownload, onMarkInterru
 }
 
 function HistoryPanel({ jobs, interruptedJobIds, onDownload, onMarkInterrupted, onDeleteResult, isAdmin = false, language }) {
-  if (!jobs.length) return <section id="task-workbench" className="shimadzu-history shimadzu-history-empty" aria-labelledby="history-title"><div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{textFor(language, '任务台', 'Task desk')}</h2><p>{textFor(language, '当前没有可查看的历史任务。完成登录并运行分析后，任务、结果下载和失败原因会集中显示在这里。', 'No task history is available. After sign-in and analysis, tasks, result downloads, and failure reasons will appear here.')}</p></div><span>{textFor(language, '暂无记录', 'No records')}</span></div></section>
+  if (!jobs.length) return <section className="shimadzu-history shimadzu-history-empty" aria-labelledby="history-title"><div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{textFor(language, '任务台', 'Task desk')}</h2><p>{textFor(language, '当前没有可查看的历史任务。完成登录并运行分析后，任务、结果下载和失败原因会集中显示在这里。', 'No task history is available. After sign-in and analysis, tasks, result downloads, and failure reasons will appear here.')}</p></div><span>{textFor(language, '暂无记录', 'No records')}</span></div></section>
   return (
-    <section id="task-workbench" className="shimadzu-history shimadzu-reveal" aria-labelledby="history-title">
+    <section className="shimadzu-history shimadzu-reveal" aria-labelledby="history-title">
       <div className="shimadzu-region-heading"><div><h2 id="history-title"><History />{isAdmin ? textFor(language, '管理员任务台', 'Administrator task desk') : textFor(language, '最近任务', 'Recent tasks')}</h2><p>{isAdmin ? textFor(language, '可查看所有用户运行状态与结果证据；原始工作簿始终只保留在运行浏览器。', 'View every user task status and retained result evidence; raw workbooks always remain in the originating browser.') : textFor(language, '任务与 QC 摘要保留 90 天；结果包完成后保留 7 天。', 'Task and QC summaries are retained for 90 days; completed result packages for 7 days.')}</p></div><span>{isAdmin ? textFor(language, '管理员可见', 'Administrator view') : textFor(language, '私有记录', 'Private records')}</span></div>
       <div className="shimadzu-history-table" role="table">
         {jobs.map(item => {
@@ -245,6 +245,13 @@ function HistoryPanel({ jobs, interruptedJobIds, onDownload, onMarkInterrupted, 
       </div>
     </section>
   )
+}
+
+function HistoryDisclosure(props) {
+  return <details id="task-workbench" className="shimadzu-history-disclosure">
+    <summary><History aria-hidden="true" />{props.isAdmin ? textFor(props.language, '管理员历史任务', 'Administrator task history') : textFor(props.language, '历史任务', 'Task history')}<span>{props.jobs.length}</span></summary>
+    <HistoryPanel {...props} />
+  </details>
 }
 
 void HistoryPanelLegacy
@@ -411,10 +418,10 @@ function LiveMonitor({ job, capabilities, engine: engineOverride, language }) {
             <span>{textFor(language, '刷新', 'Refresh')} <strong>1.5 s</strong></span>
           </div>
         </div>
-        <div id="run-log" className="shimadzu-console">
-          <div className="shimadzu-console-heading"><TerminalSquare /><span>{textFor(language, '运行日志', 'Run log')}</span><small>{job?.updated_at ? new Date(job.updated_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false }) : textFor(language, '尚未启动', 'Not started')}</small></div>
+        <details id="run-log" className="shimadzu-console shimadzu-console-disclosure">
+          <summary className="shimadzu-console-heading"><TerminalSquare /><span>{textFor(language, '运行日志', 'Run log')}</span><small>{job?.updated_at ? new Date(job.updated_at).toLocaleTimeString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false }) : textFor(language, '尚未启动', 'Not started')}</small></summary>
           <pre aria-live={!job || job.status === 'running' ? 'polite' : 'off'}>{log || (job ? textFor(language, '任务已建立，等待分析引擎输出。', 'Task created; waiting for analysis-engine output.') : textFor(language, '系统处于待机状态。\n选择两个模板或正式工作簿后开始分析。', 'The system is standing by.\nChoose two templates or production workbooks to start analysis.'))}</pre>
-        </div>
+        </details>
       </div>
     </section>
   )
@@ -1144,7 +1151,6 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           {!job ? (
             <div className="shimadzu-overview-grid">
               <LiveMonitor job={null} capabilities={null} engine={engine} language={language} />
-              <HistoryPanel language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
             </div>
           ) : (
             <>
@@ -1188,9 +1194,9 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                 </ol>
               </section>
             </div>
-            <HistoryPanel language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
             </>
           )}
+          <HistoryDisclosure language={language} jobs={history} interruptedJobIds={interruptedJobIds} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} isAdmin={profile?.is_admin === true} />
           <AccountPanel language={language} cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} />
         </section>
       </ContentElement>

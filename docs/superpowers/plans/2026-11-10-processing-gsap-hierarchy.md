@@ -14,9 +14,9 @@
 
 ## Batch 2 — import and monitoring
 
-- [ ] Add failing assertions for desktop two-column uploads, readable 00–07 flow, current-task-first monitor and on-demand logs/history.
-- [ ] Reorganize UI markup/CSS without changing task state or Worker computation.
-- [ ] Run focused tests and processing browser regression; commit.
+- [x] Add failing assertions for desktop two-column uploads, readable 00–07 flow, current-task-first monitor and on-demand logs/history.
+- [x] Reorganize UI markup/CSS without changing task state or Worker computation.
+- [x] Run focused layout tests (41/41) and processing browser regression (pass); commit.
 
 ## Batch 3 — GSAP and responsive completion
 

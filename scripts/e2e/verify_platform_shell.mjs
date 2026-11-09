@@ -376,6 +376,20 @@ async function verifyRoute(browser, viewport, route, baseUrl, proxyOrigin) {
       assert.ok(firstUpload && firstUpload.y < viewport.height, `${viewport.name}/processing: upload entry reaches the first viewport`);
       assert.equal(await page.locator('.shimadzu-workbench-nav a').count(), 3, `${viewport.name}/processing: three work stages remain`);
       assert.equal(await page.locator('.shimadzu-configuration-details').getAttribute('open'), null, `${viewport.name}/processing: advanced parameters start collapsed`);
+      assert.equal(await page.locator('.shimadzu-upload-slot').count(), 2, `${viewport.name}/processing: two workbook slots remain`);
+      const uploadColumns = await page.locator('.shimadzu-upload-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+      assert.equal(uploadColumns, viewport.width > 600 ? 2 : 1, `${viewport.name}/processing: workbook columns follow the viewport`);
+      assert.equal(await page.locator('[data-testid="workflow-node"]').count(), 8, `${viewport.name}/processing: stages 00–07 remain visible`);
+      assert.equal(await page.locator('.shimadzu-console-disclosure').getAttribute('open'), null, `${viewport.name}/processing: log starts collapsed`);
+      assert.equal(await page.locator('.shimadzu-history-disclosure').getAttribute('open'), null, `${viewport.name}/processing: history starts collapsed`);
+      const monitorBox = await page.locator('#monitor-overview').boundingBox();
+      const workflowBox = await page.locator('.shimadzu-workflow-dock').boundingBox();
+      assert.ok(monitorBox && workflowBox && monitorBox.y < workflowBox.y, `${viewport.name}/processing: current task precedes the workflow reference`);
+      await page.locator('.shimadzu-console-disclosure > summary').click();
+      assert.notEqual(await page.locator('.shimadzu-console-disclosure').getAttribute('open'), null, `${viewport.name}/processing: log can be opened`);
+      await page.locator('.shimadzu-history-disclosure > summary').focus();
+      await page.keyboard.press('Enter');
+      assert.notEqual(await page.locator('.shimadzu-history-disclosure').getAttribute('open'), null, `${viewport.name}/processing: history opens with keyboard`);
     }
     if (route.name === 'models') {
       const tabs = page.getByRole('tablist', { name: '模型工作区' }).getByRole('tab');
