@@ -16,3 +16,5 @@ Paths and availability observed 2026-11-09. Load a skill by its listed name from
 | `SAG` | No exposed MCP namespace found | Optional literature/project knowledge retrieval | Unavailable/unverified. Use connected, authorized source tools or cited primary sources and retain provenance. |
 
 The available custom role TOMLs are at `C:\Users\hanxq\.codex\agents\`. They are role definitions, not proof that an agent ran. All project skills are additive; they do not install executables, edit Codex global settings, or register MCP servers.
+
+Phase 3 evidence: separate read-only agent task probes actually opened all five `.agents/skills/flavor-*/SKILL.md` files and applied their constraints to synthetic calculations or decisions. No system-level automatic activation log was available; the observed mechanism was task-level discovery/read/use. Full cases and negative/boundary outcomes are in `SCIENTIFIC_SKILL_ACTIVATION.md`. A missing skill is marked unavailable for that task and handled by the project rules plus explicit scientific review, never by an unreported substitute.

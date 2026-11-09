@@ -15,6 +15,8 @@ Choose the smallest workflow that covers the actual failure cost. Start with `AG
 
 For a full task, an actual independent reviewer is preferred. If no subagent is dispatched, the primary agent performs a second, explicitly serial review and records that limitation. Never report a role or test as executed solely because its skill or file exists. SAG is optional and currently unverified; route to it only after connection and authorization are confirmed.
 
+Phase 3 task probes confirmed real agent reads and use of all five project scientific skills on synthetic cases. These prove task-level selection and constraint-following in those sessions; they do not prove a platform-wide automatic dispatch hook. See `SCIENTIFIC_SKILL_ACTIVATION.md`. New scientific calculations require an independently computed reference before implementation or claims; an unavailable skill falls back to `AGENTS.md`, the domain contract, a documented manual review and the same quality gates.
+
 ## Routing examples
 
 - Change a navigation label: light; no scientific or GSAP skill.

@@ -9,6 +9,8 @@
 7. **Review:** inspect diff against the contract and scientific boundaries. Dispatch an independent reviewer for full work when available, or record a serial self-review.
 8. **Deliver:** list changed files, test evidence, open issues and rollback steps. Do not merge, deploy, mutate production data, or change secrets without authorization.
 
+For phase 3 and later work, separate four decisions at delivery: local engineering checks, dependency risk disposition, scientific reference coverage, and a matching remote CI run. A historical Actions run or a nonblocking audit is not a passing deployment gate. Record the exact Skill files actually read and the task behavior they changed; a routing table alone is design evidence. For any new scientific formula, commit a synthetic or approved reference fixture with units, hand/independent calculation, tolerance, failure cases and source before changing the algorithm. Keep unverified legacy methods labeled pending.
+
 ## Pilot, 2026-11-09
 
 Pilot task: classify a harmless hypothetical navigation-label change; no application code or research data was edited. Existing baseline: the repository has `test:platform` and PR lint/build gates, but no project-level routing contract or scientific skill selection. New route: **light**, inspect `PlatformShell.jsx` and route tests, edit only the label in a future task, run `pnpm run test:platform` and responsive/keyboard checks if UI changes. No scientific skill, worktree mandate or GSAP skill is selected for the hypothetical edit.
