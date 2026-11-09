@@ -83,6 +83,9 @@ function recoverExcelDateCasCells(sheet) {
       }
       cell.v = recovered.cas
       cell.t = 's'
+      // The recovered CAS is text. A leftover Excel date format causes newer
+      // SheetJS releases to coerce this string to Invalid Date on JSON export.
+      cell.z = '@'
       cell.w = recovered.cas
       events.push({ sourceRow: dataRow + 1, originalValue, recoveredCas: recovered.cas, source: 'Excel 日期恢复', status: '已恢复' })
     }

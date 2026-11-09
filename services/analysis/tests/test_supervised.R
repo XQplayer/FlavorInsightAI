@@ -63,6 +63,7 @@ check(all(cm==v$confusion),'confusion reconstructs from OOF')
 check(abs(mean(diag(cm)/rowSums(cm))-v$balancedAccuracy)<1e-12,'pooled OOF balanced accuracy')
 check(!any(grepl('reliable',names(r$data),ignore.case=TRUE)),'no reliability badge from separation')
 check(r$data$permutation$p==(1+sum(r$data$permutation$distribution>=v$balancedAccuracy))/(opts$permutations+1),'permutation plus-one formula counts ties')
+check(r$data$permutation$p>=1/(opts$permutations+1),'two permutations cannot resolve p below one third')
 check(identical(r$data$permutation,analyze_supervised(d,recipe,opts)$data$permutation),'permutations deterministic')
 
 # Mutating an outer held-out sentinel cannot change that fold's learned recipe or selection.
@@ -77,7 +78,10 @@ check(identical(first$folds[[1]]$selection,second$folds[[1]]$selection),'heldout
 small<-fixture(x[c(1:3,9:11),],rep(c('C','T'),each=3))
 err(analyze_supervised(small,recipe,list(method='plsda',permutations=0)),'EXPLORATORY_ACKNOWLEDGEMENT_REQUIRED')
 smallopts<-list(method='plsda',outerFolds=3,innerFolds=2,predictiveComponents=1,permutations=0,acknowledgeExploratory=TRUE)
-check(analyze_supervised(small,recipe,smallopts)$data$independentN==6,'n3 explicit exploratory PLS real ropls')
+smallResult<-analyze_supervised(small,recipe,smallopts)$data
+check(smallResult$independentN==6,'n3 explicit exploratory PLS real ropls')
+check('SMALL_N_EXPLORATORY_ACKNOWLEDGED'%in%unlist(smallResult$warnings),'n3 exploratory warning retained')
+check('LOW_PERMUTATION_COUNT'%in%unlist(smallResult$warnings),'zero permutations cannot imply validated significance')
 err(analyze_supervised(small,recipe,modifyList(smallopts,list(method='oplsda'))),'NO_VALID_CANDIDATE')
 tiny<-fixture(x[c(1:2,9:10),],rep(c('C','T'),each=2));err(analyze_supervised(tiny,recipe,smallopts),'INSUFFICIENT_INDEPENDENT_UNITS')
 err(analyze_supervised(small,recipe,modifyList(smallopts,list(outerFolds=5))),'OUTER_FOLDS_INFEASIBLE')

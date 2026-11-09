@@ -73,6 +73,10 @@ jobs:
         working-directory: frontend
         run: pnpm run test:shimadzu-browser
 
+      - name: Analysis import, export, and release security tests
+        working-directory: frontend
+        run: pnpm run test:analysis
+
       - name: Lint
         working-directory: frontend
         run: pnpm run lint
@@ -87,5 +91,4 @@ jobs:
 
       - name: Production dependency advisory scan
         working-directory: frontend
-        continue-on-error: true # Existing lockfile findings are tracked; this scan is visible but not yet a blocking gate.
         run: pnpm audit --prod

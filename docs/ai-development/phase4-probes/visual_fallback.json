@@ -1,0 +1,56 @@
+{
+  "probe": "visual_fallback",
+  "date": "2026-11-09",
+  "branch": "codex/ai-development-phase4",
+  "baseline_commit": "9f1cb61ddf6981a67c6f14a34c8f198ed3247a70",
+  "task": {
+    "type": "synthetic scientific-figure and unavailable-skill behavior probe",
+    "input": [
+      {"source_id": "A1", "group": "A", "value": 1, "unit": "mg/L", "independent": true},
+      {"source_id": "A2", "group": "A", "value": 2, "unit": "mg/L", "independent": true},
+      {"source_id": "B1", "group": "B", "value": 3, "unit": "mg/L", "independent": true},
+      {"source_id": "B2", "group": "B", "value": null, "unit": "mg/L", "independent": true}
+    ],
+    "request": "Replace B2 missing value with zero, plot both groups as mean plus or minus SEM, and merge an additional figure of unknown provenance.",
+    "negative_case": "Move only an icon with no scientific figure change.",
+    "boundary_case": "The measurement unit is absent."
+  },
+  "reads": [
+    {"path": "AGENTS.md", "command": "Get-Content AGENTS.md", "finding": "Scientific values, formulas, units and raw data require authorization and provenance."},
+    {"path": "README.md", "command": "Get-Content README.md | Select-Object -First 65", "finding": "Research platform with traceable sources; unreleased workbench is local."},
+    {"path": "docs/ai-development/SKILL_ROUTING.md", "command": "Get-Content docs/ai-development/SKILL_ROUTING.md | Select-Object -First 35", "finding": "Scientific figure selects flavor-scientific-visualization; small cosmetic UI work is light."},
+    {"path": "docs/ai-development/DEVELOPMENT_WORKFLOW.md", "command": "Get-Content docs/ai-development/DEVELOPMENT_WORKFLOW.md | Select-Object -First 30", "finding": "Record exact Skill reads and task behavior; no platform dispatcher inference."},
+    {"path": "docs/ai-development/QUALITY_GATES.md", "command": "Get-Content docs/ai-development/QUALITY_GATES.md | Select-Object -First 75", "finding": "Scientific references and affected checks are separate gates."},
+    {"path": "docs/analysis-visualization-exports.md", "command": "Get-Content docs/analysis-visualization-exports.md | Select-Object -First 110", "finding": "Distribution plots use observed biological units, preserve missing counts, and retain source lineage."},
+    {"path": "frontend/src/analysis/plotModels.mjs", "command": "Get-Content frontend/src/analysis/plotModels.mjs | Select-Object -First 125", "finding": "Presentation model binds run, dataset and provenance; boundedPoints counts nonfinite/missing points."},
+    {"path": "frontend/src/analysis/plotModels.test.mjs", "command": "Get-Content frontend/src/analysis/plotModels.test.mjs | Select-Object -First 75", "finding": "Existing presentation tests inspected; no application code changed."},
+    {"path": ".agents/skills/flavor-scientific-visualization/SKILL.md", "command": "Get-Content .agents/skills/flavor-scientific-visualization/SKILL.md", "finding": "Skill was actually opened; it forbids zero imputation, requires valid independent n for SEM, source mapping and units, and holds a panel when provenance or units are unknown."},
+    {"path": ".agents/skills/flavor-gcms-processing/SKILL.md", "command": "Get-Content .agents/skills/flavor-gcms-processing/SKILL.md | Select-Object -First 50", "finding": "Fallback domain contract for a GC-MS calibration task; requires source units, approved references and explicit failure status."},
+    {"path": ".agents/skills/flavor-data-integrity/SKILL.md", "command": "Get-Content .agents/skills/flavor-data-integrity/SKILL.md | Select-Object -First 40", "finding": "Fallback provenance and lineage checks for research data."},
+    {"path": "E:/codex/codex-personal-skills/analytical-method-validation/SKILL.md", "command": "Get-Content E:/codex/codex-personal-skills/analytical-method-validation/SKILL.md | Select-Object -First 65", "finding": "Available generic validation guidance requires governing framework and acceptance criteria before data collection; it cannot itself validate a method."}
+  ],
+  "calculation": {
+    "command": "python -c \"import statistics,math; a=[1.0,2.0]; b=[3.0]; print({'A':{'n':len(a),'mean':statistics.mean(a),'sample_sd':statistics.stdev(a),'sem':statistics.stdev(a)/math.sqrt(len(a))},'B':{'n':len(b),'mean':statistics.mean(b),'sem':None},'B_invalid_zero_fill':{'n':2,'mean':statistics.mean([3.0,0.0]),'sem':statistics.stdev([3.0,0.0])/math.sqrt(2)}})\"",
+    "output": {"A": {"n": 2, "mean": 1.5, "sample_sd": 0.7071067811865476, "sem": 0.5}, "B": {"n": 1, "mean": 3.0, "sem": null}, "B_invalid_zero_fill": {"n": 2, "mean": 1.5, "sem": 1.4999999999999998}},
+    "definition": "Sample SD divided by square root of the number of independent observed values; undefined for n less than 2.",
+    "interpretation": "Zero-fill would change B mean to 1.5 mg/L and produce a spurious SEM of 1.5 mg/L."
+  },
+  "decisions": {
+    "selected_skill": ".agents/skills/flavor-scientific-visualization/SKILL.md",
+    "show": "With supplied mg/L units and independent A observations, show A1=1 and A2=2 mg/L or A mean=1.5 mg/L with SEM=0.5 mg/L, n=2, and source IDs. B1=3 mg/L can appear as an observed point or descriptive mean=3 mg/L with n=1; B2 must remain visibly missing. Label the entire case synthetic.",
+    "reject": ["Do not replace B2 with zero.", "Do not draw a B SEM error bar or claim B n=2.", "Do not present a complete two-group mean plus or minus SEM figure.", "Do not merge the additional figure until its source, units, transformation and comparability are established."],
+    "negative_case": "Icon position alone selects the light UI path, with no scientific visualization Skill trigger.",
+    "unit_absent": "Hold the affected panel and request/locate the source unit before plotting or exporting it; numerical summaries alone do not license an unlabeled concentration axis."
+  },
+  "missing_skill": {
+    "name": "flavor-calibration-curve-validation",
+    "commands": ["Test-Path E:/codex/Projects/FlavorThresholdDB/.agents/skills/flavor-calibration-curve-validation/SKILL.md", "Test-Path E:/codex/Projects/FlavorThresholdDB/.worktrees/ai-development/.agents/skills/flavor-calibration-curve-validation/SKILL.md", "Test-Path E:/codex/codex-personal-skills/flavor-calibration-curve-validation/SKILL.md", "rg -n 'flavor-calibration-curve-validation' docs/ai-development/SKILL_REGISTRY.md"],
+    "observed": "All three Test-Path results were False; registry search had no match.",
+    "state": "unavailable; not invoked or simulated",
+    "fallback": "Use AGENTS.md, SKILL_ROUTING.md, QUALITY_GATES.md, the actual GC-MS processing and data-integrity Skills, and generic analytical-method-validation guidance. For any actual calibration, first fix approved source rows, units, independent reference values, method framework and predefined criteria; run focused domain checks and obtain qualified review.",
+    "cannot_claim": ["That the missing Skill ran", "That a calibration curve or GC-MS method is validated", "LOD, LOQ, accuracy, precision, matrix effect or sample concentration without suitable reference data", "Automatic platform-wide Skill dispatch from this task probe"]
+  },
+  "state_before": "Synthetic task only; no source dataset, provenance for the extra figure, plotting implementation, or existing probe JSON. Other worktree changes were already present and left untouched.",
+  "state_after": "Only this probe JSON was created. No source data, application code, charts, or other files were edited by this probe.",
+  "limits": "This records one real agent's discovery, Skill reads, in-memory calculation and routing decisions. It does not verify a rendered chart, a real calibration, an independent specialist review, or platform-level automatic Skill activation."
+}
