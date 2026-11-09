@@ -41,7 +41,7 @@ TOOL_SCHEMAS = [
     {"type": "function", "name": "search_compound", "description": "Search existing public FlavorThresholdDB records by CAS or compound name and optional medium. Returns source-attributed identity and descriptors, not inferred thresholds.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "medium": {"type": ["string", "null"]}}, "required": ["query", "medium"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "get_compound_detail", "description": "Read source-attributed compound identity, flavor and raw threshold source lines; add PubChem property records only after exact CAS identity verification. Missing fields remain unavailable.", "parameters": {"type": "object", "properties": {"identifier": {"type": "string"}}, "required": ["identifier"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "get_analysis_task", "description": "Read the authenticated user's GC-MS task metadata, stage progress and QC state only.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}, "strict": True},
-    {"type": "function", "name": "get_analysis_summary", "description": "Read an authenticated user's completed task's bounded stage, QC and integrity-checked derived result excerpt without raw Excel or complete logs.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}, "strict": True},
+    {"type": "function", "name": "get_analysis_summary", "description": "Read a completed authorized task's bounded GC-MS compounds, semiquantitative values, Stage 5 parallel Mean/SD/CV, missing/CV-filtered counts and QC evidence from integrity-checked derived results; no raw Excel or full logs.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}, "strict": True},
 ]
 
 
@@ -247,18 +247,33 @@ class ResearchTools:
         if not isinstance(archive_bytes, bytes) or len(archive_bytes) != size or hashlib.sha256(archive_bytes).hexdigest().lower() != archive_sha.lower():
             raise ToolError("RESULT_INTEGRITY_FAILED", "Retained result hash or size does not match")
         data_path = "04_跨样品合并与半定量/data.json"
-        manifest_path = "04_跨样品合并与半定量/manifest.json"
+        statistics_path = "05_统计_CV_CAS与QC/data.json"
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-                if len(archive.infolist()) > 2000 or archive.getinfo(data_path).file_size > 4_000_000 or archive.getinfo(manifest_path).file_size > 100_000:
+                if len(archive.infolist()) > 2000:
                     return {"status": "unavailable", "reason": "Derived evidence exceeds the projection limit"}
-                data_bytes = archive.read(data_path)
-                manifest = json.loads(archive.read(manifest_path))
-            expected_data_sha = next((item.get("sha256") for item in manifest.get("outputHashes", []) if isinstance(item, dict) and item.get("path") == data_path), None)
-            actual_data_sha = hashlib.sha256(data_bytes).hexdigest()
-            if expected_data_sha != actual_data_sha:
-                raise ToolError("RESULT_INTEGRITY_FAILED", "Derived stage hash does not match")
-            data = json.loads(data_bytes)
+                names = set(archive.namelist())
+                if len(names) != len(archive.infolist()):
+                    raise ToolError("RESULT_INTEGRITY_FAILED", "Retained archive has duplicate paths")
+                def read_stage(path):
+                    manifest_path = path.rsplit("/", 1)[0] + "/manifest.json"
+                    if archive.getinfo(path).file_size > 4_000_000 or archive.getinfo(manifest_path).file_size > 100_000:
+                        return None
+                    content = archive.read(path)
+                    manifest = json.loads(archive.read(manifest_path))
+                    expected_sha = next((item.get("sha256") for item in manifest.get("outputHashes", []) if isinstance(item, dict) and item.get("path") == path), None)
+                    actual_sha = hashlib.sha256(content).hexdigest()
+                    if expected_sha != actual_sha:
+                        raise ToolError("RESULT_INTEGRITY_FAILED", "Derived stage hash does not match")
+                    return json.loads(content), manifest, actual_sha
+                stage4 = read_stage(data_path)
+                if stage4 is None:
+                    return {"status": "unavailable", "reason": "Derived evidence exceeds the projection limit"}
+                data, _, actual_data_sha = stage4
+                stage5_manifest_path = statistics_path.rsplit("/", 1)[0] + "/manifest.json"
+                if statistics_path not in names and stage5_manifest_path in names:
+                    raise ToolError("RESULT_INTEGRITY_FAILED", "Statistics evidence is incomplete")
+                stage5 = read_stage(statistics_path) if statistics_path in names else None
             table = data.get("table") if isinstance(data, dict) else None
             rows = table.get("rows") if isinstance(table, dict) else None
             concentrations = data.get("concentrationStatus") if isinstance(data, dict) else None
@@ -281,8 +296,14 @@ class ResearchTools:
                 categories[compound["category"]] += 1
         measured = []
         measured_total = 0
+        concentration_statuses = Counter()
         for item in concentrations[:100_000]:
-            if not isinstance(item, dict) or item.get("status") != "Calculated":
+            if not isinstance(item, dict):
+                continue
+            status = item.get("status")
+            if isinstance(status, str) and status in {"Calculated", "Not_Detected", "Removed_One_of_Three", "Internal_Standard_Unavailable", "Zero_Area_Not_Quantifiable", "FAIL"}:
+                concentration_statuses[status] += 1
+            if status != "Calculated":
                 continue
             cas, value = item.get("cas"), item.get("concentration")
             if not isinstance(cas, str) or not CAS_PATTERN.fullmatch(cas) or isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
@@ -290,11 +311,42 @@ class ResearchTools:
             measured_total += 1
             if len(measured) < 12:
                 measured.append({"cas": cas, "sample": self._safe_text(item.get("sampleName"), 80), "value": value, "unit": "μg/mL", "method": "internal-standard semi-quantification"})
+        statistics = {"status": "unavailable", "reason": "Verified Stage 5 statistics were not retained or exceeded the projection limit", "items": []}
+        missing_and_filters = {"stage4_na_concentrations": None, "all_na_groups": None, "incomplete_groups": None, "cv_filtered_groups": None}
+        stage4_counts = data.get("counts") if isinstance(data.get("counts"), dict) else {}
+        if isinstance(stage4_counts.get("naConcentrations"), int) and stage4_counts["naConcentrations"] >= 0:
+            missing_and_filters["stage4_na_concentrations"] = stage4_counts["naConcentrations"]
+        statistics_sha = None
+        statistics_severity = None
+        if stage5 is not None:
+            stage5_data, stage5_manifest, statistics_sha = stage5
+            groups = stage5_data.get("groupStatistics") if isinstance(stage5_data, dict) else None
+            counts = stage5_data.get("counts") if isinstance(stage5_data, dict) else None
+            if not isinstance(groups, list) or not isinstance(counts, dict):
+                raise ToolError("RESULT_INTEGRITY_FAILED", "Statistics stage has an invalid schema")
+            allowed_statuses = {"All_NA", "Incomplete_Triplicate", "CV_Screening_Not_Executed", "Filtered_CV_Above_Threshold", "Retained_CV_At_Or_Below_Threshold", "Retained_CV_Undefined_Zero_Mean"}
+            def finite_number(value):
+                return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) else None
+            items = []
+            for group in groups[:12]:
+                if not isinstance(group, dict) or not isinstance(group.get("cas"), str) or not CAS_PATTERN.fullmatch(group["cas"]) or group["cas"] not in compounds:
+                    continue
+                names, values = group.get("sampleNames"), group.get("concentrations")
+                if not isinstance(names, list) or not isinstance(values, list) or len(names) != len(values) or len(names) != 3:
+                    continue
+                items.append({"cas": group["cas"], "sample_group": self._safe_text(group.get("sampleGroup"), 80), "replicates": [{"sample": self._safe_text(name, 80), "value": finite_number(value)} for name, value in zip(names, values)], "mean": finite_number(group.get("mean")), "sd": finite_number(group.get("sd")), "cv_percent": finite_number(group.get("cv")), "status": group.get("status") if group.get("status") in allowed_statuses else "Unknown", "unit": "μg/mL"})
+            statistics = {"status": "available", "total": len(groups), "items": items, "truncated": len(groups) > len(items), "cv_screening_executed": stage5_data.get("cvScreeningExecuted") if isinstance(stage5_data.get("cvScreeningExecuted"), bool) else None, "cv_threshold_percent": finite_number(stage5_data.get("cvThreshold")), "note": "Stage 5 descriptive statistics for configured parallel samples. No significance or biological independence is inferred."}
+            for source_key, target_key in (("allNaGroups", "all_na_groups"), ("incompleteGroups", "incomplete_groups"), ("filteredGroups", "cv_filtered_groups")):
+                value = counts.get(source_key)
+                if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                    missing_and_filters[target_key] = value
+            statistics_severity = stage5_manifest.get("severity") if stage5_manifest.get("severity") in {"PASS", "WARN", "REVIEW", "FAIL"} else None
         return {
-            "status": "integrity_checked_derived_excerpt", "compound_results": {"total": len(compounds), "basis": "Stage 4 screened CAS rows", "items": list(compounds.values())[:12], "truncated": len(compounds) > 12},
+            "status": "integrity_checked_derived_excerpt", "compound_results": {"total": len(compounds), "basis": "Stage 4 screened CAS rows; may include internal standards", "items": list(compounds.values())[:12], "truncated": len(compounds) > 12},
             "category_distribution": {"items": [{"category": name, "count": count} for name, count in categories.most_common(12)], "unclassified": len(compounds) - sum(categories.values())},
-            "semiquantitative_results": {"total": measured_total, "items": measured, "truncated": measured_total > 12, "unit_note": "μg/mL is the analysis-system concentration; it is not automatically μg/g of a solid sample."},
-            "evidence": {"archive_sha256": archive_sha, "stage": data_path, "stage_sha256": actual_data_sha},
+            "semiquantitative_results": {"total": measured_total, "items": measured, "truncated": measured_total > 12, "status_counts": dict(concentration_statuses), "unit_note": "μg/mL is the analysis-system concentration; it is not automatically μg/g of a solid sample."},
+            "replicate_statistics": statistics, "missing_and_filters": missing_and_filters, "statistics_severity": statistics_severity,
+            "evidence": {"archive_sha256": archive_sha, "stage": data_path, "stage_sha256": actual_data_sha, "statistics_stage": statistics_path if statistics_sha else None, "statistics_stage_sha256": statistics_sha},
         }
 
     def call(self, name: str, args: dict, principal: Principal) -> dict:
@@ -309,7 +361,7 @@ class ResearchTools:
         row = self._task(valid["task_id"], principal)
         source = {"type": "private_task_record", "dataset": "Authorized shimadzu_jobs summary", "url": ""}
         qc = row.get("qc_summary") or {}
-        qc_summary = {key: self._safe_text(value, 100) if isinstance(value, str) else value for key, value in qc.items() if key in {"status", "blocked", "warnings", "failed_count", "warning_count", "passed_count"} and (isinstance(value, (bool, int, float)) and (not isinstance(value, float) or math.isfinite(value)) or isinstance(value, str) and len(value) <= 100)} if isinstance(qc, dict) else {}
+        qc_summary = {key: self._safe_text(value, 100) if isinstance(value, str) else value for key, value in qc.items() if key in {"status", "blocked", "warnings", "failed_count", "warning_count", "passed_count", "allNaGroups", "incompleteGroups", "filteredGroups", "numericGroups", "finalAnalysisCas"} and (isinstance(value, (bool, int, float)) and (not isinstance(value, float) or math.isfinite(value)) or isinstance(value, str) and len(value) <= 100)} if isinstance(qc, dict) else {}
         if name == "get_analysis_task":
             return {"task_id": row["id"], "name": self._safe_text(row.get("name")), "status": row["status"], "current_stage": row.get("current_stage"), "progress": row.get("progress"), "qc_summary": qc_summary, "updated_at": row.get("updated_at"), "source": source}
         if row["status"] != "complete":
@@ -318,4 +370,7 @@ class ResearchTools:
         if not isinstance(stages, list):
             raise ToolError("TASK_STORE_INVALID", "Task summary has an unexpected shape")
         derived = self._derived_result(row, principal)
-        return {"task_id": row["id"], "name": self._safe_text(row.get("name")), "status": row["status"], "stage_counts": [{"stage": item.get("index", item.get("stage")), "status": item.get("status"), "counts": {key: value for key, value in list((item.get("counts") or {}).items())[:32] if isinstance(key, str) and len(key) <= 50 and isinstance(value, (bool, int, float)) and (not isinstance(value, float) or math.isfinite(value))} if isinstance(item.get("counts"), dict) else {}} for item in stages[:7] if isinstance(item, dict)], "qc_summary": qc_summary, "result_sha256": row.get("result_sha256"), "compound_results": derived.get("compound_results", {"status": "unavailable"}), "category_distribution": derived.get("category_distribution", {"status": "unavailable"}), "semiquantitative_results": derived.get("semiquantitative_results", {"status": "unavailable"}), "derived_evidence": derived.get("evidence"), "derived_status": derived["status"], "derived_unavailable_reason": derived.get("reason"), "source": source, "note": "Only bounded derived results were read. Internal-standard estimates are semi-quantitative; no raw workbook or complete log was sent to the model."}
+        stage5_record = next((item for item in stages if isinstance(item, dict) and item.get("stage", item.get("index")) == 5), None)
+        stage5_status = stage5_record.get("status") if isinstance(stage5_record, dict) and stage5_record.get("status") in {"PASS", "WARN", "REVIEW", "FAIL"} else None
+        qc_status = stage5_status or derived.get("statistics_severity")
+        return {"task_id": row["id"], "name": self._safe_text(row.get("name")), "status": row["status"], "stage_counts": [{"stage": item.get("index", item.get("stage")), "status": item.get("status"), "counts": {key: value for key, value in list((item.get("counts") or {}).items())[:32] if isinstance(key, str) and len(key) <= 50 and isinstance(value, (bool, int, float)) and (not isinstance(value, float) or math.isfinite(value))} if isinstance(item.get("counts"), dict) else {}} for item in stages[:7] if isinstance(item, dict)], "qc_status": qc_status, "qc_status_basis": "Stage 5 stage summary or verified manifest", "qc_summary": qc_summary, "result_sha256": row.get("result_sha256"), "compound_results": derived.get("compound_results", {"status": "unavailable"}), "category_distribution": derived.get("category_distribution", {"status": "unavailable"}), "semiquantitative_results": derived.get("semiquantitative_results", {"status": "unavailable"}), "replicate_statistics": derived.get("replicate_statistics", {"status": "unavailable"}), "missing_and_filters": derived.get("missing_and_filters", {"status": "unavailable"}), "derived_evidence": derived.get("evidence"), "derived_status": derived["status"], "derived_unavailable_reason": derived.get("reason"), "source": source, "note": "Only bounded derived results were read. Internal-standard estimates are semi-quantitative; no raw workbook or complete log was sent to the model. Stage 5 statistics are descriptive and do not establish significance or biological independence."}

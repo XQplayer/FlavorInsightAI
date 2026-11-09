@@ -122,30 +122,71 @@ class ResearchToolTests(unittest.TestCase):
     def test_synthetic_derived_zip_yields_bounded_semquant_evidence(self):
         owner, task = "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"
         stage_path = "04_跨样品合并与半定量/data.json"
-        derived = {"table": {"rows": [{"CAS #": "141-78-6", "中文名": "乙酸乙酯", "化合物分类": "酯类"}]}, "concentrationStatus": [{"cas": "141-78-6", "sampleName": "tech@example.org", "concentration": 2.5, "status": "Calculated"}]}
+        stage5_path = "05_统计_CV_CAS与QC/data.json"
+        derived = {"table": {"rows": [{"CAS #": "141-78-6", "中文名": "乙酸乙酯", "化合物分类": "酯类"}]}, "concentrationStatus": [{"cas": "141-78-6", "sampleName": "tech@example.org", "concentration": 2.5, "status": "Calculated"}], "counts": {"naConcentrations": 2}}
+        statistics = {"cvScreeningExecuted": True, "cvThreshold": 30, "counts": {"allNaGroups": 0, "incompleteGroups": 1, "filteredGroups": 1}, "groupStatistics": [{"cas": "141-78-6", "sampleGroup": "SYNTHETIC_G", "sampleNames": ["S1", "S2", "S3"], "concentrations": [2.0, 2.5, 3.0], "mean": 2.5, "sd": 0.5, "cv": 20.0, "status": "Retained_CV_At_Or_Below_Threshold"}, {"cas": "141-78-6", "sampleGroup": "SYNTHETIC_MISSING", "sampleNames": ["M1", "M2", "M3"], "concentrations": [2.0, "NA", "NA"], "mean": "NA", "sd": "NA", "cv": "NA", "status": "Incomplete_Triplicate"}, {"cas": "141-78-6", "sampleGroup": "SYNTHETIC_CV_FAIL", "sampleNames": ["F1", "F2", "F3"], "concentrations": [1.0, 5.0, 9.0], "mean": 5.0, "sd": 4.0, "cv": 80.0, "status": "Filtered_CV_Above_Threshold"}]}
         data = json.dumps(derived, ensure_ascii=False).encode()
+        stage5_data = json.dumps(statistics, ensure_ascii=False).encode()
         manifest = {"outputHashes": [{"path": stage_path, "sha256": hashlib.sha256(data).hexdigest()}]}
+        stage5_manifest = {"outputHashes": [{"path": stage5_path, "sha256": hashlib.sha256(stage5_data).hexdigest()}], "severity": "PASS"}
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as archive:
             archive.writestr(stage_path, data)
             archive.writestr("04_跨样品合并与半定量/manifest.json", json.dumps(manifest))
+            archive.writestr(stage5_path, stage5_data)
+            archive.writestr("05_统计_CV_CAS与QC/manifest.json", json.dumps(stage5_manifest))
         result_bytes = buffer.getvalue()
-        row = {"id": task, "user_id": owner, "name": "Synthetic tech@example.org", "status": "complete", "stage_summary": [], "qc_summary": {"status": "PASS"}, "result_path": f"{owner}/{task}/result.zip", "result_size": len(result_bytes), "result_sha256": hashlib.sha256(result_bytes).hexdigest()}
+        row = {"id": task, "user_id": owner, "name": "Synthetic tech@example.org", "status": "complete", "stage_summary": [{"stage": 5, "status": "PASS", "counts": {"filteredGroups": 1}}], "qc_summary": {"incompleteGroups": 1, "filteredGroups": 1}, "result_path": f"{owner}/{task}/result.zip", "result_size": len(result_bytes), "result_sha256": hashlib.sha256(result_bytes).hexdigest()}
         tools = ResearchTools(supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", fetch_json=lambda *_: [row], fetch_bytes=lambda *_: result_bytes)
         result = tools.call("get_analysis_summary", {"task_id": task}, Principal(owner, token="synthetic-token"))
         self.assertEqual(result["derived_status"], "integrity_checked_derived_excerpt")
         self.assertEqual(result["compound_results"]["items"][0]["cas"], "141-78-6")
+        self.assertIn("internal standards", result["compound_results"]["basis"])
         self.assertEqual(result["category_distribution"]["items"][0], {"category": "酯类", "count": 1})
         self.assertEqual(result["semiquantitative_results"]["items"][0]["unit"], "μg/mL")
         self.assertEqual(result["semiquantitative_results"]["items"][0]["value"], 2.5)
+        self.assertEqual(result["qc_status"], "PASS")
+        self.assertEqual(result["replicate_statistics"]["items"][0]["mean"], 2.5)
+        self.assertEqual(result["replicate_statistics"]["items"][0]["sd"], 0.5)
+        self.assertEqual(result["replicate_statistics"]["items"][0]["cv_percent"], 20.0)
+        self.assertEqual(result["replicate_statistics"]["items"][0]["replicates"][0], {"sample": "S1", "value": 2.0})
+        self.assertIsNone(result["replicate_statistics"]["items"][1]["mean"])
+        self.assertEqual(result["replicate_statistics"]["items"][1]["status"], "Incomplete_Triplicate")
+        self.assertEqual(result["missing_and_filters"]["stage4_na_concentrations"], 2)
+        self.assertEqual(result["missing_and_filters"]["incomplete_groups"], 1)
+        self.assertEqual(result["missing_and_filters"]["cv_filtered_groups"], 1)
+        self.assertEqual(result["replicate_statistics"]["items"][2]["status"], "Filtered_CV_Above_Threshold")
+        self.assertEqual(result["derived_evidence"]["statistics_stage_sha256"], hashlib.sha256(stage5_data).hexdigest())
         self.assertNotIn("tech@example.org", str(result))
         self.assertNotIn("result_path", str(result))
+        row["stage_summary"] = [{"stage": 5, "status": "WARN"}]
+        self.assertEqual(tools.call("get_analysis_summary", {"task_id": task}, Principal(owner, token="synthetic-token"))["qc_status"], "WARN")
+        row["stage_summary"] = []
+        self.assertEqual(tools.call("get_analysis_summary", {"task_id": task}, Principal(owner, token="synthetic-token"))["qc_status"], "PASS")
         row["result_sha256"] = "0" * 64
         with self.assertRaises(ToolError) as caught:
             tools.call("get_analysis_summary", {"task_id": task}, Principal(owner, token="synthetic-token"))
         self.assertEqual(caught.exception.code, "RESULT_INTEGRITY_FAILED")
         row["result_sha256"] = hashlib.sha256(result_bytes).hexdigest()
         row["result_path"] = f"{owner}/../{task}/result.zip"
+        with self.assertRaises(ToolError) as caught:
+            tools.call("get_analysis_summary", {"task_id": task}, Principal(owner, token="synthetic-token"))
+        self.assertEqual(caught.exception.code, "RESULT_INTEGRITY_FAILED")
+
+    def test_stage5_statistics_manifest_mismatch_fails_closed(self):
+        owner, task = "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"
+        stage4_path, stage5_path = "04_跨样品合并与半定量/data.json", "05_统计_CV_CAS与QC/data.json"
+        stage4 = json.dumps({"table": {"rows": []}, "concentrationStatus": []}).encode()
+        stage5 = json.dumps({"groupStatistics": [{"cas": "141-78-6", "mean": 999}], "counts": {}}).encode()
+        archive_buffer = io.BytesIO()
+        with ZipFile(archive_buffer, "w") as archive:
+            archive.writestr(stage4_path, stage4)
+            archive.writestr("04_跨样品合并与半定量/manifest.json", json.dumps({"outputHashes": [{"path": stage4_path, "sha256": hashlib.sha256(stage4).hexdigest()}]}))
+            archive.writestr(stage5_path, stage5)
+            archive.writestr("05_统计_CV_CAS与QC/manifest.json", json.dumps({"outputHashes": [{"path": stage5_path, "sha256": "0" * 64}]}))
+        payload = archive_buffer.getvalue()
+        row = {"id": task, "user_id": owner, "status": "complete", "stage_summary": [], "result_path": f"{owner}/{task}/result.zip", "result_size": len(payload), "result_sha256": hashlib.sha256(payload).hexdigest()}
+        tools = ResearchTools(supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", fetch_json=lambda *_: [row], fetch_bytes=lambda *_: payload)
         with self.assertRaises(ToolError) as caught:
             tools.call("get_analysis_summary", {"task_id": task}, Principal(owner, token="synthetic-token"))
         self.assertEqual(caught.exception.code, "RESULT_INTEGRITY_FAILED")
