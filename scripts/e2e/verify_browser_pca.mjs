@@ -80,15 +80,19 @@ try {
       const svg = await svgDownload;
       assert.match(svg.suggestedFilename(), /\.svg$/);
       assert.match(await fs.readFile(await svg.path(), 'utf8'), /synthetic-r-prcomp-6x3-v1/);
-      const pngDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('.png'), timeout: 12000 });
-      const metadataDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('-metadata.json') });
       await figureButtons.nth(1).click();
+      const pngLink = page.getByRole('link', { name: /Download prepared PNG|下载已生成 PNG/ });
+      await pngLink.waitFor();
+      const pngDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('.png') });
+      await pngLink.click();
       const png = await pngDownload.catch(async cause => {
         const alerts = await page.locator('figure.analysis-figure [role="alert"]').allInnerTexts();
         throw new Error(`PNG export did not download: ${alerts.join('; ') || cause.message}`);
       });
       assert.match(png.suggestedFilename(), /\.png$/);
       assert.equal((await fs.readFile(await png.path())).subarray(1, 4).toString(), 'PNG');
+      const metadataDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('-metadata.json') });
+      await page.getByRole('link', { name: /Download PNG metadata|下载 PNG 元数据/ }).click();
       const pngMeta = await metadataDownload;
       assert.equal(JSON.parse(await fs.readFile(await pngMeta.path(), 'utf8')).algorithmVersion, '1.0.0');
       const csvDownload = page.waitForEvent('download');

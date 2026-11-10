@@ -38,7 +38,7 @@ export default function BrowserPcaPlot({ result, dataset, view, settings, t }) {
   const description = view === 'biplot'
     ? t(`Scores use processed-data coordinates; loading arrows are multiplied by ${number(model.displayFactor)} for display only. Hover for unscaled loadings.`, `得分使用预处理数据坐标；载荷箭头仅为展示乘以 ${number(model.displayFactor)}。悬浮可查看原始载荷。`)
     : t('Exploratory PCA from the selected browser-local dataset. Full values are available in tables and CSV.', '来自当前浏览器本地数据的探索性 PCA；完整数值见表格与 CSV。');
-  return <PlotFrame title={title} description={description} t={t} metadata={{
+  return <PlotFrame key={`${result.provenance.runId}-${view}-${JSON.stringify(settings)}`} title={title} description={description} t={t} metadata={{
     runId: result.provenance.runId ?? result.provenance.datasetId, datasetId: dataset.id, datasetName: dataset.name, view,
     sourceHash: dataset.provenance?.sourceSha256 ?? null, algorithmVersion: result.provenance.algorithmVersion,
     scale: result.preprocessing.scale, missing: result.preprocessing.missing, displayedPoints: points.length,
