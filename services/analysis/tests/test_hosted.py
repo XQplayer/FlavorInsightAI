@@ -34,6 +34,9 @@ class FakeStore:
         row = self.rows.get(job_id)
         return copy.deepcopy(row) if row and row['user_id'] == principal.user_id else None
 
+    def count_since(self, principal, _since_iso, limit=20):
+        return min(limit, sum(row['user_id'] == principal.user_id for row in self.rows.values()))
+
     def update(self, job_id, changes):
         self.rows[job_id].update(copy.deepcopy(changes))
 
@@ -126,6 +129,15 @@ class HostedPcaTest(unittest.TestCase):
         self.assertEqual(recovered['status'], 'interrupted')
         self.assertEqual(recovered['error_code'], 'JOB_LOST')
         self.assertIsNone(restarted.get(self.b, job_id))
+        self.assertEqual(len(self.broker.calls), 0)
+
+    def test_persisted_daily_cap_survives_service_restart(self):
+        for _ in range(20):
+            self.store.insert({'id': str(uuid.uuid4()), 'user_id': 'user-a', 'status': 'completed',
+                               'idempotency_key': str(uuid.uuid4()), 'request_sha256': 'a' * 64})
+        restarted = HostedPca(self.store, self.broker)
+        with self.assertRaisesRegex(HostedPcaError, 'DAILY_LIMIT'):
+            restarted.submit(self.a, payload())
         self.assertEqual(len(self.broker.calls), 0)
 
 

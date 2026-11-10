@@ -1,6 +1,6 @@
-# Staging PCA schema change preview — approval required
+# Staging PCA schema change preview — approved and applied
 
-Target **only** `FlavorInsightAI-Staging`, project ref `zwbzyrshzegwlgcaxudo`, organization slug `wkbburugozvjmhjgwjsz`. Read-only Management API check on 2026-11-10 returned `ACTIVE_HEALTHY`; `public.ai_pca_jobs` does not exist (`to_regclass` false). No SQL in this change has been executed remotely.
+Target **only** `FlavorInsightAI-Staging`, project ref `zwbzyrshzegwlgcaxudo`, organization slug `wkbburugozvjmhjgwjsz`. The pre-change read-only Management API check on 2026-11-10 returned `ACTIVE_HEALTHY`; `public.ai_pca_jobs` did not exist. After explicit user approval, this exact-hash migration was applied to Staging as version `20261110014237`. See [actual read-back and real-JWT validation](AI_PCA_STAGING_VALIDATION.md). Production remains untouched.
 
 Exact 43-line SQL: [20261110090000_ai_pca_jobs.sql](../../supabase/migrations/20261110090000_ai_pca_jobs.sql). SHA-256: `36873E47D15FB0BB5179FFF22A9732AA9F1C19A91F8F34889269081004D22174`. Review the whole linked SQL before approval; no hidden or generated SQL is planned.
 

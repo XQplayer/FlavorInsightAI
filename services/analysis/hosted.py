@@ -80,6 +80,14 @@ class SupabasePcaStore:
         rows = self._request('ai_pca_jobs?' + query, principal.token)
         return rows[0] if isinstance(rows, list) and len(rows) == 1 else None
 
+    def count_since(self, principal, since_iso, limit=20):
+        query = urlencode({'user_id': f'eq.{principal.user_id}', 'created_at': f'gte.{since_iso}',
+                           'select': 'id', 'limit': str(limit)})
+        rows = self._request('ai_pca_jobs?' + query, principal.token)
+        if not isinstance(rows, list):
+            raise HostedPcaError('STORE_UNAVAILABLE', 503)
+        return len(rows)
+
     def insert(self, row):
         rows = self._request('ai_pca_jobs', self.secret_key, 'POST', row, 'return=representation', admin=True)
         if not isinstance(rows, list) or len(rows) != 1 or rows[0].get('id') != row['id']:
@@ -162,6 +170,9 @@ class HostedPca:
             if existing.get('request_sha256') != request_hash:
                 raise HostedPcaError('IDEMPOTENCY_CONFLICT', 409)
             return self._public(self._recover_if_orphaned(principal, existing))
+        since = datetime.fromtimestamp(self.now() - 86400, timezone.utc).isoformat()
+        if self.store.count_since(principal, since) >= 20:
+            raise HostedPcaError('DAILY_LIMIT', 429)
         with self.lock:
             recent = self.recent[principal.user_id]
             while recent and self.now() - recent[0] > 60:
