@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 import re
+import uuid
 from urllib.parse import urlsplit
 
 from services.ai_gateway import AIGateway, GatewayError
@@ -121,6 +122,13 @@ def main():
     if enabled:
         if os.environ.get('FLAVOR_AI_PCA_SINGLE_INSTANCE', '').lower() != 'true':
             raise SystemExit('PCA requires an explicitly configured single instance')
+        raw_users = os.environ.get('FLAVOR_AI_PCA_ALLOWED_USER_IDS', '')
+        try:
+            allowed_users = {str(uuid.UUID(item.strip())) for item in raw_users.split(',') if item.strip()}
+        except ValueError:
+            raise SystemExit('PCA allowlist contains an invalid user ID') from None
+        if not allowed_users:
+            raise SystemExit('PCA requires an explicit nonempty server-side user allowlist')
         supabase_url = os.environ.get('FLAVOR_AI_SUPABASE_URL', '').rstrip('/')
         expected_ref = os.environ.get('FLAVOR_AI_PCA_PROJECT_REF', '')
         actual_ref = (urlsplit(supabase_url).hostname or '').split('.')[0]
@@ -130,7 +138,7 @@ def main():
                                 os.environ.get('FLAVOR_AI_PCA_SUPABASE_SECRET_KEY', ''))
         broker = AnalysisService(rscript=os.environ.get('ANALYSIS_RSCRIPT', '/usr/bin/Rscript'),
                                  max_running=1, max_queued=4, timeout=120, max_history=32)
-        hosted = HostedPca(store, broker)
+        hosted = HostedPca(store, broker, allowed_users=allowed_users)
     port = int(os.environ.get('PORT', '10000'))
     server = create_server(hosted, gateway, port=port, host='0.0.0.0')
     try:

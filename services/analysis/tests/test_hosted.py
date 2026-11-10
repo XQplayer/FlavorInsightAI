@@ -140,6 +140,12 @@ class HostedPcaTest(unittest.TestCase):
             restarted.submit(self.a, payload())
         self.assertEqual(len(self.broker.calls), 0)
 
+    def test_server_side_allowlist_rejects_approved_nonpilot_user(self):
+        pilot = HostedPca(self.store, self.broker, allowed_users={'user-a'})
+        with self.assertRaisesRegex(HostedPcaError, 'PCA_ACCESS_DENIED'):
+            pilot.submit(self.b, payload())
+        self.assertEqual(len(self.broker.calls), 0)
+
 
 class SupabaseStoreHeaderTest(unittest.TestCase):
     def test_user_reads_use_anon_key_and_jwt_while_writes_use_secret(self):

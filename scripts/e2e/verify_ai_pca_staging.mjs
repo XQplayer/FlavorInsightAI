@@ -76,6 +76,7 @@ async function main() {
     cwd: process.cwd(), windowsHide: true, stdio: 'ignore', env: { ...env,
       FLAVOR_AI_PCA_ENABLED: 'true', FLAVOR_AI_SUPABASE_URL: url,
       FLAVOR_AI_PCA_SINGLE_INSTANCE: 'true',
+      FLAVOR_AI_PCA_ALLOWED_USER_IDS: `${a.id},${b.id}`,
       FLAVOR_AI_SUPABASE_ANON_KEY: anon, FLAVOR_AI_PCA_SUPABASE_SECRET_KEY: secret,
       FLAVOR_AI_PCA_PROJECT_REF: ref, FLAVOR_AI_ALLOWED_ORIGINS: origin,
       PORT: String(port),

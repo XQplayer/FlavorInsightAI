@@ -59,6 +59,7 @@ try {
   hosted = spawn(env.FLAVOR_RLS_TEST_PYTHON || 'python', ['-m', 'services.analysis.hosted_http'], {
     cwd: root, windowsHide: true, stdio: 'ignore', env: { ...env,
       FLAVOR_AI_PCA_ENABLED: 'true', FLAVOR_AI_PCA_SINGLE_INSTANCE: 'true',
+      FLAVOR_AI_PCA_ALLOWED_USER_IDS: userId,
       FLAVOR_AI_SUPABASE_URL: url, FLAVOR_AI_SUPABASE_ANON_KEY: env.SUPABASE_STAGING_ANON_KEY,
       FLAVOR_AI_PCA_SUPABASE_SECRET_KEY: env.SUPABASE_STAGING_SERVICE_ROLE_KEY,
       FLAVOR_AI_PCA_PROJECT_REF: ref, FLAVOR_AI_ALLOWED_ORIGINS: origin, PORT: '19195',

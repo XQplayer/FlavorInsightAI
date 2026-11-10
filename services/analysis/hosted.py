@@ -100,13 +100,16 @@ class SupabasePcaStore:
 
 
 class HostedPca:
-    def __init__(self, store, broker, now=time.time):
+    def __init__(self, store, broker, now=time.time, allowed_users=None):
         self.store, self.broker, self.now = store, broker, now
+        self.allowed_users = None if allowed_users is None else frozenset(allowed_users)
         self.lock = threading.RLock()
         self.active = {}
         self.recent = defaultdict(deque)
 
     def _authorize(self, principal):
+        if self.allowed_users is not None and principal.user_id not in self.allowed_users:
+            raise HostedPcaError('PCA_ACCESS_DENIED', 403)
         if principal.guest or not principal.token or not self.store.approved(principal):
             raise HostedPcaError('AUTH_REQUIRED', 401)
 
