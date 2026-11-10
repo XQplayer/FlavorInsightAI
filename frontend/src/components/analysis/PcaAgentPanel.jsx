@@ -9,7 +9,7 @@ const initialPrompt = () => {
   } catch { return '' }
 }
 
-export default function PcaAgentPanel({ dataset, available, busy, dirty, onConfirm, t }) {
+export default function PcaAgentPanel({ dataset, available, busy, dirty, hosted = false, onConfirm, t }) {
   const [prompt, setPrompt] = useState(initialPrompt)
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState('')
@@ -30,7 +30,9 @@ export default function PcaAgentPanel({ dataset, available, busy, dirty, onConfi
   }
   return <section className="analysis-section analysis-agent-plan" aria-label={t('Agents SAI PCA planning', 'Agents SAI PCA 规划')}>
     <h2>{t('Agents SAI · plan a PCA', 'Agents SAI · 规划 PCA')}</h2>
-    <p>{t('Inspect the selected local snapshot, review the suggested settings, then confirm before real R computation. Planning is deterministic; no raw matrix is sent to GPT.', '检查当前本地快照、核对建议参数，然后确认才会调用真实 R 计算。此处规划是确定性规则，不向 GPT 发送原始矩阵。')}</p>
+    <p>{hosted
+      ? t('Planning is deterministic. After confirmation, the matrix is sent to the authenticated R service and stored with the task for owner-scoped retrieval. Raw values are not sent to GPT.', '规划采用确定性规则。确认后，矩阵发送至需登录的 R 服务，并随任务保存供本人查询；原始数值不会发送给 GPT。')
+      : t('Inspect the selected local snapshot, review the suggested settings, then confirm before real R computation. Planning is deterministic; no raw matrix is sent to GPT.', '检查当前本地快照、核对建议参数，然后确认才会调用真实 R 计算。此处规划是确定性规则，不向 GPT 发送原始矩阵。')}</p>
     <label className="analysis-agent-prompt">{t('Research question', '科研问题')}
       <textarea value={prompt} onChange={event => { setPrompt(event.target.value); setPlan(null) }} maxLength={4000} rows={2} placeholder={t('Analyze overall patterns with PCA', '帮我分析整体差异，先做 PCA')} />
     </label>

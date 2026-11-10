@@ -125,7 +125,7 @@ export default function DataAnalysisPage({
       <button onClick={() => exportData('xlsx')}>XLSX</button>
     </>}
   </div>
- {PCA_AGENT_ENABLED && <PcaAgentPanel dataset={w.dataset} available={available} busy={busy} dirty={w.dirty} t={t} onConfirm={(request, receipt) => {
+ {PCA_AGENT_ENABLED && <PcaAgentPanel dataset={w.dataset} available={available} busy={busy} dirty={w.dirty} hosted={w.hosted} t={t} onConfirm={(request, receipt) => {
     w.setRecipe(request.recipe);
     w.setAnalysis(request.analysis);
     w.run(request, receipt);

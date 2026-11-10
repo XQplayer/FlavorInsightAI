@@ -20,4 +20,8 @@ Final run: exact project identity PASS; two approved non-admin synthetic users a
 
 ## Boundaries
 
-The probe used clearly labeled synthetic input; it did not test production users or production RLS. Staging's scoped PAT returned HTTP **403** for the production project metadata, so production schema/RLS comparison remains unverified. The hosted service is disabled by default, requires explicit single-instance mode, and has not been deployed. Dataset rows have a 30-day `expires_at` but no approved automatic purge; production retention and recovery operations require a separate reviewed plan. The browser path has not yet been tested against the hosted service with an approved Staging login.
+The probe used clearly labeled synthetic input; it did not test production users or production RLS. Staging's scoped PAT returned HTTP **403** for the production project metadata, so production schema/RLS comparison remains unverified. The hosted service is disabled by default, requires explicit single-instance mode, and has not been deployed. Dataset rows have a 30-day `expires_at` but no approved automatic purge; production retention and recovery operations require a separate reviewed plan.
+
+### Browser canary update
+
+`node --env-file=<ignored Staging file> scripts/e2e/verify_ai_pca_hosted_browser.mjs` passed with a newly created approved ordinary Staging account, local hosted R server and isolated Vite port 5181. It covered synthetic data load, natural-language PCA planning, explicit confirmation, real R completion, result JSON download (24 scores), desktop/mobile no-overflow, no browser page errors and test user/job cascade cleanup. Ignored evidence: `_local/verification/ai-pca-hosted/hosted-plan-desktop.png`, `hosted-result-desktop.png`, `hosted-result-mobile.png`, `hosted-result-synthetic.json`. The browser path is now tested locally against Staging; this remains distinct from a production deployment.
