@@ -1,4 +1,4 @@
-import { Component, useId, useRef, useState } from 'react';
+import { Component, useEffect, useId, useRef, useState } from 'react';
 import { DataTable } from './Controls.jsx';
 import { boundedPoints, finite, PALETTE, markerEncoding } from '../../analysis/plotModels.mjs';
 import { serializeSvg, rasterizeSvg } from '../../analysis/svgExport.mjs';
@@ -28,7 +28,14 @@ export function PlotFrame({
   const ref = useRef(null),
     id = useId(),
     [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [prepared, setPrepared] = useState(null);
+  useEffect(() => () => {
+    if (prepared) {
+      URL.revokeObjectURL(prepared.pngUrl);
+      URL.revokeObjectURL(prepared.metadataUrl);
+    }
+  }, [prepared]);
   const meta = {
     ...metadata,
     title,
@@ -48,11 +55,20 @@ export function PlotFrame({
         name = `analysis-${String(metadata.runId || 'plot').replace(/[^a-zA-Z0-9_-]/g, '_')}-${String(metadata.view || 'plot').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
       if (format === 'svg') downloadFile(`${name}.svg`, text, 'image/svg+xml;charset=utf-8');else {
         const blob = await rasterizeSvg(text, width, height);
-        downloadFile(`${name}.png`, blob, 'image/png');
-        downloadFile(`${name}-metadata.json`, JSON.stringify({
+        const metadataText = JSON.stringify({
           ...meta,
           format: 'PNG'
-        }, null, 2));
+        }, null, 2);
+        // WebKit may reject an automatic download after async image decoding.
+        // Keep explicit links to the already encoded files as a user-gesture fallback.
+        setPrepared({
+          pngUrl: URL.createObjectURL(blob),
+          metadataUrl: URL.createObjectURL(new Blob([metadataText], { type: 'application/json' })),
+          pngName: `${name}.png`,
+          metadataName: `${name}-metadata.json`
+        });
+        downloadFile(`${name}.png`, blob, 'image/png');
+        downloadFile(`${name}-metadata.json`, metadataText);
       }
     } catch (e) {
       setError(e.message);
@@ -63,6 +79,7 @@ export function PlotFrame({
   return <figure className="analysis-figure">
     <figcaption><strong>{title}</strong><p>{description}</p></figcaption>
     <div className="analysis-toolbar"><button disabled={busy} onClick={() => save('svg')}>{t('Export this SVG', '导出此 SVG')}</button><button disabled={busy} onClick={() => save('png')}>{t('Export this PNG + metadata', '导出此 PNG + 元数据')}</button><span>{width} × {height} px · {t('opaque background; no automatic DPI claim', '不透明背景；不自动声明 DPI')}</span></div>
+    {prepared && <div className="analysis-toolbar"><a href={prepared.pngUrl} download={prepared.pngName}>{t('Download prepared PNG', '下载已生成 PNG')}</a><a href={prepared.metadataUrl} download={prepared.metadataName}>{t('Download PNG metadata', '下载 PNG 元数据')}</a></div>}
     {error && <p role="alert">{error}</p>}
     <div className="analysis-plot-scroll"><svg ref={ref} data-plot={JSON.stringify(meta)} width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`${id}-title ${id}-desc`} xmlns="http://www.w3.org/2000/svg" fontFamily="Arial, sans-serif" fontSize="12" fill="#17212b" style={{
         background: '#fff'
