@@ -20,6 +20,8 @@ try {
     const page = await context.newPage();
     let localApiCalls = 0;
     const posts = [];
+    const workerPaths = [];
+    page.on('worker', worker => workerPaths.push(new URL(worker.url()).pathname));
     page.on('request', request => { if (request.method() === 'POST') posts.push(request.url()); });
     await page.route('http://127.0.0.1:8890/**', route => { localApiCalls++; route.abort(); });
     await page.goto(base, { waitUntil: 'domcontentloaded' });
@@ -28,6 +30,7 @@ try {
     await page.getByText(/Calculation complete|计算完成/).waitFor({ timeout: 20000 });
     assert.equal(await page.locator('svg[data-plot]').count(), 1);
     assert.equal(localApiCalls, 0, `${name}: browser path called local API`);
+    assert.ok(workerPaths.some(workerPath => workerPath.startsWith('/FlavorInsightAI/') && workerPath.includes('browserPca.worker')), `${name}: Browser PCA Worker not loaded from the deployment base`);
     for (const view of ['scores', 'loadings', 'biplot', 'scree']) {
       await page.getByRole('combobox', { name: /Figure|图表/ }).selectOption(view);
       const plot = JSON.parse(await page.locator('svg[data-plot]').getAttribute('data-plot'));
@@ -64,7 +67,12 @@ try {
       await page.getByRole('button', { name: /result JSON|结果 JSON/ }).click();
       const json = await jsonDownload;
       assert.match(json.suggestedFilename(), /\.json$/);
-      assert.equal(JSON.parse(await fs.readFile(await json.path(), 'utf8')).result.method, 'pca');
+      const archive = JSON.parse(await fs.readFile(await json.path(), 'utf8'));
+      assert.equal(archive.schema_version, 'flavor-pca-result/1');
+      assert.equal(archive.engine, 'browser-pca');
+      assert.equal(archive.scores.values.length, 6);
+      assert.equal(archive.dataset_metadata.synthetic, true);
+      assert.equal('matrix' in archive.dataset_metadata, false);
 
       const rows = [['sample', 'group', 'A', 'B'], ['S1', 'G1', 1, 2], ['S2', 'G1', 2, 3], ['S3', 'G2', 4, 2], ['S4', 'G2', 5, 4]];
       const fileInput = page.locator('input[type=file]');
@@ -102,7 +110,7 @@ try {
       assert.deepEqual(posts, [], 'browser import/compute must not POST data');
       await page.screenshot({ path: path.join(out, 'desktop-missing-mean-pca.png'), fullPage: true });
     }
-    results.push({ viewport: name, width: viewport.width, localApiCalls, overflow, figures: 4, status: 'PASS' });
+    results.push({ viewport: name, width: viewport.width, localApiCalls, workerPaths, overflow, figures: 4, status: 'PASS' });
     await context.close();
   }
   await fs.writeFile(path.join(out, 'result.json'), JSON.stringify(results, null, 2));

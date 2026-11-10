@@ -5,6 +5,7 @@ import { createDataset } from '../analysis/dataset.mjs';
 import { createBrowserPcaEngine } from '../analysis/browserPcaEngine.mjs';
 import { BROWSER_PCA_LIMITS } from '../analysis/browserPca.mjs';
 import { pcaCsv } from '../analysis/browserPcaPresentation.mjs';
+import { toUnifiedPcaResult } from '../analysis/pcaResult.mjs';
 import { downloadFile } from '../analysis/download.mjs';
 import { Check, DataTable, Field, NumberField, Select, TextField } from '../components/analysis/Controls.jsx';
 import BrowserPcaPlot from '../components/analysis/BrowserPcaPlot.jsx';
@@ -90,9 +91,7 @@ export default function BrowserPcaPage() {
   const save = format => {
     if (!result || !dataset) return;
     const stem = `browser-pca-${result.provenance.runId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-    if (format === 'json') downloadFile(`${stem}.json`, JSON.stringify({ dataset: {
-      id: dataset.id, name: dataset.name, samples: dataset.samples, features: dataset.features, provenance: dataset.provenance
-    }, result }, null, 2));
+    if (format === 'json') downloadFile(`${stem}.json`, JSON.stringify(toUnifiedPcaResult(result, dataset), null, 2));
     else { const files = pcaCsv(result, dataset); downloadFile(`${stem}-${format}.csv`, files[format], 'text/csv;charset=utf-8'); }
   };
   const groups = result && dataset ? [...new Set(result.data.sampleIds.map(id => dataset.samples.find(sample => sample.id === id)?.group || 'Ungrouped'))] : [];
