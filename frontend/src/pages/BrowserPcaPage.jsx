@@ -48,14 +48,21 @@ export default function BrowserPcaPage() {
   const [owner, setOwner] = useState(''), [savedRuns, setSavedRuns] = useState([]), [currentRunId, setCurrentRunId] = useState('');
   const [goal, setGoal] = useState(''), [aiPlan, setAiPlan] = useState(null), [aiMode, setAiMode] = useState('');
   const [aiBusy, setAiBusy] = useState(false), [aiExplanation, setAiExplanation] = useState('');
+  const [aiEnabled, setAiEnabled] = useState(AI_GATEWAY_AVAILABLE);
   const controller = useRef(null), sequence = useRef(0), ownerIdentity = useRef('');
+  const aiController = useRef(null), aiSequence = useRef(0);
+  const cancelAi = () => { aiSequence.current++; aiController.current?.abort(); aiController.current = null; setAiBusy(false); };
+  const toggleAi = enabled => {
+    if (!enabled) { cancelAi(); setAiPlan(null); setAiExplanation(''); }
+    setAiEnabled(enabled);
+  };
   useEffect(() => {
     let live = true;
     const update = session => {
       if (!live) return;
       const next = session?.user?.id || 'local-guest';
       if (ownerIdentity.current === next) return;
-      ownerIdentity.current = next; sequence.current++; controller.current?.abort();
+      ownerIdentity.current = next; sequence.current++; controller.current?.abort(); cancelAi();
       setBook(null); setCandidate(null); setDataset(null); setResult(null); setCurrentRunId('');
       setAiPlan(null); setAiExplanation(''); setSourceHash(''); setStatus('idle');
       setOwner(next); setSavedRuns([]);
@@ -69,9 +76,9 @@ export default function BrowserPcaPage() {
     return () => { live = false; };
   }, []);
   useEffect(() => { if (owner) runStore.list(owner).then(setSavedRuns).catch(() => setSavedRuns([])); }, [owner, runStore]);
-  useEffect(() => () => { sequence.current++; controller.current?.abort(); runStore.close(); }, [runStore]);
+  useEffect(() => () => { sequence.current++; controller.current?.abort(); aiSequence.current++; aiController.current?.abort(); runStore.close(); }, [runStore]);
   const refreshSaved = () => owner && runStore.list(owner).then(setSavedRuns);
-  const resetResult = () => { sequence.current++; controller.current?.abort(); controller.current = null; setResult(null); setCurrentRunId(''); setAiPlan(null); setAiExplanation(''); setError(''); setStatus('idle'); };
+  const resetResult = () => { sequence.current++; controller.current?.abort(); controller.current = null; cancelAi(); setResult(null); setCurrentRunId(''); setAiPlan(null); setAiExplanation(''); setError(''); setStatus('idle'); };
   const updateOption = (key, value) => { setOptions(current => ({ ...current, [key]: value, ...(key === 'scale' && value !== 'none' ? { center: true } : {}) })); resetResult(); };
   const updatePlot = (key, value) => setPlot(current => ({ ...current, [key]: value }));
   const rows = book?.sheets[sheet]?.rows ?? [], header = rows[headerRow] ?? [];
@@ -120,29 +127,39 @@ export default function BrowserPcaPage() {
   const run = () => runWithPlan({ schema_version: BROWSER_PCA_PLAN_SCHEMA, algorithm: 'pca', dataset_id: dataset?.id, options });
   const cancel = () => { controller.current?.abort(); };
   const requestPlan = async () => {
-    if (!AI_GATEWAY_AVAILABLE || !dataset || !goal.trim() || aiBusy) return;
+    if (!aiEnabled || !dataset || !goal.trim() || aiBusy) return;
+    const requestId = ++aiSequence.current;
+    const abort = new AbortController();
+    aiController.current = abort;
     setAiBusy(true); setError(''); setAiPlan(null);
     try {
       const inspection = adapter.inspect_dataset(dataset);
       if (!adapter.recommend_analysis(dataset).candidate) throw new Error('PCA_INPUT_INVALID');
       await aiChatClient.session();
-      const response = await aiChatClient.analysisPlan(goal.trim().slice(0, 500), inspection);
+      if (requestId !== aiSequence.current) return;
+      const response = await aiChatClient.analysisPlan(goal.trim().slice(0, 500), inspection, abort.signal);
+      if (requestId !== aiSequence.current) return;
       const prepared = adapter.prepare_pca(dataset, response.plan);
       setAiPlan({ ...response.plan, preview: prepared }); setAiMode(response.mode);
-    } catch (cause) { setError(errorText(cause.message, t)); }
-    finally { setAiBusy(false); }
+    } catch (cause) { if (requestId === aiSequence.current) setError(errorText(cause.message, t)); }
+    finally { if (requestId === aiSequence.current) { aiController.current = null; setAiBusy(false); } }
   };
   const explain = async () => {
-    if (!AI_GATEWAY_AVAILABLE || !currentRunId || aiBusy) return;
+    if (!aiEnabled || !currentRunId || aiBusy) return;
+    const requestId = ++aiSequence.current;
+    const abort = new AbortController();
+    aiController.current = abort;
     setAiBusy(true); setError('');
     try {
       adapter.confirm_explanation(currentRunId); // User clicked after seeing exactly which facts are sent.
       const facts = adapter.explain_pca_result(currentRunId);
       await aiChatClient.session();
-      const response = await aiChatClient.analysisExplain(facts, language);
+      if (requestId !== aiSequence.current) return;
+      const response = await aiChatClient.analysisExplain(facts, language, abort.signal);
+      if (requestId !== aiSequence.current) return;
       setAiMode(response.mode); setAiExplanation(response.explanation);
-    } catch (cause) { setError(errorText(cause.message, t)); }
-    finally { setAiBusy(false); }
+    } catch (cause) { if (requestId === aiSequence.current) setError(errorText(cause.message, t)); }
+    finally { if (requestId === aiSequence.current) { aiController.current = null; setAiBusy(false); } }
   };
   const saveLocal = async () => {
     if (!owner || !dataset || !result) return;
@@ -215,9 +232,11 @@ export default function BrowserPcaPage() {
     </section>
     <section className="browser-pca-card"><h2>02A · {t('Agents SAI analysis plan', 'Agents SAI 分析计划')}</h2>
       <p>{t('Only sample/feature counts, warning codes and source hash are sent when you request a plan. The numeric matrix stays in this browser.', '仅在请求计划时发送样品/变量数量、警告代码和源文件哈希；数值矩阵仍留在浏览器。')}</p>
+      <Check label={t('Enable AI analysis', '启用 AI 分析')} value={aiEnabled} onChange={toggleAi} disabled={!AI_GATEWAY_AVAILABLE} />
       {!AI_GATEWAY_AVAILABLE && <p role="note">{t('AI planning is unavailable in this static Pages preview. Use Browser PCA directly; a separately deployed authenticated Gateway is required for online AI.', '静态 Pages 预览不提供 AI 计划。可直接运行浏览器 PCA；线上 AI 需另行部署经过认证的 Gateway。')}</p>}
+      {AI_GATEWAY_AVAILABLE && !aiEnabled && <p role="note">{t('AI analysis is off. Browser PCA calculation, plots, saves and exports remain available.', 'AI 分析已关闭；浏览器 PCA 计算、绘图、保存与导出仍可使用。')}</p>}
       <TextField label={t('Analysis goal', '分析目标')} value={goal} onChange={value => setGoal(value.slice(0, 500))} />
-      <button type="button" disabled={!AI_GATEWAY_AVAILABLE || !dataset || !goal.trim() || aiBusy || status === 'running'} onClick={requestPlan}>{t('Ask AI for PCA settings', '请求 AI 推荐 PCA 参数')}</button>
+      <button type="button" disabled={!aiEnabled || !dataset || !goal.trim() || aiBusy || status === 'running'} onClick={requestPlan}>{t('Ask AI for PCA settings', '请求 AI 推荐 PCA 参数')}</button>
       {aiPlan && <div className="analysis-notice"><p>{aiMode === 'mock' ? t('Mock plan, not GPT', 'Mock 计划，非 GPT') : t('Model plan · review before calculation', '模型计划 · 计算前请核对')} · {aiPlan.dataset_id}</p><pre>{JSON.stringify(aiPlan.preview.options, null, 2)}</pre><p>{t('PCA is exploratory. Missing or constant value policies may alter the selected matrix.', 'PCA 属于探索性分析；缺失值或常量处理策略可能改变所选矩阵。')}</p><button type="button" disabled={status === 'running'} onClick={() => runWithPlan({ schema_version: aiPlan.schema_version, algorithm: aiPlan.algorithm, dataset_id: aiPlan.dataset_id, options: aiPlan.preview.options })}>{t('Confirm settings and run in browser', '确认参数并在浏览器运行')}</button></div>}
     </section>
     {result && dataset && <section className="browser-pca-card"><h2>03 · {t('Results and scientific figures', '结果与科研图表')}</h2>
@@ -226,7 +245,7 @@ export default function BrowserPcaPage() {
       {(result.preprocessing.inputCellStates.unknown || result.preprocessing.inputCellStates.unspecified || result.preprocessing.inputCellStates['original-imputed']) && <p role="note">{t('Input cell lineage includes unknown or previously imputed values; interpret separation cautiously and inspect the audit.', '输入单元格含来源未知或此前已补值的数据；请谨慎解释分离情况并查看审计。')}</p>}
       <div className="analysis-toolbar">{['scores', 'loadings', 'variance'].map(kind => <button type="button" key={kind} onClick={() => save(kind)}>{t('Export', '导出')} {kind} CSV</button>)}<button type="button" onClick={() => save('json')}>{t('Export result JSON', '导出结果 JSON')}</button><button type="button" onClick={saveLocal}>{t('Save in this browser', '保存到本浏览器')}</button><button type="button" onClick={exportArchive}>{t('Export full analysis archive', '导出完整分析档案')}</button></div>
       <p>{t('Saving is optional. This archive contains the selected numeric matrix and may be visible to others using the same browser profile. Export a backup before clearing browser data.', '保存需主动操作。分析档案含选定的数值矩阵；同一浏览器配置的其他使用者可能看到。清除浏览器数据前请导出备份。')}</p>
-      <div className="analysis-notice"><p>{t('Share only the run ID, dimensions, parameters, explained variance and warnings with Agents SAI. No raw matrix or sample scores are sent. The server cannot independently verify browser calculations.', '仅向 Agents SAI 发送运行 ID、维度、参数、解释方差和警告；不发送原始矩阵或样品得分。服务端无法独立复算浏览器结果。')}</p><button type="button" disabled={!AI_GATEWAY_AVAILABLE || aiBusy || !currentRunId} onClick={explain}>{t('Confirm sharing summary and ask AI to explain', '确认分享摘要并请求 AI 解读')}</button>{aiExplanation && <p role="status"><strong>{aiMode === 'mock' ? 'Mock · ' : 'Agents SAI · '}</strong>{aiExplanation}</p>}</div>
+      <div className="analysis-notice"><p>{t('Share only the run ID, dimensions, parameters, explained variance and warnings with Agents SAI. No raw matrix or sample scores are sent. The server cannot independently verify browser calculations.', '仅向 Agents SAI 发送运行 ID、维度、参数、解释方差和警告；不发送原始矩阵或样品得分。服务端无法独立复算浏览器结果。')}</p><button type="button" disabled={!aiEnabled || aiBusy || !currentRunId} onClick={explain}>{t('Confirm sharing summary and ask AI to explain', '确认分享摘要并请求 AI 解读')}</button>{aiExplanation && <p role="status"><strong>{aiMode === 'mock' ? 'Mock · ' : 'Agents SAI · '}</strong>{aiExplanation}</p>}</div>
       <details><summary>{t('Preprocessing audit', '预处理审计')}</summary><pre>{JSON.stringify(result.preprocessing, null, 2)}</pre></details>
       <div className="analysis-grid"><Select label={t('Figure', '图表')} value={plot.view} onChange={value => updatePlot('view', value)} options={[{ value: 'scores', label: t('Score plot', '得分图') }, { value: 'loadings', label: t('Loading plot', '载荷图') }, { value: 'biplot', label: t('Biplot', '双标图') }, { value: 'scree', label: t('Scree plot', '碎石图') }]} />
         <Select label={t('Legend', '图例位置')} value={plot.legend} onChange={value => updatePlot('legend', value)} options={['bottom', 'right', 'hidden']} />
