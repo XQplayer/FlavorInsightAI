@@ -23,3 +23,7 @@ Date: 2026-11-10. Audited branch `codex/browser-pca`, base commit `ebdfcf0e26b6e
 4. If the Worker or route fails, roll back the Pages release to the prior commit through the approved release procedure. No database migration is involved in Browser PCA.
 
 **Current gate:** local production-build compatibility PASS in Chrome and Edge, including recorded Worker request paths under `/FlavorInsightAI/assets/`; real GitHub Pages Worker **NOT VERIFIED**. No push, PR change, deployment or production database write in this task.
+
+## Release ancestry caveat
+
+At the subsequent design check, local `git rev-list --left-right --count main...codex/browser-pca` returned `0 12`: the Browser PCA branch contains 12 commits not in local `main`, including AI assistant release-candidate history preceding `ebdfcf0`. This is a local branch snapshot, not a fresh remote comparison. Before preparing a Browser PCA PR or merge, compare against the then-current remote `main` and account for that dependency chain; do not silently merge unrelated changes or edit PR #24/#25.

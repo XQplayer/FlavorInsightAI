@@ -1,6 +1,6 @@
 # PCA result protocol v1
 
-The executable contract is `frontend/src/analysis/pcaResult.mjs` (`toUnifiedPcaResult`, `validateUnifiedPcaResult`). Browser JSON export uses this protocol. A future Hosted PCA adapter must emit and validate the **same envelope** without claiming it used the browser algorithm.
+The machine-readable structural contract is `frontend/src/analysis/analysisResult.pca.v1.schema.json` (JSON Schema Draft 2020-12). The executable cross-field validator is `frontend/src/analysis/pcaResult.mjs` (`toUnifiedPcaResult`, `validateUnifiedPcaResult`); it additionally checks aligned dimensions and variance consistency, which the structural schema alone cannot express. Browser JSON export uses this protocol. A future Hosted PCA adapter must emit and validate the **same envelope** without claiming it used the browser algorithm.
 
 ## Top-level fields
 
@@ -28,4 +28,4 @@ The executable contract is `frontend/src/analysis/pcaResult.mjs` (`toUnifiedPcaR
 
 ## Code and test evidence
 
-`node --test frontend/src/analysis/pcaResult.test.mjs` checks conversion, browser/hosted identity, source hash rules, raw-matrix exclusion and malformed values. The Browser PCA E2E checks that exported JSON has the v1 envelope and remains tied to the completed synthetic result. This validates the current browser producer; no Hosted implementation is claimed.
+`node --test frontend/src/analysis/pcaResult.test.mjs` checks conversion, browser/hosted identity, source hash rules, raw-matrix exclusion and malformed values. `scripts/references/validate_browser_pca_schema.py` validates a generated synthetic result against the Draft 2020-12 schema using an isolated Python validation environment; it also rejects wrong engine and protocol version. The Browser PCA E2E checks that exported JSON has the v1 envelope and remains tied to the completed synthetic result. This validates the current browser producer; no Hosted implementation is claimed.
