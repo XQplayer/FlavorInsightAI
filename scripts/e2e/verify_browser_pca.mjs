@@ -80,10 +80,13 @@ try {
       const svg = await svgDownload;
       assert.match(svg.suggestedFilename(), /\.svg$/);
       assert.match(await fs.readFile(await svg.path(), 'utf8'), /synthetic-r-prcomp-6x3-v1/);
-      const pngDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('.png') });
+      const pngDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('.png'), timeout: 12000 });
       const metadataDownload = page.waitForEvent('download', { predicate: download => download.suggestedFilename().endsWith('-metadata.json') });
       await figureButtons.nth(1).click();
-      const png = await pngDownload;
+      const png = await pngDownload.catch(async cause => {
+        const alerts = await page.locator('figure.analysis-figure [role="alert"]').allInnerTexts();
+        throw new Error(`PNG export did not download: ${alerts.join('; ') || cause.message}`);
+      });
       assert.match(png.suggestedFilename(), /\.png$/);
       assert.equal((await fs.readFile(await png.path())).subarray(1, 4).toString(), 'PNG');
       const pngMeta = await metadataDownload;
