@@ -260,6 +260,18 @@ class GatewayUnitTests(unittest.TestCase):
             self.assertEqual(request.headers["Authorization"], "Bearer synthetic-service-key")
         self.assertNotIn("synthetic-service-key", str([request.full_url for request in requests]))
 
+    def test_persistent_session_list_paginates_without_cross_owner_query(self):
+        owner = "11111111-1111-4111-8111-111111111111"
+        requests = []
+        def fake_open(request, timeout):
+            requests.append(request.full_url)
+            rows = [{"id": str(index)} for index in range(500)] if "offset=0" in request.full_url else [{"id": "500"}]
+            return io.BytesIO(json.dumps(rows).encode())
+        store = SupabaseConversationStore("https://example.supabase.co", "synthetic-service-key", open_url=fake_open)
+        self.assertEqual(len(store.list(owner)), 501)
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(all("user_id=eq." + owner in url for url in requests))
+
     def test_upstream_rate_limit_retries_once_then_fails_without_saving_message(self):
         attempts = []
         def limited(request, timeout):

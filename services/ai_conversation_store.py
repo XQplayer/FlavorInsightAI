@@ -62,9 +62,16 @@ class SupabaseConversationStore:
         return SupabaseConversationStore._uuid(value)
 
     def list(self, owner: str):
-        rows = self._request("ai_conversations", query={"user_id": "eq." + self._owner(owner),
-                             "select": "id,title,created_at,last_activity_at,title_source",
-                             "order": "last_activity_at.desc", "limit": "50"})
+        owner = self._owner(owner)
+        rows = []
+        while True:
+            batch = self._request("ai_conversations", query={"user_id": "eq." + owner,
+                                  "select": "id,title,created_at,last_activity_at,title_source",
+                                  "order": "last_activity_at.desc,id.desc", "limit": "500",
+                                  "offset": str(len(rows))})
+            rows.extend(batch)
+            if len(batch) < 500:
+                break
         return rows
 
     def get(self, owner: str, conversation_id: str):

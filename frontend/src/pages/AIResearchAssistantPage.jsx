@@ -3,6 +3,7 @@ import { BookOpen, CircleStop, Clipboard, MessageCircle, Pencil, Plus, RotateCcw
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { aiChatClient } from '../lib/aiChatClient.js'
+import { supabase } from '../lib/supabase.js'
 import './AIResearchAssistantPage.css'
 
 const COPY = {
@@ -42,29 +43,52 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
   const [usage, setUsage] = useState(null)
   const abortRef = useRef(null)
   const requestEpoch = useRef(0)
+  const authIdentity = useRef(undefined)
   const endRef = useRef(null)
 
   useEffect(() => {
     let live = true
-    aiChatClient.session().then(async config => {
-      if (!live) return
-      setConfiguration(config)
-      const list = await aiChatClient.list()
-      if (live) {
-        setConversations(list.conversations || [])
-        const selected = new URLSearchParams(window.location.search).get('conversation_id')
-        if (selected && (list.conversations || []).some(item => item.id === selected)) {
-          const history = await aiChatClient.get(selected)
-          if (live) { setConversationId(selected); setMessages(history.messages || []); setAnalysisLinks(history.analysis_links || []) }
+    const load = async epoch => {
+      try {
+        const config = await aiChatClient.session()
+        const list = await aiChatClient.list()
+        if (live && requestEpoch.current === epoch) {
+          setConfiguration(config)
+          setConversations(list.conversations || [])
+          const selected = new URLSearchParams(window.location.search).get('conversation_id')
+          if (selected && (list.conversations || []).some(item => item.id === selected)) {
+            const history = await aiChatClient.get(selected)
+            if (live && requestEpoch.current === epoch) { setConversationId(selected); setMessages(history.messages || []); setAnalysisLinks(history.analysis_links || []) }
+          }
         }
-      }
-    }).catch(value => { if (live) setError(value.message) })
-    return () => { live = false; abortRef.current?.abort() }
+      } catch (value) { if (live && requestEpoch.current === epoch) setError(value.message) }
+    }
+    load(requestEpoch.current)
+    const listener = supabase?.auth.onAuthStateChange((_event, session) => {
+      const next = session?.user?.id || 'guest'
+      const previous = authIdentity.current
+      authIdentity.current = next
+      if (previous === next || (previous === undefined && _event === 'INITIAL_SESSION')) return
+      const epoch = ++requestEpoch.current
+      abortRef.current?.abort()
+      setBusy(false); setConfiguration(null); setConversations([]); setConversationId(null)
+      setMessages([]); setAnalysisLinks([]); setError(''); setUsage(null)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('conversation_id')
+      window.history.replaceState(window.history.state, '', url)
+      window.setTimeout(() => { if (live) load(epoch) }, 0)
+    })
+    return () => { live = false; abortRef.current?.abort(); listener?.data.subscription.unsubscribe() }
   }, [])
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' }) }, [messages])
 
-  const refreshList = () => aiChatClient.list().then(value => setConversations(value.conversations || [])).catch(() => {})
+  const refreshList = () => {
+    const epoch = requestEpoch.current
+    return aiChatClient.list().then(value => {
+      if (requestEpoch.current === epoch) setConversations(value.conversations || [])
+    }).catch(() => {})
+  }
   const selectUrl = id => {
     const url = new URL(window.location.href)
     if (id) url.searchParams.set('conversation_id', id)
@@ -100,16 +124,15 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
     try { await aiChatClient.rename(item.id, title.trim()); await refreshList() }
     catch (value) { setError(value.message) }
   }
-  const send = async (question = draft, retry = false) => {
+  const send = async (question = draft) => {
     const text = question.trim()
     if (!text || busy) return
     setError(''); setUsage(null); setBusy(true); setDraft('')
     const controller = new AbortController()
     const epoch = ++requestEpoch.current
     abortRef.current = controller
-    const assistantIndex = retry ? messages.length - 1 : messages.length + 1
-    if (retry) setMessages(current => [...current.slice(0, -1), { role: 'assistant', content: '', sources: [], toolEvents: [] }])
-    else setMessages(current => [...current, { role: 'user', content: text }, { role: 'assistant', content: '', sources: [], toolEvents: [] }])
+    const assistantIndex = messages.length + 1
+    setMessages(current => [...current, { role: 'user', content: text }, { role: 'assistant', content: '', sources: [], toolEvents: [] }])
     try {
       let id = conversationId
       if (!id) { const created = await aiChatClient.create(); id = created.id; if (epoch !== requestEpoch.current) return; setConversationId(id); selectUrl(id) }
@@ -130,7 +153,7 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
   }
   const retry = () => {
     const lastUser = [...messages].reverse().find(item => item.role === 'user')
-    if (lastUser) send(lastUser.content, messages.at(-1)?.role === 'assistant')
+    if (lastUser) send(lastUser.content)
   }
   const copyAnswer = async text => { await navigator.clipboard.writeText(text); setCopied(true); window.setTimeout(() => setCopied(false), 1600) }
 
