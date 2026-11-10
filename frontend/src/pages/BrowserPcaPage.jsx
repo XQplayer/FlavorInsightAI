@@ -22,6 +22,10 @@ const INITIAL = { missing: 'error', constant: 'error', center: true, scale: 'non
 const PLOT_INITIAL = { view: 'scores', sampleLabels: false, variableLabels: false, legend: 'bottom', zoom: 1, fontSize: 12, xTitle: '', yTitle: '', groupStyles: {} };
 const IS_PREVIEW = import.meta.env.VITE_PCA_PREVIEW === 'true';
 const AI_GATEWAY_AVAILABLE = !IS_PREVIEW || Boolean(import.meta.env.VITE_FEMA_API_URL);
+const CONVERSATION_CONTEXT = (() => {
+  const value = new URLSearchParams(window.location.search).get('conversation_id');
+  return value && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+})();
 const errorText = (code, t) => ({
   MISSING_VALUES: t('Missing values remain. Choose an explicit policy, or inspect the source.', '仍有缺失值。请明确选择处理方式或检查源数据。'),
   ALL_MISSING_FEATURE: t('A variable is entirely missing; mean/median fill is impossible. Choose explicit feature exclusion.', '某变量全部缺失，无法计算均值或中位数；请明确选择剔除变量。'),
@@ -153,6 +157,7 @@ export default function BrowserPcaPage() {
     try {
       adapter.confirm_explanation(currentRunId); // User clicked after seeing exactly which facts are sent.
       const facts = adapter.explain_pca_result(currentRunId);
+      if (CONVERSATION_CONTEXT && owner !== 'local-guest') await aiChatClient.linkAnalysis(CONVERSATION_CONTEXT, facts);
       await aiChatClient.session();
       if (requestId !== aiSequence.current) return;
       const response = await aiChatClient.analysisExplain(facts, language, abort.signal);
@@ -245,7 +250,7 @@ export default function BrowserPcaPage() {
       {(result.preprocessing.inputCellStates.unknown || result.preprocessing.inputCellStates.unspecified || result.preprocessing.inputCellStates['original-imputed']) && <p role="note">{t('Input cell lineage includes unknown or previously imputed values; interpret separation cautiously and inspect the audit.', '输入单元格含来源未知或此前已补值的数据；请谨慎解释分离情况并查看审计。')}</p>}
       <div className="analysis-toolbar">{['scores', 'loadings', 'variance'].map(kind => <button type="button" key={kind} onClick={() => save(kind)}>{t('Export', '导出')} {kind} CSV</button>)}<button type="button" onClick={() => save('json')}>{t('Export result JSON', '导出结果 JSON')}</button><button type="button" onClick={saveLocal}>{t('Save in this browser', '保存到本浏览器')}</button><button type="button" onClick={exportArchive}>{t('Export full analysis archive', '导出完整分析档案')}</button></div>
       <p>{t('Saving is optional. This archive contains the selected numeric matrix and may be visible to others using the same browser profile. Export a backup before clearing browser data.', '保存需主动操作。分析档案含选定的数值矩阵；同一浏览器配置的其他使用者可能看到。清除浏览器数据前请导出备份。')}</p>
-      <div className="analysis-notice"><p>{t('Share only the run ID, dimensions, parameters, explained variance and warnings with Agents SAI. No raw matrix or sample scores are sent. The server cannot independently verify browser calculations.', '仅向 Agents SAI 发送运行 ID、维度、参数、解释方差和警告；不发送原始矩阵或样品得分。服务端无法独立复算浏览器结果。')}</p><button type="button" disabled={!aiEnabled || aiBusy || !currentRunId} onClick={explain}>{t('Confirm sharing summary and ask AI to explain', '确认分享摘要并请求 AI 解读')}</button>{aiExplanation && <p role="status"><strong>{aiMode === 'mock' ? 'Mock · ' : 'Agents SAI · '}</strong>{aiExplanation}</p>}</div>
+      <div className="analysis-notice"><p>{t('Share only the run ID, dimensions, parameters, explained variance and warnings with Agents SAI. No raw matrix or sample scores are sent. The server cannot independently verify browser calculations.', '仅向 Agents SAI 发送运行 ID、维度、参数、解释方差和警告；不发送原始矩阵或样品得分。服务端无法独立复算浏览器结果。')}</p><button type="button" disabled={!aiEnabled || aiBusy || !currentRunId} onClick={explain}>{t('Confirm sharing summary and ask AI to explain', '确认分享摘要并请求 AI 解读')}</button>{aiExplanation && <p role="status"><strong>{aiMode === 'mock' ? 'Mock · ' : 'Agents SAI · '}</strong>{aiExplanation}</p>}{CONVERSATION_CONTEXT && <p>{t('This result can be linked to your chat after confirmation; only the bounded summary is stored online.', '确认后可将此结果关联到当前对话；线上仅保存限量摘要。')} <a href={`../ai-assistant/?conversation_id=${encodeURIComponent(CONVERSATION_CONTEXT)}`}>{t('Return to conversation', '返回对话')}</a></p>}</div>
       <details><summary>{t('Preprocessing audit', '预处理审计')}</summary><pre>{JSON.stringify(result.preprocessing, null, 2)}</pre></details>
       <div className="analysis-grid"><Select label={t('Figure', '图表')} value={plot.view} onChange={value => updatePlot('view', value)} options={[{ value: 'scores', label: t('Score plot', '得分图') }, { value: 'loadings', label: t('Loading plot', '载荷图') }, { value: 'biplot', label: t('Biplot', '双标图') }, { value: 'scree', label: t('Scree plot', '碎石图') }]} />
         <Select label={t('Legend', '图例位置')} value={plot.legend} onChange={value => updatePlot('legend', value)} options={['bottom', 'right', 'hidden']} />

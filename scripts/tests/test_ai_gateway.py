@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 import fema_proxy_server
 from services.ai_gateway import AIGateway, GatewayError
+from services.ai_conversation_store import ConversationStoreError, SupabaseConversationStore
 from services.ai_tools import Principal, ResearchTools
 
 
@@ -115,6 +116,16 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertEqual(self.gateway.active[self.owner.user_id], 0)
         self.assertEqual(self.gateway.get_conversation(self.owner, conversation["id"])["messages"], [])
 
+    def test_same_conversation_rejects_concurrent_generation(self):
+        conversation = self.gateway.new_conversation(self.owner)
+        running = self.gateway.chat(self.owner, conversation["id"], "First turn")
+        self.assertEqual(next(running)["type"], "start")
+        with self.assertRaises(GatewayError) as caught:
+            self.gateway.chat(self.owner, conversation["id"], "Concurrent duplicate")
+        self.assertEqual(caught.exception.code, "CONCURRENCY_LIMIT")
+        running.close()
+        self.assertEqual(self.gateway.active_conversations, set())
+
     def test_model_cannot_issue_more_than_four_tools_in_one_round(self):
         calls = [{"type": "function_call", "name": "search_compound", "arguments": '{"query":"141-78-6"}', "call_id": f"call-{index}"} for index in range(5)]
         event = ("data: " + json.dumps({"type": "response.completed", "response": {"output": calls}}) + "\n\n").encode()
@@ -139,6 +150,115 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertLessEqual(sum(len(item["content"]) for item in history), 12_000)
         self.assertEqual(history[-1]["content"], messages[-1]["content"])
         self.assertLess(len(history), 16)
+
+    def test_ten_mocked_model_turns_keep_session_context_separate(self):
+        requests = []
+        def fake_open(request, timeout):
+            payload = json.loads(request.data)
+            requests.append(payload)
+            turn = len(requests)
+            events = [
+                {"type": "response.output_text.delta", "delta": f"Answer {turn}"},
+                {"type": "response.completed", "response": {"output": [], "usage": {"input_tokens": 10, "output_tokens": 3}}},
+            ]
+            return io.BytesIO("".join("data: " + json.dumps(item) + "\n\n" for item in events).encode())
+        gateway = AIGateway(mode="openai", model="synthetic-model", api_key="synthetic-key", open_url=fake_open)
+        gateway.per_minute = 20
+        gateway.per_day = 20
+        owner = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        first = gateway.new_conversation(owner)
+        other = gateway.new_conversation(owner)
+        for turn in range(10):
+            list(gateway.chat(owner, first["id"], f"Research question {turn + 1}"))
+        self.assertEqual(len(gateway.get_conversation(owner, first["id"])["messages"]), 20)
+        self.assertEqual(gateway.get_conversation(owner, other["id"])["messages"], [])
+        self.assertEqual(len(requests), 10)
+        self.assertTrue(any(item.get("content") == "Research question 9" for item in requests[-1]["input"]))
+        self.assertFalse(any(item.get("content") == "Research question 1" for item in requests[-1]["input"]))
+        list(gateway.chat(owner, other["id"], "Separate topic"))
+        self.assertFalse(any("Research question" in str(item.get("content")) for item in requests[-1]["input"]))
+
+    def test_memory_rename_is_owner_scoped_and_keeps_manual_title(self):
+        conversation = self.gateway.new_conversation(self.owner)
+        other, _ = self.gateway.create_guest_cookie("127.0.0.1", ORIGIN)
+        with self.assertRaises(GatewayError) as denied:
+            self.gateway.rename_conversation(other, conversation["id"], "Other user's title")
+        self.assertEqual(denied.exception.status, 404)
+        self.gateway.rename_conversation(self.owner, conversation["id"], "My research")
+        list(self.gateway.chat(self.owner, conversation["id"], "CAS 141-78-6"))
+        self.assertEqual(self.gateway.list_conversations(self.owner)[0]["title"], "My research")
+        self.assertTrue(self.gateway.list_conversations(self.owner)[0]["last_activity_at"])
+
+    def test_persistent_store_survives_gateway_restart_and_blocks_other_owner(self):
+        class FakeStore:
+            def __init__(self):
+                self.records = {}
+            def create(self, owner):
+                item = {"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "user_id": owner,
+                        "title": "New conversation", "title_source": "auto", "created_at": "2026-11-11T00:00:00Z",
+                        "last_activity_at": "2026-11-11T00:00:00Z", "context_summary": "", "messages": []}
+                self.records[item["id"]] = item
+                return item.copy()
+            def get(self, owner, conversation_id):
+                item = self.records.get(conversation_id)
+                if not item or item["user_id"] != owner:
+                    raise ConversationStoreError("NOT_FOUND", 404)
+                return {**item, "messages": list(item["messages"])}
+            def list(self, owner):
+                return [item.copy() for item in self.records.values() if item["user_id"] == owner]
+            def begin_turn(self, owner, conversation_id, message):
+                item = self.get(owner, conversation_id)
+                self.records[item["id"]]["messages"].extend([
+                    {"role": "user", "content": message, "status": "completed"},
+                    {"role": "assistant", "content": "", "status": "streaming"}])
+                return "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+            def finish_turn(self, owner, conversation_id, _message_id, *, answer, sources, tool_events, usage, model):
+                item = self.get(owner, conversation_id)
+                target = self.records[item["id"]]
+                target["messages"][-1].update({"content": answer, "status": "completed", "sources": sources,
+                                                "model": model, "token_usage": usage, "tool_events": tool_events})
+                target["title"] = target["messages"][0]["content"][:60]
+            def interrupt_turn(self, owner, conversation_id, _message_id):
+                item = self.get(owner, conversation_id)
+                self.records[item["id"]]["messages"][-1]["status"] = "interrupted"
+        store = FakeStore()
+        alice = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt-a")
+        bob = Principal("22222222-2222-4222-8222-222222222222", token="synthetic-jwt-b")
+        first = AIGateway(mode="mock", conversation_store=store)
+        session = first.new_conversation(alice)
+        list(first.chat(alice, session["id"], "What is CAS 141-78-6?"))
+        second = AIGateway(mode="mock", conversation_store=store)
+        self.assertEqual(len(second.get_conversation(alice, session["id"])["messages"]), 2)
+        self.assertEqual(len(second.list_conversations(alice)), 1)
+        self.assertEqual(second.list_conversations(bob), [])
+        with self.assertRaises(GatewayError) as denied:
+            second.get_conversation(bob, session["id"])
+        self.assertEqual(denied.exception.status, 404)
+
+    def test_store_rejects_invalid_id_before_service_role_request(self):
+        requests = []
+        store = SupabaseConversationStore("https://example.supabase.co", "synthetic-service-key",
+                                          open_url=lambda *args, **kwargs: requests.append(args))
+        with self.assertRaises(ConversationStoreError):
+            store.get("11111111-1111-4111-8111-111111111111", "other-user-id")
+        self.assertEqual(requests, [])
+
+    def test_service_role_store_queries_are_owner_scoped(self):
+        requests = []
+        owner = "11111111-1111-4111-8111-111111111111"
+        session = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        def fake_open(request, timeout):
+            requests.append(request)
+            return io.BytesIO(b'[]')
+        store = SupabaseConversationStore("https://example.supabase.co", "synthetic-service-key", open_url=fake_open)
+        self.assertEqual(store.list(owner), [])
+        with self.assertRaises(ConversationStoreError):
+            store.get(owner, session)
+        for request in requests:
+            self.assertIn("user_id=eq.", request.full_url)
+            self.assertIn(owner, request.full_url)
+            self.assertEqual(request.headers["Authorization"], "Bearer synthetic-service-key")
+        self.assertNotIn("synthetic-service-key", str([request.full_url for request in requests]))
 
     def test_upstream_rate_limit_retries_once_then_fails_without_saving_message(self):
         attempts = []
@@ -317,6 +437,25 @@ class GatewayHttpTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as caught:
             self.request("/ai/conversations", cookie=cookie, origin="https://evil.example")
         self.assertEqual(caught.exception.code, 403)
+
+    def test_rename_http_rejects_foreign_or_invalid_input(self):
+        with self.request("/ai/session") as response:
+            cookie = response.headers["Set-Cookie"].split(";", 1)[0]
+        with self.request("/ai/conversations", method="POST", cookie=cookie) as response:
+            conversation = json.load(response)
+        with self.request(f"/ai/conversations/{conversation['id']}", method="PATCH", cookie=cookie,
+                          payload={"title": "PCA discussion"}) as response:
+            self.assertEqual(json.load(response)["title"], "PCA discussion")
+        with self.assertRaises(HTTPError) as invalid:
+            self.request(f"/ai/conversations/{conversation['id']}", method="PATCH", cookie=cookie,
+                         payload={"title": ""})
+        self.assertEqual(invalid.exception.code, 400)
+        with self.request("/ai/session") as response:
+            other_cookie = response.headers["Set-Cookie"].split(";", 1)[0]
+        with self.assertRaises(HTTPError) as denied:
+            self.request(f"/ai/conversations/{conversation['id']}", method="PATCH", cookie=other_cookie,
+                         payload={"title": "Foreign"})
+        self.assertEqual(denied.exception.code, 404)
 
     def test_pca_plan_http_requires_session_and_rejects_raw_matrix(self):
         inspection = {"dataset_id": "synthetic-http", "samples": 6, "features": 3, "missing_cells": 0,

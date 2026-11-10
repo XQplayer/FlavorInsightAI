@@ -20,7 +20,8 @@
 .ai-research-history li > button:first-child { min-width: 0; flex: 1; min-height: 36px; border: 0; border-radius: 8px; display: flex; align-items: center; gap: 7px; padding: 6px 7px; color: var(--text-secondary); background: transparent; text-align: left; font-size: 12px; }
 .ai-research-history li > button:first-child.active { color: var(--platform-brand); background: color-mix(in srgb, var(--platform-brand) 12%, transparent); }
 .ai-research-history li > button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ai-research-delete { min-width: 30px; min-height: 30px; border: 0; border-radius: 7px; display: inline-grid; place-items: center; color: var(--text-secondary); background: transparent; }
+.ai-research-delete, .ai-research-action { min-width: 30px; min-height: 30px; border: 0; border-radius: 7px; display: inline-grid; place-items: center; color: var(--text-secondary); background: transparent; }
+.ai-research-action:hover { color: var(--platform-brand); }
 .ai-research-delete:hover { color: #d64b54; }
 .ai-research-empty-history { padding: 12px 5px; color: var(--text-secondary); font-size: 12px; }
 .ai-research-knowledge { margin-top: auto; padding: 12px 5px 3px; border-top: 1px solid var(--border-default); display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }

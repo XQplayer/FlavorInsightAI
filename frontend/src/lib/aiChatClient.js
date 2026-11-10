@@ -26,6 +26,8 @@ export const aiChatClient = {
   async list() { return (await request('/ai/conversations')).json() },
   async get(id) { return (await request(`/ai/conversations/${encodeURIComponent(id)}`)).json() },
   async create() { return (await request('/ai/conversations', { method: 'POST' })).json() },
+  async rename(id, title) { return (await request(`/ai/conversations/${encodeURIComponent(id)}`, { method: 'PATCH', body: { title } })).json() },
+  async linkAnalysis(id, facts) { return (await request(`/ai/conversations/${encodeURIComponent(id)}/analysis-links`, { method: 'POST', body: { facts } })).json() },
   async remove(id) { return (await request(`/ai/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' })).json() },
   async *send(conversationId, message, signal) {
     const response = await request('/ai/chat', { method: 'POST', body: { conversation_id: conversationId, message }, signal })

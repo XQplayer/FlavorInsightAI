@@ -1191,6 +1191,24 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/ai/conversations":
                 self.ai_json(201, AI_GATEWAY.new_conversation(principal))
                 return
+            if path.startswith("/ai/conversations/") and path.endswith("/analysis-links"):
+                conversation_id = path.removeprefix("/ai/conversations/").removesuffix("/analysis-links")
+                if not conversation_id or "/" in conversation_id:
+                    raise GatewayError("NOT_FOUND", "Not found", 404)
+                try:
+                    size = int(self.headers.get("Content-Length", "0"))
+                except ValueError as exc:
+                    raise GatewayError("INVALID_BODY", "Invalid request size", 400) from exc
+                if size <= 0 or size > 8192 or "application/json" not in self.headers.get("Content-Type", ""):
+                    raise GatewayError("INVALID_BODY", "Expected a JSON request smaller than 8 KB", 400)
+                try:
+                    payload = json.loads(self.rfile.read(size))
+                except ValueError as exc:
+                    raise GatewayError("INVALID_BODY", "Malformed JSON", 400) from exc
+                if not isinstance(payload, dict) or set(payload) != {"facts"}:
+                    raise GatewayError("INVALID_BODY", "Only facts are accepted", 400)
+                self.ai_json(201, AI_GATEWAY.link_analysis(principal, conversation_id, payload["facts"]))
+                return
             if path in {"/ai/analysis/plan", "/ai/analysis/explain"}:
                 try:
                     size = int(self.headers.get("Content-Length", "0"))
@@ -1261,6 +1279,30 @@ class Handler(BaseHTTPRequestHandler):
         except GatewayError as exc:
             self.ai_error(exc)
 
+    def do_PATCH(self) -> None:
+        parsed = urlparse(self.path)
+        if not parsed.path.startswith("/ai/conversations/"):
+            self.send_json(404, {"error": "Not found"})
+            return
+        try:
+            principal = self.ai_principal()
+            try:
+                size = int(self.headers.get("Content-Length", "0"))
+            except ValueError as exc:
+                raise GatewayError("INVALID_BODY", "Invalid request size", 400) from exc
+            if size <= 0 or size > 512 or "application/json" not in self.headers.get("Content-Type", ""):
+                raise GatewayError("INVALID_BODY", "Expected a JSON request smaller than 512 bytes", 400)
+            try:
+                payload = json.loads(self.rfile.read(size))
+            except ValueError as exc:
+                raise GatewayError("INVALID_BODY", "Malformed JSON", 400) from exc
+            if not isinstance(payload, dict) or set(payload) != {"title"}:
+                raise GatewayError("INVALID_BODY", "Only title is accepted", 400)
+            result = AI_GATEWAY.rename_conversation(principal, parsed.path.rsplit("/", 1)[-1], payload["title"])
+            self.ai_json(200, result)
+        except GatewayError as exc:
+            self.ai_error(exc)
+
     def send_service_error(self, error: ShimadzuAnalysisError) -> None:
         self.send_json(error.status, {"error": error.message, "code": error.code})
 
@@ -1309,7 +1351,7 @@ class Handler(BaseHTTPRequestHandler):
         if urlparse(self.path).path.startswith("/ai/"):
             try:
                 self.ai_headers(204, "text/plain")
-                self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
                 self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
                 self.send_header("Access-Control-Max-Age", "600")
                 self.end_headers()

@@ -4,7 +4,10 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const defaultPlaywright = path.resolve(path.dirname(process.execPath), '..', 'node_modules', 'playwright', 'index.mjs')
-const moduleUrl = process.env.CODEX_E2E_PLAYWRIGHT || pathToFileURL(defaultPlaywright).href
+const selectedPlaywright = process.env.CODEX_E2E_PLAYWRIGHT
+const moduleUrl = selectedPlaywright
+  ? /^[A-Za-z]:[\\/]/.test(selectedPlaywright) ? pathToFileURL(selectedPlaywright).href : selectedPlaywright
+  : pathToFileURL(defaultPlaywright).href
 const { chromium } = await import(moduleUrl)
 const base = process.env.AI_E2E_BASE_URL || 'http://127.0.0.1:5195/FlavorInsightAI/ai-assistant/'
 const output = path.resolve('_local/verification/ai-assistant')

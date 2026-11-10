@@ -8,12 +8,14 @@ import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('../../frontend/package.json', import.meta.url));
 const XLSX = require('xlsx');
 const playwrightPath = process.env.BROWSER_PCA_PLAYWRIGHT || 'playwright';
-const { chromium } = await import(playwrightPath.startsWith('file:') ? playwrightPath : playwrightPath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(playwrightPath) ? pathToFileURL(playwrightPath).href : playwrightPath);
+const playwright = await import(playwrightPath.startsWith('file:') ? playwrightPath : playwrightPath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(playwrightPath) ? pathToFileURL(playwrightPath).href : playwrightPath);
+const browserName = process.env.BROWSER_PCA_BROWSER || 'chromium';
+if (!['chromium', 'firefox', 'webkit'].includes(browserName)) throw new Error('Unsupported BROWSER_PCA_BROWSER');
 const base = process.env.BROWSER_PCA_BASE_URL || 'http://127.0.0.1:5198/FlavorInsightAI/data-analysis/';
 const deploymentPath = new URL(base).pathname.replace(/data-analysis\/?$/, '');
 const out = path.resolve(process.env.BROWSER_PCA_QA_OUTPUT || '_local/browser-pca-qa');
 await fs.mkdir(out, { recursive: true });
-const browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_PCA_CHROME || undefined });
+const browser = await playwright[browserName].launch({ headless: true, executablePath: process.env.BROWSER_PCA_CHROME || undefined });
 const results = [];
 try {
   for (const [name, viewport] of [['desktop', { width: 1440, height: 900 }], ['tablet', { width: 820, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {

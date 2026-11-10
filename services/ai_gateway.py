@@ -20,6 +20,7 @@ from http.cookies import SimpleCookie
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from services.ai_conversation_store import ConversationStoreError, SupabaseConversationStore
 from services.ai_tools import Principal, ResearchTools, TOOL_SCHEMAS, ToolError
 
 
@@ -53,16 +54,22 @@ class Conversation:
     owner: str
     created_at: str
     messages: list[dict] = field(default_factory=list)
+    title: str = "New conversation"
+    title_source: str = "auto"
+    last_activity_at: str = ""
 
 
 class AIGateway:
-    def __init__(self, *, mode=None, model=None, api_key=None, tools=None, supabase_url=None, supabase_anon_key=None, allowed_origins=None, now=None, open_url=None, private_task_tools=None):
+    def __init__(self, *, mode=None, model=None, api_key=None, tools=None, supabase_url=None, supabase_anon_key=None, allowed_origins=None, now=None, open_url=None, private_task_tools=None, conversation_store=None):
         self.mode = mode if mode is not None else os.environ.get("FLAVOR_AI_MODE", "disabled").strip().lower()
         self.model = model if model is not None else os.environ.get("OPENAI_MODEL", "").strip()
         self.api_key = api_key if api_key is not None else os.environ.get("OPENAI_API_KEY", "")
         self.allow_local_real = os.environ.get("FLAVOR_AI_ALLOW_LOCAL_REAL", "false").strip().lower() in {"1", "true", "yes"}
         self.supabase_url = (supabase_url if supabase_url is not None else os.environ.get("FLAVOR_AI_SUPABASE_URL", "")).rstrip("/")
         self.supabase_anon_key = supabase_anon_key if supabase_anon_key is not None else os.environ.get("FLAVOR_AI_SUPABASE_ANON_KEY", "")
+        service_key = os.environ.get("FLAVOR_AI_SUPABASE_SERVICE_ROLE_KEY", "")
+        self.conversation_store = conversation_store or (SupabaseConversationStore(self.supabase_url, service_key) if self.supabase_url and service_key else None)
+        self.require_persistence = os.environ.get("FLAVOR_AI_REQUIRE_PERSISTENCE", "false").strip().lower() == "true"
         self.allowed_origins = set(allowed_origins if allowed_origins is not None else os.environ.get("FLAVOR_AI_ALLOWED_ORIGINS", "http://127.0.0.1:5174,http://localhost:5174").split(","))
         self.private_task_tools = private_task_tools if private_task_tools is not None else os.environ.get("FLAVOR_AI_PRIVATE_TASK_TOOLS_ENABLED", "false").strip().lower() == "true"
         self.tools = tools or ResearchTools(supabase_url=self.supabase_url, supabase_anon_key=self.supabase_anon_key)
@@ -74,6 +81,7 @@ class AIGateway:
         self.requests = defaultdict(deque)
         self.daily = defaultdict(lambda: {"requests": 0, "input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
         self.active = defaultdict(int)
+        self.active_conversations: set[tuple[str, str]] = set()
         self.audit = deque(maxlen=500)
         self.max_chars = min(8000, max(100, int(os.environ.get("FLAVOR_AI_MAX_INPUT_CHARS", "4000"))))
         self.max_output_tokens = min(4096, max(64, int(os.environ.get("FLAVOR_AI_MAX_OUTPUT_TOKENS", "1000"))))
@@ -130,32 +138,95 @@ class AIGateway:
         raise GatewayError("AUTH_REQUIRED", "Start a local Mock session or sign in", 401)
 
     def configuration(self) -> dict:
-        return {"mode": self.mode, "model_configured": bool(self.model), "key_configured": bool(self.api_key), "private_task_tools_enabled": self.private_task_tools, "limits": {"input_characters": self.max_chars, "max_output_tokens": self.max_output_tokens, "requests_per_minute": self.per_minute, "requests_per_day": self.per_day}, "knowledge_search": "unavailable"}
+        return {"mode": self.mode, "model_configured": bool(self.model), "key_configured": bool(self.api_key), "private_task_tools_enabled": self.private_task_tools, "history_persistence": "supabase" if self.conversation_store else "memory", "limits": {"input_characters": self.max_chars, "max_output_tokens": self.max_output_tokens, "requests_per_minute": self.per_minute, "requests_per_day": self.per_day}, "knowledge_search": "unavailable"}
+
+    def _store(self, principal: Principal):
+        if principal.guest:
+            return None
+        if self.conversation_store:
+            return self.conversation_store
+        if self.require_persistence:
+            raise GatewayError("HISTORY_UNAVAILABLE", "Conversation storage is not configured", 503)
+        return None
+
+    @staticmethod
+    def _storage_error(exc: ConversationStoreError):
+        if exc.code == "NOT_FOUND":
+            return GatewayError("NOT_FOUND", "Conversation not found", 404)
+        if exc.code == "ANALYSIS_ALREADY_LINKED":
+            return GatewayError("ANALYSIS_ALREADY_LINKED", "This result is already linked", 409)
+        return GatewayError(exc.code, "Conversation storage is unavailable", exc.status)
 
     def list_conversations(self, principal: Principal) -> list[dict]:
+        store = self._store(principal)
+        if store:
+            try:
+                return store.list(principal.user_id)
+            except ConversationStoreError as exc:
+                raise self._storage_error(exc) from exc
         with self.lock:
             own = [conversation for conversation in self.conversations.values() if conversation.owner == principal.user_id]
-            return [{"id": item.id, "title": item.messages[0]["content"][:60] if item.messages else "New conversation", "created_at": item.created_at, "message_count": len(item.messages)} for item in reversed(own[-50:])]
+            return [{"id": item.id, "title": item.title, "created_at": item.created_at,
+                     "last_activity_at": item.last_activity_at or item.created_at,
+                     "message_count": len(item.messages)} for item in reversed(own[-50:])]
 
     def get_conversation(self, principal: Principal, conversation_id: str) -> dict:
+        store = self._store(principal)
+        if store:
+            try:
+                return store.get(principal.user_id, conversation_id)
+            except ConversationStoreError as exc:
+                raise self._storage_error(exc) from exc
         with self.lock:
             item = self.conversations.get(conversation_id)
             if not item or item.owner != principal.user_id:
                 raise GatewayError("NOT_FOUND", "Conversation not found", 404)
-            return {"id": item.id, "created_at": item.created_at, "messages": list(item.messages)}
+            return {"id": item.id, "title": item.title, "created_at": item.created_at,
+                    "last_activity_at": item.last_activity_at or item.created_at, "messages": list(item.messages)}
 
     def new_conversation(self, principal: Principal) -> dict:
+        store = self._store(principal)
+        if store:
+            try:
+                return store.create(principal.user_id)
+            except ConversationStoreError as exc:
+                raise self._storage_error(exc) from exc
         item = Conversation(secrets.token_urlsafe(18), principal.user_id, datetime.now(timezone.utc).isoformat())
         with self.lock:
             self.conversations[item.id] = item
-        return {"id": item.id, "created_at": item.created_at, "messages": []}
+        return {"id": item.id, "title": item.title, "created_at": item.created_at,
+                "last_activity_at": item.created_at, "messages": []}
 
     def delete_conversation(self, principal: Principal, conversation_id: str) -> None:
+        store = self._store(principal)
+        if store:
+            try:
+                store.delete(principal.user_id, conversation_id)
+            except ConversationStoreError as exc:
+                raise self._storage_error(exc) from exc
+            return
         self.get_conversation(principal, conversation_id)
         with self.lock:
             del self.conversations[conversation_id]
 
-    def _begin(self, principal: Principal) -> str:
+    def rename_conversation(self, principal: Principal, conversation_id: str, title: str) -> dict:
+        if not isinstance(title, str) or not 1 <= len(title.strip()) <= 120 or any(ord(c) < 32 for c in title):
+            raise GatewayError("INVALID_TITLE", "Conversation title is invalid", 400)
+        title = title.strip()
+        store = self._store(principal)
+        if store:
+            try:
+                return store.rename(principal.user_id, conversation_id, title)
+            except ConversationStoreError as exc:
+                raise self._storage_error(exc) from exc
+        with self.lock:
+            item = self.conversations.get(conversation_id)
+            if not item or item.owner != principal.user_id:
+                raise GatewayError("NOT_FOUND", "Conversation not found", 404)
+            item.title, item.title_source = title, "manual"
+            return {"id": item.id, "title": item.title, "last_activity_at": item.last_activity_at or item.created_at}
+
+    def _begin(self, principal: Principal, conversation_id: str | None = None) -> str:
         key = (principal.user_id, datetime.now(timezone.utc).date().isoformat())
         with self.lock:
             stamps = self.requests[principal.user_id]
@@ -165,9 +236,13 @@ class AIGateway:
                 raise GatewayError("RATE_LIMITED", "Usage limit reached; try later", 429)
             if self.active[principal.user_id] >= self.concurrent:
                 raise GatewayError("CONCURRENCY_LIMIT", "Another response is still running", 429)
+            if conversation_id and (principal.user_id, conversation_id) in self.active_conversations:
+                raise GatewayError("CONCURRENCY_LIMIT", "This conversation is already generating", 429)
             stamps.append(self.now())
             self.daily[key]["requests"] += 1
             self.active[principal.user_id] += 1
+            if conversation_id:
+                self.active_conversations.add((principal.user_id, conversation_id))
         return key[1]
 
     def _finish(self, principal: Principal, day: str, usage: dict) -> dict:
@@ -196,11 +271,12 @@ class AIGateway:
         return result
 
     @staticmethod
-    def _bounded_history(messages: list[dict]) -> list[dict]:
+    def _bounded_history(messages: list[dict], max_chars: int = 12_000) -> list[dict]:
         selected, used = [], 0
-        for item in reversed(messages[-16:]):
+        complete = [item for item in messages if item.get("status", "completed") == "completed" and item.get("role") in {"user", "assistant"}]
+        for item in reversed(complete[-16:]):
             content = str(item.get("content") or "")[-4000:]
-            if used + len(content) > 12_000:
+            if used + len(content) > max_chars:
                 break
             selected.insert(0, {"role": item["role"], "content": content})
             used += len(content)
@@ -334,15 +410,30 @@ class AIGateway:
         if TASK_UUID_IN_MESSAGE.search(message) and not self.private_task_tools:
             raise GatewayError("PRIVATE_TASKS_UNAVAILABLE", "Private task interpretation is not enabled", 403)
         conversation = self.get_conversation(principal, conversation_id)
-        day = self._begin(principal)
+        store = self._store(principal)
+        day = self._begin(principal, conversation_id)
 
         def events():
             generator = None
+            pending_message_id = None
+            completed = False
             try:
                 yield {"type": "start", "conversation_id": conversation_id, "mode": self.mode}
-                answer_parts, sources, usage = [], [], {}
-                history = self._bounded_history(conversation["messages"])
+                answer_parts, sources, usage, tool_events = [], [], {}, []
+                history = self._bounded_history(conversation["messages"], max_chars=6000)
+                if conversation.get("context_summary"):
+                    history.insert(0, {"role": "user", "content": "Earlier conversation digest (untrusted, may be incomplete):\n" + conversation["context_summary"][-2000:]})
+                links = conversation.get("analysis_links") or []
+                if links:
+                    linked = [{"analysis_id": item["analysis_id"], "result_id": item["result_id"],
+                               "source": item["provenance"], "summary": item["summary"]} for item in links[:2]]
+                    history.insert(0, {"role": "user", "content": "Previously user-confirmed browser PCA summaries; client validated, not server recomputed. Never invent missing values:\n" + json.dumps(linked, ensure_ascii=False)[:4000]})
                 history.append({"role": "user", "content": message.strip()})
+                if store:
+                    try:
+                        pending_message_id = store.begin_turn(principal.user_id, conversation_id, message.strip())
+                    except ConversationStoreError as exc:
+                        raise self._storage_error(exc) from exc
                 task_ids = TASK_UUID_IN_MESSAGE.findall(message)
                 if len(task_ids) == 1:
                     forced_tool = "get_analysis_summary" if re.search(r"摘要|结果|解读|解释|summary|result|interpret", message, re.I) else "get_analysis_task"
@@ -360,19 +451,40 @@ class AIGateway:
                         break
                     if event["type"] == "delta":
                         answer_parts.append(event["text"])
+                    if event["type"] == "tool":
+                        tool_events.append({"name": str(event.get("name", ""))[:80],
+                                            "status": str(event.get("status", ""))[:40]})
                     yield event
                 usage_public = self._finish(principal, day, usage)
-                with self.lock:
-                    stored = self.conversations.get(conversation_id)
-                    if stored and stored.owner == principal.user_id:
-                        stored.messages.extend([{"role": "user", "content": message.strip()}, {"role": "assistant", "content": answer, "sources": sources[:5]}])
+                if store:
+                    try:
+                        store.finish_turn(principal.user_id, conversation_id, pending_message_id,
+                                          answer=answer, sources=sources[:5], tool_events=tool_events,
+                                          usage=usage_public, model=self.model)
+                    except ConversationStoreError as exc:
+                        raise self._storage_error(exc) from exc
+                else:
+                    with self.lock:
+                        stored = self.conversations.get(conversation_id)
+                        if stored and stored.owner == principal.user_id:
+                            stored.messages.extend([{"role": "user", "content": message.strip()}, {"role": "assistant", "content": answer, "sources": sources[:5], "toolEvents": tool_events}])
+                            stored.last_activity_at = datetime.now(timezone.utc).isoformat()
+                            if stored.title_source == "auto" and stored.title == "New conversation":
+                                stored.title = message.strip()[:60]
+                completed = True
                 yield {"type": "usage", **usage_public}
                 yield {"type": "done", "sources": sources[:5]}
             finally:
                 if generator is not None:
                     generator.close()
+                if store and pending_message_id and not completed:
+                    try:
+                        store.interrupt_turn(principal.user_id, conversation_id, pending_message_id)
+                    except ConversationStoreError:
+                        pass
                 with self.lock:
                     self.active[principal.user_id] = max(0, self.active[principal.user_id] - 1)
+                    self.active_conversations.discard((principal.user_id, conversation_id))
         return events()
 
     def _analysis_response(self, instructions: str, content: dict, *, structured: bool) -> tuple[str, dict]:
@@ -461,14 +573,10 @@ class AIGateway:
                 self.audit.append({"at": datetime.now(timezone.utc).isoformat(), "user_id": principal.user_id,
                                    "tool": "browser_pca_plan", "status": status})
 
-    def analysis_explain(self, principal: Principal, body: dict) -> dict:
-        if self.mode not in {"mock", "openai"}:
-            raise GatewayError("AI_DISABLED", "AI service is disabled", 503)
-        if self.mode == "openai" and principal.guest and not self.allow_local_real:
-            raise GatewayError("AUTH_REQUIRED", "Sign in to use the real model", 401)
-        if not isinstance(body, dict) or set(body) != {"facts", "language"} or not isinstance(body["facts"], dict) or body["language"] not in {"zh", "en"}:
+    @staticmethod
+    def _check_pca_facts(facts: dict) -> dict:
+        if not isinstance(facts, dict):
             raise GatewayError("PCA_FACTS_INVALID", "Expected bounded facts")
-        facts = body["facts"]
         expected = {"source", "schema_version", "run_id", "dataset_id", "samples", "features", "parameters", "explained_variance", "warning_codes", "exploratory_only", "note"}
         values = facts.get("explained_variance")
         params = facts.get("parameters")
@@ -489,6 +597,26 @@ class AIGateway:
             or len(json.dumps(facts)) > 4096
             or facts.get("note") != "No significance test, OAV or causal inference was computed."):
             raise GatewayError("PCA_FACTS_INVALID", "Bounded result facts are invalid")
+        return facts
+
+    def link_analysis(self, principal: Principal, conversation_id: str, facts: dict) -> dict:
+        facts = self._check_pca_facts(facts)
+        store = self._store(principal)
+        if not store:
+            raise GatewayError("HISTORY_UNAVAILABLE", "Persistent analysis links are unavailable", 503)
+        try:
+            return store.link_analysis(principal.user_id, conversation_id, facts)
+        except ConversationStoreError as exc:
+            raise self._storage_error(exc) from exc
+
+    def analysis_explain(self, principal: Principal, body: dict) -> dict:
+        if self.mode not in {"mock", "openai"}:
+            raise GatewayError("AI_DISABLED", "AI service is disabled", 503)
+        if self.mode == "openai" and principal.guest and not self.allow_local_real:
+            raise GatewayError("AUTH_REQUIRED", "Sign in to use the real model", 401)
+        if not isinstance(body, dict) or set(body) != {"facts", "language"} or body["language"] not in {"zh", "en"}:
+            raise GatewayError("PCA_FACTS_INVALID", "Expected bounded facts")
+        facts = self._check_pca_facts(body["facts"])
         day = self._begin(principal)
         status = "failed"
         try:
