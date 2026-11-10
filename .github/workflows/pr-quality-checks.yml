@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v7
       - name: Shimadzu service and HTTP integration
         run: python3 -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
+      - name: AI Gateway and read-only tool contracts
+        run: python3 -m unittest scripts.tests.test_ai_gateway scripts.tests.test_ai_tools -v
 
   verify:
     name: Tests, lint, and build
@@ -64,6 +66,9 @@ jobs:
       - name: Platform contract tests
         working-directory: frontend
         run: pnpm run test:platform
+      - name: AI assistant transport and route tests
+        working-directory: frontend
+        run: pnpm exec node --test src/lib/aiChatClient.test.mjs src/platformRouterIntegration.test.mjs
 
       - name: Shimadzu regression tests
         working-directory: frontend
