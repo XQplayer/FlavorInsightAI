@@ -20,9 +20,10 @@ const pageStyles = await readFile(
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 const homeStyles = await readFile(new URL('./pages/PlatformHomeV2.css', import.meta.url), 'utf8');
 const analysisSource = await readFile(
-  new URL('./pages/DataAnalysisPage.jsx', import.meta.url),
+  new URL('./pages/LocalAnalysisWorkbench.jsx', import.meta.url),
   'utf8',
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const browserAnalysisSource = await readFile(new URL('./pages/DataAnalysisPage.jsx', import.meta.url), 'utf8');
 const resourcesSource = await readFile(
   new URL('./pages/ResourcesPage.jsx', import.meta.url),
   'utf8',
@@ -229,6 +230,12 @@ test('offers a real bilingual local analysis workbench without claiming deployed
   assert.match(analysisSource, /Export portable project/);
   assert.doesNotMatch(analysisSource, /<main\b/i);
   assert.doesNotMatch(analysisSource, /用户数量|使用次数|客户评价|production AI (?:is live|is available)/i);
+});
+
+test('browser PCA is an additional mode and keeps the original R workbench reachable', () => {
+  assert.match(browserAnalysisSource, /BrowserPcaPage/);
+  assert.match(browserAnalysisSource, /LocalAnalysisWorkbench/);
+  assert.match(browserAnalysisSource, /engine.*local/);
 });
 
 test('offers only verified resources and keeps pending resources non-interactive', () => {

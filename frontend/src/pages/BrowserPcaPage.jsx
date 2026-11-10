@@ -1,0 +1,153 @@
+import { useEffect, useRef, useState } from 'react';
+import { usePlatformPreferences } from '../app/PlatformPreferences.jsx';
+import { readImportFile, previewTable, IMPORT_LIMITS } from '../analysis/imports.mjs';
+import { createDataset } from '../analysis/dataset.mjs';
+import { createBrowserPcaEngine } from '../analysis/browserPcaEngine.mjs';
+import { BROWSER_PCA_LIMITS } from '../analysis/browserPca.mjs';
+import { pcaCsv } from '../analysis/browserPcaPresentation.mjs';
+import { downloadFile } from '../analysis/download.mjs';
+import { Check, DataTable, Field, NumberField, Select, TextField } from '../components/analysis/Controls.jsx';
+import BrowserPcaPlot from '../components/analysis/BrowserPcaPlot.jsx';
+import reference from '../analysis/browserPca.reference.json';
+import '../styles/analysis.css';
+import '../styles/analysis-plots.css';
+import '../styles/browser-pca.css';
+
+const INITIAL = { missing: 'error', constant: 'error', center: true, scale: 'none', components: null, includeInternalStandards: false };
+const PLOT_INITIAL = { view: 'scores', sampleLabels: false, variableLabels: false, legend: 'bottom', zoom: 1, fontSize: 12, xTitle: '', yTitle: '', groupStyles: {} };
+const errorText = (code, t) => ({
+  MISSING_VALUES: t('Missing values remain. Choose an explicit policy, or inspect the source.', '仍有缺失值。请明确选择处理方式或检查源数据。'),
+  ALL_MISSING_FEATURE: t('A variable is entirely missing; mean/median fill is impossible. Choose explicit feature exclusion.', '某变量全部缺失，无法计算均值或中位数；请明确选择剔除变量。'),
+  CONSTANT_FEATURE: t('A constant variable is present. Review it or explicitly drop constant variables.', '存在常量变量，请核对或明确选择剔除。'),
+  QC_FILTERED: t('QC-filtered values cannot be restored by exploratory imputation.', 'QC 排除值不能通过探索性补值恢复。'),
+  PCA_COMPONENTS: t('Requested components exceed numerical rank.', '请求的主成分数超过数值秩。'),
+  PCA_DIMENSIONS: t('At least two samples and one variable must remain.', '至少需要两个样品和一个变量。'),
+  MATRIX_LIMIT: t(`Browser limit: ${BROWSER_PCA_LIMITS.maxSamples} samples, ${BROWSER_PCA_LIMITS.maxFeatures} variables and ${BROWSER_PCA_LIMITS.maxCells} cells. Reduce the selection.`, `浏览器上限：${BROWSER_PCA_LIMITS.maxSamples} 个样品、${BROWSER_PCA_LIMITS.maxFeatures} 个变量及 ${BROWSER_PCA_LIMITS.maxCells} 个单元格。请缩小范围。`),
+  PCA_CANCELLED: t('Calculation cancelled; no result was produced.', '计算已取消，未生成结果。'),
+  PCA_WORKER_ERROR: t('Worker failed. Check browser resources and try a smaller matrix.', '后台计算失败；请检查浏览器资源或缩小矩阵。')
+})[code] || `${code}: ${t('No result was produced. Check the input and settings.', '未生成结果，请检查输入和设置。')}`;
+
+export default function BrowserPcaPage() {
+  const { language } = usePlatformPreferences();
+  const t = (en, zh) => language === 'zh' ? zh : en;
+  const [book, setBook] = useState(null), [sheet, setSheet] = useState(0), [headerRow, setHeaderRow] = useState(0);
+  const [sampleColumn, setSampleColumn] = useState(''), [groupColumn, setGroupColumn] = useState(''), [featureColumns, setFeatureColumns] = useState([]), [unit, setUnit] = useState('');
+  const [sourceHash, setSourceHash] = useState(''), [candidate, setCandidate] = useState(null), [dataset, setDataset] = useState(null);
+  const [options, setOptions] = useState(INITIAL), [plot, setPlot] = useState(PLOT_INITIAL);
+  const [result, setResult] = useState(null), [status, setStatus] = useState('idle'), [error, setError] = useState('');
+  const [engine] = useState(() => createBrowserPcaEngine());
+  const controller = useRef(null), sequence = useRef(0);
+  useEffect(() => () => { sequence.current++; controller.current?.abort(); engine.cancel(); }, [engine]);
+  const resetResult = () => { sequence.current++; controller.current?.abort(); engine.cancel(); controller.current = null; setResult(null); setError(''); setStatus('idle'); };
+  const updateOption = (key, value) => { setOptions(current => ({ ...current, [key]: value, ...(key === 'scale' && value !== 'none' ? { center: true } : {}) })); resetResult(); };
+  const updatePlot = (key, value) => setPlot(current => ({ ...current, [key]: value }));
+  const rows = book?.sheets[sheet]?.rows ?? [], header = rows[headerRow] ?? [];
+  const columnOptions = [{ value: '', label: t('Choose a column', '选择列') }, ...header.map((name, index) => ({ value: String(index), label: `${index + 1}: ${name ?? ''}` }))];
+  const read = async file => {
+    if (!file) return;
+    resetResult(); setDataset(null); setCandidate(null); setBook(null);
+    const current = sequence.current;
+    try {
+      if (file.size > IMPORT_LIMITS.maxBytes) throw new Error('FILE_TOO_LARGE');
+      const bytes = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+      const parsed = await readImportFile(new Uint8Array(bytes), { name: file.name });
+      if (current !== sequence.current) return;
+      setSourceHash(hash); setBook(parsed); setSheet(0); setHeaderRow(0); setSampleColumn(''); setGroupColumn(''); setFeatureColumns([]); setUnit('');
+    } catch (cause) { if (current === sequence.current) setError(errorText(cause.message, t)); }
+  };
+  const preview = () => {
+    try {
+      if (sampleColumn === '' || !featureColumns.length) throw new Error('EXPLICIT_MAPPING_REQUIRED');
+      const mapped = previewTable(rows, {
+        name: book.name, headerRow, orientation: 'samples-rows', sampleNameColumn: Number(sampleColumn),
+        ...(groupColumn === '' ? {} : { groupColumn: Number(groupColumn) }), featureColumns, unit: unit.trim()
+      });
+      const snapshot = createDataset({ ...mapped.dataset, provenance: { ...mapped.dataset.provenance,
+        sourceFileName: book.name, sourceSha256: sourceHash, sourceSheet: book.sheets[sheet].name, browserLocal: true } });
+      setCandidate({ ...mapped, dataset: snapshot }); setError('');
+    } catch (cause) { setCandidate(null); setError(errorText(cause.message, t)); }
+  };
+  const accept = () => { resetResult(); setDataset(candidate.dataset); setCandidate(null); };
+  const run = async () => {
+    if (!dataset || engine.active) return;
+    const current = ++sequence.current;
+    controller.current = new AbortController();
+    setStatus('running'); setError(''); setResult(null);
+    try {
+      const response = await engine.run({ dataset, options }, { signal: controller.current.signal });
+      if (current === sequence.current) { setResult({ ...response, provenance: { ...response.provenance, runId: crypto.randomUUID(), completedAt: new Date().toISOString() } }); setStatus('completed'); }
+    } catch (cause) {
+      if (current === sequence.current) { setStatus(cause.message === 'PCA_CANCELLED' ? 'cancelled' : 'failed'); setError(errorText(cause.message, t)); }
+    } finally { if (current === sequence.current) controller.current = null; }
+  };
+  const cancel = () => { controller.current?.abort(); };
+  const loadSynthetic = () => {
+    resetResult(); setBook(null); setCandidate(null); setSourceHash('');
+    setDataset(createDataset(reference.dataset));
+  };
+  const save = format => {
+    if (!result || !dataset) return;
+    const stem = `browser-pca-${result.provenance.runId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    if (format === 'json') downloadFile(`${stem}.json`, JSON.stringify({ dataset: {
+      id: dataset.id, name: dataset.name, samples: dataset.samples, features: dataset.features, provenance: dataset.provenance
+    }, result }, null, 2));
+    else { const files = pcaCsv(result, dataset); downloadFile(`${stem}-${format}.csv`, files[format], 'text/csv;charset=utf-8'); }
+  };
+  const groups = result && dataset ? [...new Set(result.data.sampleIds.map(id => dataset.samples.find(sample => sample.id === id)?.group || 'Ungrouped'))] : [];
+  const featureUnits = result && dataset ? [...new Set(result.data.featureIds.map(id => dataset.features.find(feature => feature.id === id)?.unit || ''))] : [];
+  const scores = result?.data.sampleIds.map((id, i) => ({ id, sample: dataset.samples.find(s => s.id === id)?.name ?? id, group: dataset.samples.find(s => s.id === id)?.group ?? '', ...Object.fromEntries(result.data.scores[i].map((value, j) => [`PC${j + 1}`, value])) })) ?? [];
+  const loadings = result?.data.featureIds.map((id, i) => ({ id, variable: dataset.features.find(f => f.id === id)?.name ?? id, unit: dataset.features.find(f => f.id === id)?.unit ?? '', ...Object.fromEntries(result.data.loadings[i].map((value, j) => [`PC${j + 1}`, value])) })) ?? [];
+  const variance = result?.data.eigenvalues.map((value, i) => ({ component: `PC${i + 1}`, eigenvalue: value, explainedPercent: result.data.explained[i] * 100, cumulativePercent: result.data.cumulative[i] * 100 })) ?? [];
+  return <div className="browser-pca">
+    <header><div><p className="analysis-eyebrow">BROWSER SCIENTIFIC ENGINE · PCA 1.0</p><h1>{t('Browser PCA', '浏览器 PCA')}</h1><p>{t('Import, calculate and export entirely in this browser. No file upload or local Python/R service is used.', '导入、计算与导出全部在浏览器内完成；不上传文件，也不使用本地 Python/R 服务。')}</p></div><span className="browser-pca-badge">{t('Local computation', '本地计算')}</span></header>
+    {error && <p role="alert" className="analysis-error">{error}</p>}
+    <section className="browser-pca-card"><h2>01 · {t('Import and check', '导入与检查')}</h2>
+      <div className="analysis-toolbar"><Field label={t('CSV or XLSX file, up to 32 MiB', 'CSV 或 XLSX 文件，最大 32 MiB')}><input type="file" accept=".csv,.xlsx" onChange={event => { read(event.target.files?.[0]); event.target.value = ''; }} /></Field><button type="button" onClick={loadSynthetic}>{t('Load labelled SYNTHETIC R reference', '加载标记为合成的 R 参考数据')}</button></div>
+      {book && <><p>{book.name} · {book.sheets.length} {t('sheets', '个工作表')} · SHA-256 <code>{sourceHash}</code></p>
+        <div className="analysis-grid"><Select label={t('Sheet', '工作表')} value={String(sheet)} onChange={value => { setSheet(Number(value)); setCandidate(null); }} options={book.sheets.map((item, i) => ({ value: String(i), label: item.name }))} />
+          <NumberField label={t('Header row (1-based)', '标题行（从 1 起）')} min={1} integer value={headerRow + 1} onChange={value => { setHeaderRow(value - 1); setCandidate(null); }} />
+          <Select label={t('Sample ID/name column', '样品 ID/名称列')} value={sampleColumn} onChange={value => { setSampleColumn(value); setCandidate(null); }} options={columnOptions} />
+          <Select label={t('Group column (optional)', '分组列（可选）')} value={groupColumn} onChange={value => { setGroupColumn(value); setCandidate(null); }} options={columnOptions} />
+          <TextField label={t('Common measurement unit (optional)', '统一测量单位（可选）')} value={unit} onChange={value => { setUnit(value.slice(0, 80)); setCandidate(null); }} /></div>
+        <Field label={t('Measurement columns — select explicitly (Ctrl/Command for multiple)', '测量列——明确多选（Ctrl/Command）')}><select multiple size={Math.min(8, Math.max(2, header.length))} value={featureColumns.map(String)} onChange={event => { setFeatureColumns([...event.target.selectedOptions].map(item => Number(item.value))); setCandidate(null); }}>{header.map((item, i) => <option key={i} value={i}>{i + 1}: {item ?? ''}</option>)}</select></Field>
+        <DataTable rows={rows.slice(0, 6).map(row => Object.fromEntries(row.map((value, i) => [String(i + 1), value])))} caption={t('First six source rows', '前六行源数据')} t={t} />
+        {book.warnings?.length > 0 && <p role="note">{book.warnings.map(w => `${w.code} ${w.address}`).join('; ')}</p>}
+        <button type="button" onClick={preview}>{t('Preview selected matrix', '预览选定矩阵')}</button>
+      </>}
+      {candidate && <div className="analysis-notice"><strong>{candidate.dataset.samples.length} × {candidate.dataset.features.length}</strong> · {t('invalid numeric cells retained as missing', '无效数值保留为缺失值')}: {candidate.invalidCells.length}
+        {candidate.invalidCells.length > 0 && <DataTable rows={candidate.invalidCells} caption={t('Invalid source cells', '无效源单元格')} t={t} />}
+        <p><button type="button" onClick={accept}>{t('Confirm browser-local dataset', '确认浏览器本地数据集')}</button></p></div>}
+      {dataset && <p role="status"><strong>{dataset.name}</strong> · {dataset.samples.length} {t('samples', '个样品')} × {dataset.features.length} {t('variables', '个变量')} · {t('raw matrix remains unchanged', '原始矩阵保持不变')}</p>}
+    </section>
+    <section className="browser-pca-card"><h2>02 · {t('Preprocessing and calculation', '预处理与计算')}</h2>
+      <div className="analysis-grid"><Select label={t('Missing values', '缺失值')} value={options.missing} onChange={value => updateOption('missing', value)} options={['error', 'mean', 'median', 'drop-samples', 'drop-features']} />
+        <Select label={t('Constant variables', '常量变量')} value={options.constant} onChange={value => updateOption('constant', value)} options={['error', 'drop']} />
+        <Select label={t('Scaling', '标准化')} value={options.scale} onChange={value => updateOption('scale', value)} options={['none', 'uv', 'pareto']} />
+        <NumberField label={t('Components (blank = numerical rank)', '主成分数（留空 = 数值秩）')} nullable integer min={1} value={options.components} onChange={value => updateOption('components', value)} /></div>
+      <Check label={t('Center each variable (required for UV/Pareto)', '每个变量中心化（UV/Pareto 必需）')} value={options.center} onChange={value => updateOption('center', value)} disabled={options.scale !== 'none'} />
+      <Check label={t('Include variables marked as internal standards', '包含标记为内标的变量')} value={options.includeInternalStandards} onChange={value => updateOption('includeInternalStandards', value)} />
+      <p>{t('UV divides by sample SD; Pareto divides by square root of sample SD. Missing/constant exclusions and imputation are recorded. PCA is exploratory, not a significance test.', 'UV 除以样本标准差；Pareto 除以样本标准差的平方根。缺失/常量剔除及补值均留痕。PCA 为探索性分析，不是显著性检验。')}</p>
+      <div className="analysis-toolbar"><button type="button" disabled={!dataset || status === 'running'} onClick={run}>{t('Run browser PCA', '运行浏览器 PCA')}</button><button type="button" disabled={status !== 'running'} onClick={cancel}>{t('Cancel calculation', '取消计算')}</button><span role="status">{status === 'running' ? t('Worker calculating; no simulated progress', 'Worker 正在计算；不模拟进度') : status === 'completed' ? t('Calculation complete', '计算完成') : status === 'cancelled' ? t('Cancelled', '已取消') : status === 'failed' ? t('Failed', '失败') : t('Ready for input', '等待输入')}</span></div>
+    </section>
+    {result && dataset && <section className="browser-pca-card"><h2>03 · {t('Results and scientific figures', '结果与科研图表')}</h2>
+      <p>{t('Result bound to snapshot', '结果绑定快照')} <code>{dataset.id}</code> · {result.data.rank} {t('nonzero components', '个非零主成分')} · {result.provenance.algorithmVersion} · {result.provenance.library}</p>
+      {(featureUnits.length > 1 || featureUnits.includes('')) && <p role="note">{t('Feature units are mixed or unspecified. Check comparability and preprocessing before interpreting PCA.', '变量单位混合或未注明；解释 PCA 前请核对可比性和预处理。')}</p>}
+      {(result.preprocessing.inputCellStates.unknown || result.preprocessing.inputCellStates.unspecified || result.preprocessing.inputCellStates['original-imputed']) && <p role="note">{t('Input cell lineage includes unknown or previously imputed values; interpret separation cautiously and inspect the audit.', '输入单元格含来源未知或此前已补值的数据；请谨慎解释分离情况并查看审计。')}</p>}
+      <div className="analysis-toolbar">{['scores', 'loadings', 'variance'].map(kind => <button type="button" key={kind} onClick={() => save(kind)}>{t('Export', '导出')} {kind} CSV</button>)}<button type="button" onClick={() => save('json')}>{t('Export result JSON', '导出结果 JSON')}</button></div>
+      <details><summary>{t('Preprocessing audit', '预处理审计')}</summary><pre>{JSON.stringify(result.preprocessing, null, 2)}</pre></details>
+      <div className="analysis-grid"><Select label={t('Figure', '图表')} value={plot.view} onChange={value => updatePlot('view', value)} options={[{ value: 'scores', label: t('Score plot', '得分图') }, { value: 'loadings', label: t('Loading plot', '载荷图') }, { value: 'biplot', label: t('Biplot', '双标图') }, { value: 'scree', label: t('Scree plot', '碎石图') }]} />
+        <Select label={t('Legend', '图例位置')} value={plot.legend} onChange={value => updatePlot('legend', value)} options={['bottom', 'right', 'hidden']} />
+        <NumberField label={t('Font size (10–18)', '字体大小（10–18）')} min={10} max={18} integer value={plot.fontSize} onChange={value => updatePlot('fontSize', Math.max(10, Math.min(18, value || 12)))} />
+        <TextField label={t('X axis title (optional)', 'X 轴标题（可选）')} value={plot.xTitle} onChange={value => updatePlot('xTitle', value.slice(0, 80))} />
+        <TextField label={t('Y axis title (optional)', 'Y 轴标题（可选）')} value={plot.yTitle} onChange={value => updatePlot('yTitle', value.slice(0, 80))} /></div>
+      <div className="analysis-toolbar"><Check label={t('Sample labels', '样品标签')} value={plot.sampleLabels} onChange={value => updatePlot('sampleLabels', value)} /><Check label={t('Variable labels', '变量标签')} value={plot.variableLabels} onChange={value => updatePlot('variableLabels', value)} /><button type="button" onClick={() => updatePlot('zoom', Math.min(4, plot.zoom * 1.5))}>{t('Zoom in', '放大')}</button><button type="button" onClick={() => updatePlot('zoom', Math.max(1, plot.zoom / 1.5))}>{t('Zoom out', '缩小')}</button><button type="button" onClick={() => updatePlot('zoom', 1)}>{t('Reset zoom', '重置缩放')}</button><span>{plot.zoom.toFixed(1)}×</span></div>
+      {groups.length > 12 && <p role="note">{t('More than 12 groups: legend is abbreviated; full IDs remain in the scores table.', '超过 12 个分组：图例简化，完整 ID 保留在得分表。')}</p>}
+      {groups.slice(0, 12).length > 0 && <details><summary>{t('Group colours and symbols', '分组颜色与符号')}</summary><div className="browser-pca-group-grid">{groups.slice(0, 12).map((group, i) => <div key={group}><span>{group}</span><input aria-label={`${group} ${t('colour', '颜色')}`} type="color" value={plot.groupStyles[group]?.color ?? ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#000000'][i % 5]} onChange={event => updatePlot('groupStyles', { ...plot.groupStyles, [group]: { ...plot.groupStyles[group], color: event.target.value } })} /><Select label={`${group} ${t('symbol', '符号')}`} value={plot.groupStyles[group]?.symbol ?? ['circle', 'square', 'triangle', 'diamond'][i % 4]} onChange={value => updatePlot('groupStyles', { ...plot.groupStyles, [group]: { ...plot.groupStyles[group], symbol: value } })} options={['circle', 'square', 'triangle', 'diamond']} /></div>)}</div></details>}
+      <p className="browser-pca-scroll-hint">{t('Swipe horizontally to inspect the full figure.', '横向滑动可查看完整图表。')}</p>
+      <BrowserPcaPlot result={result} dataset={dataset} view={plot.view} settings={plot} t={t} />
+      <details><summary>{t('Complete result tables', '完整结果表')}</summary><DataTable rows={variance} caption={t('Variance spectrum', '方差谱')} t={t} /><DataTable rows={scores} caption={t('Scores', '得分')} t={t} /><DataTable rows={loadings} caption={t('Loadings', '载荷')} t={t} /></details>
+    </section>}
+  </div>;
+}
