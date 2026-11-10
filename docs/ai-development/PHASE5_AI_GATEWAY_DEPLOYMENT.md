@@ -7,4 +7,3 @@ The intended server-only variable **names** are `FLAVOR_AI_MODE=openai`, `OPENAI
 The SQL/RLS proposal is [PHASE5_AI_CHAT_SCHEMA_REVIEW.md](PHASE5_AI_CHAT_SCHEMA_REVIEW.md). It has **not** been executed on staging or production. Production execution requires separate approval for the exact SQL after project identity, backup, schema collision and RLS review. Two ordinary-user JWTs must prove own/cross-user/anonymous access and Gateway service-role scoping before public chat. Process-memory per-day counters remain a multi-instance cost-control gap.
 
 Online deployment sequence: review Render ownership/config and rollback → staging migration/JWT probes → separate production SQL approval and verification → configure secrets in Render only → deploy an isolated reviewed AI Gateway → validate health/routes/CORS/stream/stop/limits/10 real turns → enable UI. Status: **BLOCKED; no online GPT call claimed**.
-

@@ -7,4 +7,3 @@ GitHub Actions `Browser PCA cross-browser preview checks` initially failed both 
 The test exercises synthetic CSV/XLSX import, Worker PCA, four views, SVG/PNG/CSV/JSON downloads, save/reload, recompute and responsive widths. Firefox/WebKit **real deployed-host** testing and Edge are still outstanding; local preview plus Actions on a local HTTP build are not equivalent to a deployed preview.
 
 Current acceptance: **CI production-build cross-browser checks PASS; deployed-host acceptance BLOCKED**. The runner's local HTTP build is not a separately hosted preview.
-

@@ -5,4 +5,3 @@ Recorded 2026-11-11 (Asia/Singapore). Environment: local network and repository 
 `render.yaml` names `flavorthresholddb-api` with `autoDeploy: true`; the repository Actions Render workflow is manual `workflow_dispatch` under the production environment. The actual Dashboard auto-deploy branch setting remains unknown. Current `origin/main` lacks AI routes, so `/ai/session` cannot be assumed deployed.
 
 Required read-only operator check: verify service owner and ID, connected repository/branch, current deployment SHA, deployment/health history, DNS/TLS, startup logs, whether it is an existing GC-MS/API service, configured AI variable **names** and CORS origins. Do not print Secret values. An isolated AI Gateway is preferred if the existing production API cannot safely carry the new routes. Status: **BLOCKED — online service identity and health unverified**.
-

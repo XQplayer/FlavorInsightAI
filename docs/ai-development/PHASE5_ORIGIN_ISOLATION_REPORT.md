@@ -7,4 +7,3 @@ The existing preview `https://xqplayer.github.io/FlavorInsightAI-BrowserPCA-Prev
 An independent-hostname preview is a release gate. A Sites account was discoverable, but its ownership by the repository owner has not been confirmed; no site was created and no credentials or real research data were sent there. Until a verified separate hostname is available, use **synthetic data only**. The current local preview `http://127.0.0.1:5262/FlavorInsightAI/data-analysis/` is served from Release 1 build and passed Chrome desktop/tablet/mobile checks; it is not an online isolation test.
 
 Required acceptance on the separate host: different `location.origin`, no production IndexedDB/localStorage/cookies, no production Supabase session, no production data API calls, Worker served from its deployment base. Status: **BLOCKED — independent preview origin not yet verified**. Never clear formal-site user storage as a workaround.
-

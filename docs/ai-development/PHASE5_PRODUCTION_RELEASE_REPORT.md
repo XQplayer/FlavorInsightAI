@@ -7,4 +7,3 @@ Local Release 1: 124 analysis tests and 33 platform tests passed; lint and produ
 Mandatory release gates still open: independent preview hostname/storage isolation; deployed-host compatibility; Render owner/deployment audit; production AI SQL separate approval and real RLS/JWT probes; deployed Gateway; 10 real online turns; production Pages smoke after approved merge. A Draft PR and local HTTP 200 are not a production release.
 
 **Status: PHASE 5 BLOCKED. Release 1 and Release 2 are not live.** Next permitted action is to resolve test failures and preview isolation, then review both PRs. Merge and release only after the relevant gates are documented and passed.
-

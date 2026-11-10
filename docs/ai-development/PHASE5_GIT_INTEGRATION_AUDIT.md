@@ -23,4 +23,3 @@ Recorded 2026-11-11 (Asia/Singapore). Environment: local Git worktrees and GitHu
 | Render deployment workflow | Existing main workflow only | Existing workflow, AI routes in source | Hosted service work | No automatic Render release from these Draft PRs. |
 
 Rollback preparation: record pre-merge `main` SHA; revert the release commit through a new PR if needed. Do not erase browser IndexedDB or user chats. Current status: **integration candidates prepared; no production merge**.
-
