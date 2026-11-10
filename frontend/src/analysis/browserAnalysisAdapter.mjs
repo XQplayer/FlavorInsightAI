@@ -27,6 +27,7 @@ function checkedPlan(plan, dataset) {
 export function createBrowserAnalysisAdapter({ engine = createBrowserPcaEngine(), uuid = () => crypto.randomUUID(), now = () => new Date().toISOString() } = {}) {
   let prepared = null, running = false;
   const results = new Map();
+  const coreResults = new Map();
   const shareAuthorized = new Set();
   const inspect_dataset = input => {
     const data = createDataset(input);
@@ -95,13 +96,26 @@ export function createBrowserAnalysisAdapter({ engine = createBrowserPcaEngine()
         const result = toUnifiedPcaResult({ ...output, provenance: { ...output.provenance,
           runId: uuid(), completedAt: now() } }, bound.dataset);
         results.set(result.provenance.run_id, result);
-        while (results.size > 10) { const oldest = results.keys().next().value; results.delete(oldest); shareAuthorized.delete(oldest); }
+        coreResults.set(result.provenance.run_id, { ...output, provenance: { ...output.provenance, runId: result.provenance.run_id, completedAt: result.provenance.completed_at } });
+        while (results.size > 10) { const oldest = results.keys().next().value; results.delete(oldest); coreResults.delete(oldest); shareAuthorized.delete(oldest); }
         return structuredClone(result);
       } finally { running = false; }
     },
     get_browser_pca_result(runId) {
       if (typeof runId !== 'string' || !results.has(runId)) fail('PCA_RESULT_NOT_FOUND');
       return structuredClone(results.get(runId));
+    },
+    /** UI-only projection for existing scientific charts; never exposed to the Gateway. */
+    get_browser_pca_core_result(runId) {
+      if (typeof runId !== 'string' || !coreResults.has(runId)) fail('PCA_RESULT_NOT_FOUND');
+      return structuredClone(coreResults.get(runId));
+    },
+    /** Rehydrate a previously integrity-checked local archive for charting and optional sharing. */
+    restore_browser_pca_result(core, dataset) {
+      const envelope = toUnifiedPcaResult(core, createDataset(dataset));
+      results.set(envelope.provenance.run_id, envelope);
+      coreResults.set(envelope.provenance.run_id, structuredClone(core));
+      return envelope.provenance.run_id;
     },
     /** UI-only action after showing the bounded fields that would be shared. */
     confirm_explanation(runId) {

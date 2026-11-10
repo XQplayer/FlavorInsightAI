@@ -31,4 +31,10 @@ export const aiChatClient = {
     const response = await request('/ai/chat', { method: 'POST', body: { conversation_id: conversationId, message }, signal })
     yield* verifiedAiEvents(response.body)
   },
+  async analysisPlan(goal, inspection, signal) {
+    return (await request('/ai/analysis/plan', { method: 'POST', body: { goal, inspection }, signal })).json()
+  },
+  async analysisExplain(facts, language = 'zh', signal) {
+    return (await request('/ai/analysis/explain', { method: 'POST', body: { facts, language }, signal })).json()
+  },
 }

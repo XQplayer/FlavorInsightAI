@@ -318,6 +318,22 @@ class GatewayHttpTests(unittest.TestCase):
             self.request("/ai/conversations", cookie=cookie, origin="https://evil.example")
         self.assertEqual(caught.exception.code, 403)
 
+    def test_pca_plan_http_requires_session_and_rejects_raw_matrix(self):
+        inspection = {"dataset_id": "synthetic-http", "samples": 6, "features": 3, "missing_cells": 0,
+                      "constant_variables": 0, "all_missing_variables": 0, "qc_filtered_cells": 0,
+                      "source_sha256": None, "synthetic": True, "warning_codes": []}
+        with self.request('/ai/session') as response:
+            cookie = response.headers['Set-Cookie'].split(';', 1)[0]
+        with self.request('/ai/analysis/plan', method='POST', cookie=cookie,
+                          payload={"goal": "explore", "inspection": inspection}) as response:
+            result = json.load(response)
+        self.assertEqual(result['plan']['dataset_id'], 'synthetic-http')
+        self.assertEqual(result['mode'], 'mock')
+        with self.assertRaises(HTTPError) as caught:
+            self.request('/ai/analysis/plan', method='POST', cookie=cookie,
+                         payload={"goal": "explore", "inspection": {**inspection, "matrix": [[1, 2]]}})
+        self.assertEqual(caught.exception.code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

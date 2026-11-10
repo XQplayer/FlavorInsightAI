@@ -39,6 +39,18 @@ export function validateUnifiedPcaResult(value) {
     || value.explained_variance.some((number, i) => Math.abs(number - value.eigenvalues[i] / eigenTotal) > 1e-8)
     || Math.abs(value.cumulative_variance.at(-1) - 1) > 1e-8
     || value.cumulative_variance.some((number, i) => Math.abs(number - value.explained_variance.slice(0, i + 1).reduce((a, b) => a + b, 0)) > 1e-8)) invalid();
+  // A schema-valid array can still be a forged PCA result. Check SVD identities without
+  // fixing arbitrary component signs; this validates internal consistency, not source truth.
+  for (let component = 0; component < k; component++) {
+    const scoreEnergy = scores.values.reduce((sum, row) => sum + row[component] ** 2, 0) / (n - 1);
+    const loadingNorm = loadings.values.reduce((sum, row) => sum + row[component] ** 2, 0);
+    if (Math.abs(scoreEnergy - value.eigenvalues[component]) > 1e-5 * Math.max(1, value.eigenvalues[component])
+      || Math.abs(loadingNorm - 1) > 1e-5) invalid();
+    for (let other = 0; other < component; other++) {
+      const dot = loadings.values.reduce((sum, row) => sum + row[component] * row[other], 0);
+      if (Math.abs(dot) > 1e-5) invalid();
+    }
+  }
   if (!pre || !numericVector(pre.means, p) || !numericVector(pre.sample_sd, p) || !numericVector(pre.divisors, p)
     || pre.sample_sd.some(number => number < 0) || pre.divisors.some(number => number <= 0)
     || !Array.isArray(pre.imputed) || !Array.isArray(pre.dropped_samples) || !Array.isArray(pre.dropped_features)

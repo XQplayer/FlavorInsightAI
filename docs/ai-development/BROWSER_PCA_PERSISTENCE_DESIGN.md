@@ -1,6 +1,6 @@
 # Browser PCA save and recovery design
 
-**Status:** design only. No IndexedDB schema, Supabase table/policy, cloud upload, restore UI or automatic saving was added in this phase. The current Browser PCA JSON export now contains a validated **result-only** `flavor-pca-result/1` envelope. It does not include the source matrix, so it cannot yet recompute a run by itself.
+**Status (Phase 3):** explicit IndexedDB save, list, restore, delete and full archive export are implemented in `browserPcaRunStore.mjs`, `browserPcaArchive.mjs` and `BrowserPcaPage.jsx`. The result-only export remains available. No automatic save, archive import, cloud upload or production migration was added. A full archive contains the selected numeric matrix; it is research data, so export and local save require user actions. Cloud schema remains a proposal in `BROWSER_PCA_CLOUD_SAVE_DESIGN.md`.
 
 ## Storage tiers
 

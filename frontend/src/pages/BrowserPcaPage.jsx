@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { usePlatformPreferences } from '../app/PlatformPreferences.jsx';
 import { readImportFile, previewTable, IMPORT_LIMITS } from '../analysis/imports.mjs';
 import { createDataset } from '../analysis/dataset.mjs';
-import { createBrowserPcaEngine } from '../analysis/browserPcaEngine.mjs';
+import { createBrowserAnalysisAdapter, BROWSER_PCA_PLAN_SCHEMA } from '../analysis/browserAnalysisAdapter.mjs';
+import { createBrowserPcaArchive } from '../analysis/browserPcaArchive.mjs';
+import { createBrowserPcaRunStore } from '../analysis/browserPcaRunStore.mjs';
 import { BROWSER_PCA_LIMITS } from '../analysis/browserPca.mjs';
 import { pcaCsv } from '../analysis/browserPcaPresentation.mjs';
 import { toUnifiedPcaResult } from '../analysis/pcaResult.mjs';
@@ -10,12 +12,16 @@ import { downloadFile } from '../analysis/download.mjs';
 import { Check, DataTable, Field, NumberField, Select, TextField } from '../components/analysis/Controls.jsx';
 import BrowserPcaPlot from '../components/analysis/BrowserPcaPlot.jsx';
 import reference from '../analysis/browserPca.reference.json';
+import { aiChatClient } from '../lib/aiChatClient.js';
+import { supabase } from '../lib/supabase.js';
 import '../styles/analysis.css';
 import '../styles/analysis-plots.css';
 import '../styles/browser-pca.css';
 
 const INITIAL = { missing: 'error', constant: 'error', center: true, scale: 'none', components: null, includeInternalStandards: false };
 const PLOT_INITIAL = { view: 'scores', sampleLabels: false, variableLabels: false, legend: 'bottom', zoom: 1, fontSize: 12, xTitle: '', yTitle: '', groupStyles: {} };
+const IS_PREVIEW = import.meta.env.VITE_PCA_PREVIEW === 'true';
+const AI_GATEWAY_AVAILABLE = !IS_PREVIEW || Boolean(import.meta.env.VITE_FEMA_API_URL);
 const errorText = (code, t) => ({
   MISSING_VALUES: t('Missing values remain. Choose an explicit policy, or inspect the source.', '仍有缺失值。请明确选择处理方式或检查源数据。'),
   ALL_MISSING_FEATURE: t('A variable is entirely missing; mean/median fill is impossible. Choose explicit feature exclusion.', '某变量全部缺失，无法计算均值或中位数；请明确选择剔除变量。'),
@@ -25,7 +31,8 @@ const errorText = (code, t) => ({
   PCA_DIMENSIONS: t('At least two samples and one variable must remain.', '至少需要两个样品和一个变量。'),
   MATRIX_LIMIT: t(`Browser limit: ${BROWSER_PCA_LIMITS.maxSamples} samples, ${BROWSER_PCA_LIMITS.maxFeatures} variables and ${BROWSER_PCA_LIMITS.maxCells} cells. Reduce the selection.`, `浏览器上限：${BROWSER_PCA_LIMITS.maxSamples} 个样品、${BROWSER_PCA_LIMITS.maxFeatures} 个变量及 ${BROWSER_PCA_LIMITS.maxCells} 个单元格。请缩小范围。`),
   PCA_CANCELLED: t('Calculation cancelled; no result was produced.', '计算已取消，未生成结果。'),
-  PCA_WORKER_ERROR: t('Worker failed. Check browser resources and try a smaller matrix.', '后台计算失败；请检查浏览器资源或缩小矩阵。')
+  PCA_WORKER_ERROR: t('Worker failed. Check browser resources and try a smaller matrix.', '后台计算失败；请检查浏览器资源或缩小矩阵。'),
+  'Failed to fetch': t('AI Gateway could not be reached. Browser PCA remains available.', '无法连接 AI Gateway；浏览器 PCA 仍可使用。')
 })[code] || `${code}: ${t('No result was produced. Check the input and settings.', '未生成结果，请检查输入和设置。')}`;
 
 export default function BrowserPcaPage() {
@@ -36,10 +43,35 @@ export default function BrowserPcaPage() {
   const [sourceHash, setSourceHash] = useState(''), [candidate, setCandidate] = useState(null), [dataset, setDataset] = useState(null);
   const [options, setOptions] = useState(INITIAL), [plot, setPlot] = useState(PLOT_INITIAL);
   const [result, setResult] = useState(null), [status, setStatus] = useState('idle'), [error, setError] = useState('');
-  const [engine] = useState(() => createBrowserPcaEngine());
-  const controller = useRef(null), sequence = useRef(0);
-  useEffect(() => () => { sequence.current++; controller.current?.abort(); engine.cancel(); }, [engine]);
-  const resetResult = () => { sequence.current++; controller.current?.abort(); engine.cancel(); controller.current = null; setResult(null); setError(''); setStatus('idle'); };
+  const [adapter] = useState(() => createBrowserAnalysisAdapter());
+  const [runStore] = useState(() => createBrowserPcaRunStore({ databaseName: IS_PREVIEW ? 'flavor-browser-pca-preview-runs-v1' : 'flavor-browser-pca-runs-v1' }));
+  const [owner, setOwner] = useState(''), [savedRuns, setSavedRuns] = useState([]), [currentRunId, setCurrentRunId] = useState('');
+  const [goal, setGoal] = useState(''), [aiPlan, setAiPlan] = useState(null), [aiMode, setAiMode] = useState('');
+  const [aiBusy, setAiBusy] = useState(false), [aiExplanation, setAiExplanation] = useState('');
+  const controller = useRef(null), sequence = useRef(0), ownerIdentity = useRef('');
+  useEffect(() => {
+    let live = true;
+    const update = session => {
+      if (!live) return;
+      const next = session?.user?.id || 'local-guest';
+      if (ownerIdentity.current === next) return;
+      ownerIdentity.current = next; sequence.current++; controller.current?.abort();
+      setBook(null); setCandidate(null); setDataset(null); setResult(null); setCurrentRunId('');
+      setAiPlan(null); setAiExplanation(''); setSourceHash(''); setStatus('idle');
+      setOwner(next); setSavedRuns([]);
+    };
+    if (supabase) {
+      supabase.auth.getSession().then(({ data }) => update(data.session)).catch(() => update(null));
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => update(session));
+      return () => { live = false; listener.subscription.unsubscribe(); };
+    }
+    update(null);
+    return () => { live = false; };
+  }, []);
+  useEffect(() => { if (owner) runStore.list(owner).then(setSavedRuns).catch(() => setSavedRuns([])); }, [owner, runStore]);
+  useEffect(() => () => { sequence.current++; controller.current?.abort(); runStore.close(); }, [runStore]);
+  const refreshSaved = () => owner && runStore.list(owner).then(setSavedRuns);
+  const resetResult = () => { sequence.current++; controller.current?.abort(); controller.current = null; setResult(null); setCurrentRunId(''); setAiPlan(null); setAiExplanation(''); setError(''); setStatus('idle'); };
   const updateOption = (key, value) => { setOptions(current => ({ ...current, [key]: value, ...(key === 'scale' && value !== 'none' ? { center: true } : {}) })); resetResult(); };
   const updatePlot = (key, value) => setPlot(current => ({ ...current, [key]: value }));
   const rows = book?.sheets[sheet]?.rows ?? [], header = rows[headerRow] ?? [];
@@ -71,19 +103,69 @@ export default function BrowserPcaPage() {
     } catch (cause) { setCandidate(null); setError(errorText(cause.message, t)); }
   };
   const accept = () => { resetResult(); setDataset(candidate.dataset); setCandidate(null); };
-  const run = async () => {
-    if (!dataset || engine.active) return;
+  const runWithPlan = async plan => {
+    if (!dataset || status === 'running') return;
     const current = ++sequence.current;
     controller.current = new AbortController();
-    setStatus('running'); setError(''); setResult(null);
+    setStatus('running'); setError(''); setResult(null); setAiExplanation(''); setAiPlan(null);
     try {
-      const response = await engine.run({ dataset, options }, { signal: controller.current.signal });
-      if (current === sequence.current) { setResult({ ...response, provenance: { ...response.provenance, runId: crypto.randomUUID(), completedAt: new Date().toISOString() } }); setStatus('completed'); }
+      const prepared = adapter.prepare_pca(dataset, plan);
+      adapter.confirm_pca(prepared.plan_id); // This function is called only by a visible user button.
+      const completed = await adapter.run_browser_pca({ plan_id: prepared.plan_id, signal: controller.current.signal });
+      if (current === sequence.current) { setResult(adapter.get_browser_pca_core_result(completed.provenance.run_id)); setCurrentRunId(completed.provenance.run_id); setStatus('completed'); setOptions(prepared.options); }
     } catch (cause) {
       if (current === sequence.current) { setStatus(cause.message === 'PCA_CANCELLED' ? 'cancelled' : 'failed'); setError(errorText(cause.message, t)); }
     } finally { if (current === sequence.current) controller.current = null; }
   };
+  const run = () => runWithPlan({ schema_version: BROWSER_PCA_PLAN_SCHEMA, algorithm: 'pca', dataset_id: dataset?.id, options });
   const cancel = () => { controller.current?.abort(); };
+  const requestPlan = async () => {
+    if (!AI_GATEWAY_AVAILABLE || !dataset || !goal.trim() || aiBusy) return;
+    setAiBusy(true); setError(''); setAiPlan(null);
+    try {
+      const inspection = adapter.inspect_dataset(dataset);
+      if (!adapter.recommend_analysis(dataset).candidate) throw new Error('PCA_INPUT_INVALID');
+      await aiChatClient.session();
+      const response = await aiChatClient.analysisPlan(goal.trim().slice(0, 500), inspection);
+      const prepared = adapter.prepare_pca(dataset, response.plan);
+      setAiPlan({ ...response.plan, preview: prepared }); setAiMode(response.mode);
+    } catch (cause) { setError(errorText(cause.message, t)); }
+    finally { setAiBusy(false); }
+  };
+  const explain = async () => {
+    if (!AI_GATEWAY_AVAILABLE || !currentRunId || aiBusy) return;
+    setAiBusy(true); setError('');
+    try {
+      adapter.confirm_explanation(currentRunId); // User clicked after seeing exactly which facts are sent.
+      const facts = adapter.explain_pca_result(currentRunId);
+      await aiChatClient.session();
+      const response = await aiChatClient.analysisExplain(facts, language);
+      setAiMode(response.mode); setAiExplanation(response.explanation);
+    } catch (cause) { setError(errorText(cause.message, t)); }
+    finally { setAiBusy(false); }
+  };
+  const saveLocal = async () => {
+    if (!owner || !dataset || !result) return;
+    try { await runStore.save(owner, await createBrowserPcaArchive({ dataset, result, options, plot })); await refreshSaved(); setError(''); }
+    catch (cause) { setError(errorText(cause.message, t)); }
+  };
+  const restoreLocal = async runId => {
+    try {
+      const archive = await runStore.load(owner, runId);
+      if (!archive) throw new Error('PCA_RESULT_NOT_FOUND');
+      resetResult(); setBook(null); setCandidate(null); setDataset(createDataset(archive.dataset));
+      setOptions(archive.options); setPlot(archive.plot); setResult(archive.core_result);
+      setCurrentRunId(adapter.restore_browser_pca_result(archive.core_result, archive.dataset)); setStatus('completed');
+    } catch (cause) { setError(errorText(cause.message, t)); }
+  };
+  const deleteLocal = async runId => {
+    try { await runStore.remove(owner, runId); await refreshSaved(); }
+    catch (cause) { setError(errorText(cause.message, t)); }
+  };
+  const exportArchive = async () => {
+    try { const archive = await createBrowserPcaArchive({ dataset, result, options, plot }); downloadFile(`browser-pca-archive-${currentRunId}.json`, JSON.stringify(archive, null, 2)); }
+    catch (cause) { setError(errorText(cause.message, t)); }
+  };
   const loadSynthetic = () => {
     resetResult(); setBook(null); setCandidate(null); setSourceHash('');
     setDataset(createDataset(reference.dataset));
@@ -101,6 +183,7 @@ export default function BrowserPcaPage() {
   const variance = result?.data.eigenvalues.map((value, i) => ({ component: `PC${i + 1}`, eigenvalue: value, explainedPercent: result.data.explained[i] * 100, cumulativePercent: result.data.cumulative[i] * 100 })) ?? [];
   return <div className="browser-pca">
     <header><div><p className="analysis-eyebrow">BROWSER SCIENTIFIC ENGINE · PCA 1.0</p><h1>{t('Browser PCA', '浏览器 PCA')}</h1><p>{t('Import, calculate and export entirely in this browser. No file upload or local Python/R service is used.', '导入、计算与导出全部在浏览器内完成；不上传文件，也不使用本地 Python/R 服务。')}</p></div><span className="browser-pca-badge">{t('Local computation', '本地计算')}</span></header>
+    {IS_PREVIEW && <p role="note" className="analysis-notice">{t('Public preview: use synthetic data only. This GitHub Pages repository has a separate release path, but shares the xqplayer.github.io browser origin and IndexedDB access with the formal site.', '公开预览：仅使用合成数据。此 GitHub Pages 仓库具有独立发布路径，但与正式站点共用 xqplayer.github.io 浏览器来源和 IndexedDB 访问范围。')}</p>}
     {error && <p role="alert" className="analysis-error">{error}</p>}
     <section className="browser-pca-card"><h2>01 · {t('Import and check', '导入与检查')}</h2>
       <div className="analysis-toolbar"><Field label={t('CSV or XLSX file, up to 32 MiB', 'CSV 或 XLSX 文件，最大 32 MiB')}><input type="file" accept=".csv,.xlsx" onChange={event => { read(event.target.files?.[0]); event.target.value = ''; }} /></Field><button type="button" onClick={loadSynthetic}>{t('Load labelled SYNTHETIC R reference', '加载标记为合成的 R 参考数据')}</button></div>
@@ -130,11 +213,20 @@ export default function BrowserPcaPage() {
       <p>{t('UV divides by sample SD; Pareto divides by square root of sample SD. Missing/constant exclusions and imputation are recorded. PCA is exploratory, not a significance test.', 'UV 除以样本标准差；Pareto 除以样本标准差的平方根。缺失/常量剔除及补值均留痕。PCA 为探索性分析，不是显著性检验。')}</p>
       <div className="analysis-toolbar"><button type="button" disabled={!dataset || status === 'running'} onClick={run}>{t('Run browser PCA', '运行浏览器 PCA')}</button><button type="button" disabled={status !== 'running'} onClick={cancel}>{t('Cancel calculation', '取消计算')}</button><span role="status">{status === 'running' ? t('Worker calculating; no simulated progress', 'Worker 正在计算；不模拟进度') : status === 'completed' ? t('Calculation complete', '计算完成') : status === 'cancelled' ? t('Cancelled', '已取消') : status === 'failed' ? t('Failed', '失败') : t('Ready for input', '等待输入')}</span></div>
     </section>
+    <section className="browser-pca-card"><h2>02A · {t('Agents SAI analysis plan', 'Agents SAI 分析计划')}</h2>
+      <p>{t('Only sample/feature counts, warning codes and source hash are sent when you request a plan. The numeric matrix stays in this browser.', '仅在请求计划时发送样品/变量数量、警告代码和源文件哈希；数值矩阵仍留在浏览器。')}</p>
+      {!AI_GATEWAY_AVAILABLE && <p role="note">{t('AI planning is unavailable in this static Pages preview. Use Browser PCA directly; a separately deployed authenticated Gateway is required for online AI.', '静态 Pages 预览不提供 AI 计划。可直接运行浏览器 PCA；线上 AI 需另行部署经过认证的 Gateway。')}</p>}
+      <TextField label={t('Analysis goal', '分析目标')} value={goal} onChange={value => setGoal(value.slice(0, 500))} />
+      <button type="button" disabled={!AI_GATEWAY_AVAILABLE || !dataset || !goal.trim() || aiBusy || status === 'running'} onClick={requestPlan}>{t('Ask AI for PCA settings', '请求 AI 推荐 PCA 参数')}</button>
+      {aiPlan && <div className="analysis-notice"><p>{aiMode === 'mock' ? t('Mock plan, not GPT', 'Mock 计划，非 GPT') : t('Model plan · review before calculation', '模型计划 · 计算前请核对')} · {aiPlan.dataset_id}</p><pre>{JSON.stringify(aiPlan.preview.options, null, 2)}</pre><p>{t('PCA is exploratory. Missing or constant value policies may alter the selected matrix.', 'PCA 属于探索性分析；缺失值或常量处理策略可能改变所选矩阵。')}</p><button type="button" disabled={status === 'running'} onClick={() => runWithPlan({ schema_version: aiPlan.schema_version, algorithm: aiPlan.algorithm, dataset_id: aiPlan.dataset_id, options: aiPlan.preview.options })}>{t('Confirm settings and run in browser', '确认参数并在浏览器运行')}</button></div>}
+    </section>
     {result && dataset && <section className="browser-pca-card"><h2>03 · {t('Results and scientific figures', '结果与科研图表')}</h2>
       <p>{t('Result bound to snapshot', '结果绑定快照')} <code>{dataset.id}</code> · {result.data.rank} {t('nonzero components', '个非零主成分')} · {result.provenance.algorithmVersion} · {result.provenance.library}</p>
       {(featureUnits.length > 1 || featureUnits.includes('')) && <p role="note">{t('Feature units are mixed or unspecified. Check comparability and preprocessing before interpreting PCA.', '变量单位混合或未注明；解释 PCA 前请核对可比性和预处理。')}</p>}
       {(result.preprocessing.inputCellStates.unknown || result.preprocessing.inputCellStates.unspecified || result.preprocessing.inputCellStates['original-imputed']) && <p role="note">{t('Input cell lineage includes unknown or previously imputed values; interpret separation cautiously and inspect the audit.', '输入单元格含来源未知或此前已补值的数据；请谨慎解释分离情况并查看审计。')}</p>}
-      <div className="analysis-toolbar">{['scores', 'loadings', 'variance'].map(kind => <button type="button" key={kind} onClick={() => save(kind)}>{t('Export', '导出')} {kind} CSV</button>)}<button type="button" onClick={() => save('json')}>{t('Export result JSON', '导出结果 JSON')}</button></div>
+      <div className="analysis-toolbar">{['scores', 'loadings', 'variance'].map(kind => <button type="button" key={kind} onClick={() => save(kind)}>{t('Export', '导出')} {kind} CSV</button>)}<button type="button" onClick={() => save('json')}>{t('Export result JSON', '导出结果 JSON')}</button><button type="button" onClick={saveLocal}>{t('Save in this browser', '保存到本浏览器')}</button><button type="button" onClick={exportArchive}>{t('Export full analysis archive', '导出完整分析档案')}</button></div>
+      <p>{t('Saving is optional. This archive contains the selected numeric matrix and may be visible to others using the same browser profile. Export a backup before clearing browser data.', '保存需主动操作。分析档案含选定的数值矩阵；同一浏览器配置的其他使用者可能看到。清除浏览器数据前请导出备份。')}</p>
+      <div className="analysis-notice"><p>{t('Share only the run ID, dimensions, parameters, explained variance and warnings with Agents SAI. No raw matrix or sample scores are sent. The server cannot independently verify browser calculations.', '仅向 Agents SAI 发送运行 ID、维度、参数、解释方差和警告；不发送原始矩阵或样品得分。服务端无法独立复算浏览器结果。')}</p><button type="button" disabled={!AI_GATEWAY_AVAILABLE || aiBusy || !currentRunId} onClick={explain}>{t('Confirm sharing summary and ask AI to explain', '确认分享摘要并请求 AI 解读')}</button>{aiExplanation && <p role="status"><strong>{aiMode === 'mock' ? 'Mock · ' : 'Agents SAI · '}</strong>{aiExplanation}</p>}</div>
       <details><summary>{t('Preprocessing audit', '预处理审计')}</summary><pre>{JSON.stringify(result.preprocessing, null, 2)}</pre></details>
       <div className="analysis-grid"><Select label={t('Figure', '图表')} value={plot.view} onChange={value => updatePlot('view', value)} options={[{ value: 'scores', label: t('Score plot', '得分图') }, { value: 'loadings', label: t('Loading plot', '载荷图') }, { value: 'biplot', label: t('Biplot', '双标图') }, { value: 'scree', label: t('Scree plot', '碎石图') }]} />
         <Select label={t('Legend', '图例位置')} value={plot.legend} onChange={value => updatePlot('legend', value)} options={['bottom', 'right', 'hidden']} />
@@ -148,5 +240,6 @@ export default function BrowserPcaPage() {
       <BrowserPcaPlot result={result} dataset={dataset} view={plot.view} settings={plot} t={t} />
       <details><summary>{t('Complete result tables', '完整结果表')}</summary><DataTable rows={variance} caption={t('Variance spectrum', '方差谱')} t={t} /><DataTable rows={scores} caption={t('Scores', '得分')} t={t} /><DataTable rows={loadings} caption={t('Loadings', '载荷')} t={t} /></details>
     </section>}
+    <section className="browser-pca-card"><h2>04 · {t('Saved browser runs', '浏览器已存任务')}</h2><p>{t('Explicit local saves only; refresh to restore. Recompute with the restored settings using Run browser PCA. Older runs remain available.', '仅保存主动选择的任务；刷新后可恢复。使用恢复的参数点击“运行浏览器 PCA”重新计算，旧任务仍保留。')}</p>{savedRuns.length ? <ul className="browser-pca-saved">{savedRuns.map(item => <li key={item.runId}><span>{item.name} · {item.savedAt} · {item.engineVersion}</span><div><button type="button" onClick={() => restoreLocal(item.runId)}>{t('Restore', '恢复')}</button><button type="button" onClick={() => deleteLocal(item.runId)}>{t('Delete', '删除')}</button></div></li>)}</ul> : <p role="status">{t('No saved runs in this browser account.', '当前浏览器账号没有已保存任务。')}</p>}</section>
   </div>;
 }

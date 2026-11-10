@@ -1191,6 +1191,20 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/ai/conversations":
                 self.ai_json(201, AI_GATEWAY.new_conversation(principal))
                 return
+            if path in {"/ai/analysis/plan", "/ai/analysis/explain"}:
+                try:
+                    size = int(self.headers.get("Content-Length", "0"))
+                except ValueError as exc:
+                    raise GatewayError("INVALID_BODY", "Invalid request size") from exc
+                if size <= 0 or size > 8192 or "application/json" not in self.headers.get("Content-Type", ""):
+                    raise GatewayError("INVALID_BODY", "Expected a JSON request smaller than 8 KB", 413)
+                try:
+                    payload = json.loads(self.rfile.read(size))
+                except ValueError as exc:
+                    raise GatewayError("INVALID_BODY", "Malformed JSON") from exc
+                operation = AI_GATEWAY.analysis_plan if path.endswith("/plan") else AI_GATEWAY.analysis_explain
+                self.ai_json(200, operation(principal, payload))
+                return
             if path != "/ai/chat":
                 self.ai_json(404, {"error": "Not found", "code": "NOT_FOUND"})
                 return

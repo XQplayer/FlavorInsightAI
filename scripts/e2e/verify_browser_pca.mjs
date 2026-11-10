@@ -10,6 +10,7 @@ const XLSX = require('xlsx');
 const playwrightPath = process.env.BROWSER_PCA_PLAYWRIGHT || 'playwright';
 const { chromium } = await import(playwrightPath.startsWith('file:') ? playwrightPath : playwrightPath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(playwrightPath) ? pathToFileURL(playwrightPath).href : playwrightPath);
 const base = process.env.BROWSER_PCA_BASE_URL || 'http://127.0.0.1:5198/FlavorInsightAI/data-analysis/';
+const deploymentPath = new URL(base).pathname.replace(/data-analysis\/?$/, '');
 const out = path.resolve(process.env.BROWSER_PCA_QA_OUTPUT || '_local/browser-pca-qa');
 await fs.mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_PCA_CHROME || undefined });
@@ -26,11 +27,15 @@ try {
     await page.route('http://127.0.0.1:8890/**', route => { localApiCalls++; route.abort(); });
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /SYNTHETIC R|合成的 R 参考数据/ }).click();
+    if (base.includes('FlavorInsightAI-BrowserPCA-Preview')) {
+      await page.getByRole('note').filter({ hasText: /Public preview|公开预览/ }).waitFor();
+      assert.equal(await page.getByRole('button', { name: /Ask AI for PCA settings|请求 AI 推荐 PCA 参数/ }).isDisabled(), true);
+    }
     await page.getByRole('button', { name: /Run browser PCA|运行浏览器 PCA/ }).click();
     await page.getByText(/Calculation complete|计算完成/).waitFor({ timeout: 20000 });
     assert.equal(await page.locator('svg[data-plot]').count(), 1);
     assert.equal(localApiCalls, 0, `${name}: browser path called local API`);
-    assert.ok(workerPaths.some(workerPath => workerPath.startsWith('/FlavorInsightAI/') && workerPath.includes('browserPca.worker')), `${name}: Browser PCA Worker not loaded from the deployment base`);
+    assert.ok(workerPaths.some(workerPath => workerPath.startsWith(deploymentPath) && workerPath.includes('browserPca.worker')), `${name}: Browser PCA Worker not loaded from the deployment base`);
     for (const view of ['scores', 'loadings', 'biplot', 'scree']) {
       await page.getByRole('combobox', { name: /Figure|图表/ }).selectOption(view);
       const plot = JSON.parse(await page.locator('svg[data-plot]').getAttribute('data-plot'));
@@ -44,6 +49,29 @@ try {
     await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
     await page.screenshot({ path: path.join(out, `${name}-synthetic-pca.png`), fullPage: true });
     if (name === 'desktop') {
+      await page.getByRole('combobox', { name: /Figure|图表/ }).selectOption('biplot');
+      await page.getByRole('button', { name: /Save in this browser|保存到本浏览器/ }).click();
+      await page.getByRole('button', { name: /^Restore$|^恢复$/ }).waitFor();
+      const savedRun = await page.locator('.browser-pca-saved li').first().textContent();
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.getByRole('button', { name: /^Restore$|^恢复$/ }).click();
+      await page.getByText(/Calculation complete|计算完成/).waitFor();
+      assert.equal(await page.locator('svg[data-plot]').count(), 1);
+      assert.equal(await page.getByRole('combobox', { name: /Figure|图表/ }).inputValue(), 'biplot');
+      assert.match(savedRun, /SYNTHETIC R/);
+      const archiveDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: /Export full analysis archive|导出完整分析档案/ }).click();
+      const fullArchive = JSON.parse(await fs.readFile(await (await archiveDownload).path(), 'utf8'));
+      assert.equal(fullArchive.archive_version, 'flavor-browser-pca-archive/1');
+      assert.equal(fullArchive.dataset.matrix.length, 6);
+      await page.getByRole('button', { name: /Run browser PCA|运行浏览器 PCA/ }).click();
+      await page.getByText(/Calculation complete|计算完成/).waitFor();
+      const rerunDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: /result JSON|结果 JSON/ }).click();
+      const rerun = JSON.parse(await fs.readFile(await (await rerunDownload).path(), 'utf8'));
+      assert.notEqual(rerun.provenance.run_id, fullArchive.result.provenance.run_id, 'recompute must create a new run');
+      await page.getByRole('button', { name: /^Delete$|^删除$/ }).click();
+      await page.getByText(/No saved runs in this browser account|当前浏览器账号没有已保存任务/).waitFor();
       const figureButtons = page.locator('figure.analysis-figure button');
       const svgDownload = page.waitForEvent('download');
       await figureButtons.nth(0).click();
