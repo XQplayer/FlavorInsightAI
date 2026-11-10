@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:flavorinsight:analysis-result:pca:1",
+  "title": "FlavorInsight AI AnalysisResult PCA v1",
+  "description": "Structural wire contract. Cross-field dimensions and variance consistency are enforced by pcaResult.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "engine", "algorithm", "engine_version", "dataset_metadata", "parameters", "preprocessing", "scores", "loadings", "eigenvalues", "explained_variance", "cumulative_variance", "diagnostics", "provenance"],
+  "properties": {
+    "schema_version": { "const": "flavor-pca-result/1" },
+    "engine": { "enum": ["browser-pca", "hosted-pca"] },
+    "algorithm": { "const": "pca-svd" },
+    "engine_version": { "$ref": "#/$defs/nonempty" },
+    "dataset_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "sample_ids", "feature_ids", "groups", "feature_units", "source_sha256", "synthetic"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonempty" },
+        "name": { "$ref": "#/$defs/nonempty" },
+        "sample_ids": { "$ref": "#/$defs/ids" },
+        "feature_ids": { "$ref": "#/$defs/ids" },
+        "groups": { "$ref": "#/$defs/strings" },
+        "feature_units": { "$ref": "#/$defs/strings" },
+        "source_sha256": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }] },
+        "synthetic": { "type": "boolean" }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["missing", "constant", "center", "scale", "components", "include_internal_standards"],
+      "properties": {
+        "missing": { "enum": ["error", "mean", "median", "drop-samples", "drop-features"] },
+        "constant": { "enum": ["error", "drop"] },
+        "center": { "type": "boolean" },
+        "scale": { "enum": ["none", "uv", "pareto"] },
+        "components": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] },
+        "include_internal_standards": { "type": "boolean" }
+      }
+    },
+    "preprocessing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["means", "sample_sd", "divisors", "imputed", "dropped_samples", "dropped_features", "excluded_samples", "excluded_internal_standards", "input_cell_states"],
+      "properties": {
+        "means": { "$ref": "#/$defs/numbers" },
+        "sample_sd": { "$ref": "#/$defs/nonnegativeNumbers" },
+        "divisors": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0 } },
+        "imputed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sampleId", "featureId", "method", "value"],
+            "properties": {
+              "sampleId": { "$ref": "#/$defs/nonempty" },
+              "featureId": { "$ref": "#/$defs/nonempty" },
+              "method": { "enum": ["mean", "median"] },
+              "value": { "type": "number" }
+            }
+          }
+        },
+        "dropped_samples": { "$ref": "#/$defs/ids" },
+        "dropped_features": { "$ref": "#/$defs/ids" },
+        "excluded_samples": { "$ref": "#/$defs/ids" },
+        "excluded_internal_standards": { "$ref": "#/$defs/ids" },
+        "input_cell_states": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      }
+    },
+    "scores": { "$ref": "#/$defs/coordinates" },
+    "loadings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["components", "values"],
+      "properties": {
+        "components": { "$ref": "#/$defs/components" },
+        "values": { "$ref": "#/$defs/numericMatrix" }
+      }
+    },
+    "eigenvalues": { "$ref": "#/$defs/nonnegativeNumbers" },
+    "explained_variance": { "$ref": "#/$defs/fractions" },
+    "cumulative_variance": { "$ref": "#/$defs/fractions" },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerical_rank", "warning_codes", "exploratory_only"],
+      "properties": {
+        "numerical_rank": { "type": "integer", "minimum": 1 },
+        "warning_codes": { "type": "array", "items": { "$ref": "#/$defs/nonempty" } },
+        "exploratory_only": { "type": "boolean" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_id", "run_id", "completed_at", "execution_environment", "source_file_name", "source_sheet", "matrix_orientation", "numeric_library"],
+      "properties": {
+        "dataset_id": { "$ref": "#/$defs/nonempty" },
+        "run_id": { "$ref": "#/$defs/nonempty" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "execution_environment": { "enum": ["web-worker", "remote-service"] },
+        "source_file_name": { "type": ["string", "null"] },
+        "source_sheet": { "type": ["string", "null"] },
+        "matrix_orientation": { "const": "samples x features" },
+        "numeric_library": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonempty" } },
+    "strings": { "type": "array", "items": { "type": "string" } },
+    "numbers": { "type": "array", "items": { "type": "number" } },
+    "nonnegativeNumbers": { "type": "array", "items": { "type": "number", "minimum": 0 } },
+    "fractions": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1.00000001 } },
+    "components": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^PC[1-9][0-9]*$" } },
+    "numericMatrix": { "type": "array", "items": { "$ref": "#/$defs/numbers" } },
+    "coordinates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["components", "coordinate_unit", "values"],
+      "properties": {
+        "components": { "$ref": "#/$defs/components" },
+        "coordinate_unit": { "const": "preprocessed-coordinate" },
+        "values": { "$ref": "#/$defs/numericMatrix" }
+      }
+    }
+  }
+}

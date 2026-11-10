@@ -1,0 +1,70 @@
+name: Browser PCA cross-browser preview checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/browser-pca-cross-browser.yml'
+      - 'frontend/**'
+      - 'scripts/e2e/verify_browser_pca.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-pca:
+    name: Browser PCA ${{ matrix.browser }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frozen frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Install browser and system dependencies
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - name: Build static Pages candidate
+        working-directory: frontend
+        env:
+          VITE_FEMA_API_URL: ''
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_ANON_KEY: ''
+        run: pnpm run build
+      - name: Synthetic PCA in production build
+        shell: bash
+        env:
+          BROWSER_PCA_BROWSER: ${{ matrix.browser }}
+          BROWSER_PCA_PLAYWRIGHT: ${{ github.workspace }}/frontend/node_modules/playwright/index.mjs
+          BROWSER_PCA_BASE_URL: http://127.0.0.1:5210/FlavorInsightAI/data-analysis/
+          BROWSER_PCA_QA_OUTPUT: _local/browser-pca-${{ matrix.browser }}
+        run: |
+          cd frontend
+          pnpm exec vite preview --host 127.0.0.1 --port 5210 --strictPort &
+          cd ..
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null "$BROWSER_PCA_BASE_URL"; then break; fi
+            sleep 1
+          done
+          curl --fail --silent --output /dev/null "$BROWSER_PCA_BASE_URL"
+          node scripts/e2e/verify_browser_pca.mjs
+      - name: Preserve screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: browser-pca-${{ matrix.browser }}
+          path: _local/browser-pca-${{ matrix.browser }}/
+          if-no-files-found: ignore

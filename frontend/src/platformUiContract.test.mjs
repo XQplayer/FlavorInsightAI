@@ -20,7 +20,7 @@ const pageStyles = await readFile(
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 const homeStyles = await readFile(new URL('./pages/PlatformHomeV2.css', import.meta.url), 'utf8');
 const analysisSource = await readFile(
-  new URL('./pages/DataAnalysisPage.jsx', import.meta.url),
+  new URL('./pages/LocalAnalysisWorkbench.jsx', import.meta.url),
   'utf8',
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 const resourcesSource = await readFile(
