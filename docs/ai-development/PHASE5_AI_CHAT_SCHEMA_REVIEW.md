@@ -13,6 +13,8 @@ Prepared 2026-11-11 (Asia/Singapore) in `codex/phase5-release`; no remote SQL wa
 
 ## Preconditions and execution gate
 
+2026-11-11 read-only Staging preflight confirmed the expected project name, ref, organization slug, active status and zero existing chat tables. The user deferred this Staging migration. No chat SQL was applied to Staging or production.
+
 - Verify the exact production project ref/organization, current schema (no name collision), migration history, backup and point-in-time recovery. Confirm the proposed SQL hash and deployment identity.
 - Obtain **separate approval for this exact production SQL**. Previous approvals for PCA or staging migrations do not authorize this chat migration.
 - Apply only to the verified target through the project's normal migration mechanism. Read back table columns, grants, RLS flags and policies. Test two genuine ordinary-user JWTs: own select succeeds; cross-user and anonymous select fail; direct client writes fail. Test Gateway create, rename, delete, stream interruption, refresh/relogin recovery and analysis-link ownership.
