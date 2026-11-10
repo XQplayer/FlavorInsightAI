@@ -1,0 +1,10 @@
+# Phase 5 cross-browser evidence
+
+Recorded 2026-11-11 (Asia/Singapore). Release 1 `a6f9cbc`; Release 2 `421c770`. Local command: `BROWSER_PCA_BASE_URL=http://127.0.0.1:5262/FlavorInsightAI/data-analysis/ BROWSER_PCA_CHROME=<installed Chrome> node scripts/e2e/verify_browser_pca.mjs`. Chrome desktop 1440, tablet 820, mobile 390: **PASS**. Worker path was `/FlavorInsightAI/assets/browserPca.worker-lmsVXb75.js`; four plots and zero local compute API calls verified. Screenshots and JSON: `_local/phase5-release1/` in the ignored Release 1 worktree.
+
+GitHub Actions `Browser PCA cross-browser preview checks` initially failed both browsers on `ubuntu-latest` because Playwright 1.56.1 does not support the runner's Ubuntu 26.04 image. Commit `1248032` pins Ubuntu 24.04. WebKit then reached the PNG download check but timed out without a page error. The final code preserves automatic download and exposes an explicit link after asynchronous encoding. Both Firefox and WebKit **passed** on PR #27 [run 42875443073](https://github.com/XQplayer/FlavorInsightAI/actions/runs/42875443073) and PR #26 [run 42875443243](https://github.com/XQplayer/FlavorInsightAI/actions/runs/42875443243). Their Python and frontend jobs also passed: PR #27 [42875443627](https://github.com/XQplayer/FlavorInsightAI/actions/runs/42875443627), PR #26 [42875443284](https://github.com/XQplayer/FlavorInsightAI/actions/runs/42875443284).
+
+The test exercises synthetic CSV/XLSX import, Worker PCA, four views, SVG/PNG/CSV/JSON downloads, save/reload, recompute and responsive widths. Firefox/WebKit **real deployed-host** testing and Edge are still outstanding; local preview plus Actions on a local HTTP build are not equivalent to a deployed preview.
+
+Current acceptance: **CI production-build cross-browser checks PASS; deployed-host acceptance BLOCKED**. The runner's local HTTP build is not a separately hosted preview.
+
