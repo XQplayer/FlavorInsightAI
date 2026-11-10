@@ -6,6 +6,8 @@
 
 工具 `search_compound` 和 `get_compound_detail` 检索 `frontend/public/aroma_data_merged.json` 的真实公开平台记录，返回经筛选的身份、风味描述和来源，不传完整阈值记录。前者支持 CAS/名称与可选介质，返回内部标识 `cas:<CAS>`；后者接受该标识或 CAS。该公开表没有分子式等分子属性，详情明确返回未知，不猜测。`get_analysis_task` 与 `get_analysis_summary` 仅接受已验证 Supabase 用户令牌，按 `user_id` 查询 `shimadzu_jobs`，再次校验返回记录所属用户。浏览器本地运行、未保存至云端的任务不可由服务端读取。知识检索接口 `search_research_knowledge` 当前明确返回 `KNOWLEDGE_UNAVAILABLE`，未提供给模型调用。
 
+非 PCA 公开发布候选将私有任务工具设为**默认关闭**（`FLAVOR_AI_PRIVATE_TASK_TOOLS_ENABLED=false`）：服务端不向模型声明这两个工具，直接调用与包含任务 UUID 的对话请求也会拒绝。生产普通用户 JWT/RLS 与结果访问未完成验证前不得启用；公开化合物工具仍可单独使用。
+
 ## 本地启动
 
 `.env.example` 是说明文件，Python 不自动加载它。请在**服务端进程的私有环境变量**中设置真实值；不要把真实密钥写入 `.env.example`、`VITE_*`、前端源码或 Git。PowerShell 示例：

@@ -40,6 +40,8 @@ try {
       await page.unroute('**/ai/chat')
       await page.goto(`${base}?cas=141-78-6`, { waitUntil: 'domcontentloaded' })
       assert.match(await page.locator('#ai-research-input').inputValue(), /141-78-6/u)
+      await page.goto(`${base}?task_id=11111111-1111-4111-8111-111111111111`, { waitUntil: 'domcontentloaded' })
+      await page.getByText(/私有任务解读尚未开放|Private task interpretation is not enabled/u).waitFor()
     }
     await page.close()
     console.log(`PASS ${viewport.name}: real public CAS record, Mock disclosure, source, history and no overflow`)

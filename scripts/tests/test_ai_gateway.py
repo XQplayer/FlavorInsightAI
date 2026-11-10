@@ -66,11 +66,21 @@ class GatewayUnitTests(unittest.TestCase):
         with self.assertRaises(GatewayError):
             gateway.create_guest_cookie("127.0.0.1", ORIGIN)
         with patch.dict(os.environ, {"FLAVOR_AI_ALLOW_LOCAL_REAL": "true"}):
-            gateway = AIGateway(mode="openai", api_key="test", model="test", allowed_origins={ORIGIN})
+            gateway = AIGateway(mode="openai", api_key="test", model="test", allowed_origins={ORIGIN}, private_task_tools=True)
         guest, cookie = gateway.create_guest_cookie("127.0.0.1", ORIGIN)
         self.assertEqual(gateway.principal("", cookie, "127.0.0.1", ORIGIN).user_id, guest.user_id)
         result = gateway._tool("get_analysis_task", {"task_id": "11111111-1111-4111-8111-111111111111"}, guest)
         self.assertEqual(result["error"], "AUTH_REQUIRED")
+
+    def test_private_task_tools_are_off_by_default(self):
+        task_id = "11111111-1111-4111-8111-111111111111"
+        self.assertFalse(self.gateway.configuration()["private_task_tools_enabled"])
+        self.assertEqual(self.gateway._tool("get_analysis_task", {"task_id": task_id}, self.owner)["error"], "PRIVATE_TASKS_UNAVAILABLE")
+        conversation = self.gateway.new_conversation(self.owner)
+        with self.assertRaises(GatewayError) as caught:
+            self.gateway.chat(self.owner, conversation["id"], f"Explain task {task_id}")
+        self.assertEqual(caught.exception.code, "PRIVATE_TASKS_UNAVAILABLE")
+        self.assertEqual(self.gateway.get_conversation(self.owner, conversation["id"])["messages"], [])
 
     def test_mocked_responses_api_executes_read_only_tool_and_streams_answer(self):
         requests = []
@@ -90,6 +100,7 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertEqual([event["type"] for event in events], ["start", "tool", "delta", "usage", "done"])
         self.assertEqual(events[-2]["input_tokens"], 40)
         self.assertEqual(json.loads(requests[0].data)["tool_choice"], {"type": "function", "name": "search_compound"})
+        self.assertFalse({"get_analysis_task", "get_analysis_summary"} & {tool["name"] for tool in json.loads(requests[0].data)["tools"]})
         self.assertEqual(json.loads(requests[1].data)["tool_choice"], "auto")
         self.assertEqual(json.loads(requests[1].data)["input"][-1]["call_id"], "call-1")
         self.assertEqual(json.loads(json.loads(requests[1].data)["input"][-1]["output"])["results"][0]["cas"], "141-78-6")
@@ -206,7 +217,7 @@ class GatewayUnitTests(unittest.TestCase):
                 return [{"id": identities[headers["Authorization"].removeprefix("Bearer ")], "is_admin": False}]
             return [{"id": task, "user_id": alice, "status": "complete", "stage_summary": [], "qc_summary": {}}] if headers["Authorization"] == "Bearer jwt-alice" else []
         tools = ResearchTools(supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", fetch_json=store_fetch)
-        gateway = AIGateway(mode="mock", supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", tools=tools, open_url=auth_open, allowed_origins={ORIGIN})
+        gateway = AIGateway(mode="mock", supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", tools=tools, open_url=auth_open, allowed_origins={ORIGIN}, private_task_tools=True)
         alice_principal = gateway.principal("Bearer jwt-alice", "", "127.0.0.1", ORIGIN)
         bob_principal = gateway.principal("Bearer jwt-bob", "", "127.0.0.1", ORIGIN)
         self.assertEqual(gateway._tool("get_analysis_task", {"task_id": task}, alice_principal)["task_id"], task)
@@ -227,7 +238,7 @@ class GatewayUnitTests(unittest.TestCase):
             event = {"type": "response.completed", "response": {"output": [{"type": "function_call", "name": "get_analysis_summary", "arguments": json.dumps({"task_id": task}), "call_id": "call-1"}], "usage": {"input_tokens": 20, "output_tokens": 5}}}
             return io.BytesIO(("data: " + json.dumps(event) + "\n\n").encode())
         tools = ResearchTools(supabase_url="https://test.invalid", supabase_anon_key="synthetic-anon", fetch_json=lambda *_: [])
-        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", tools=tools, open_url=fake_open)
+        gateway = AIGateway(mode="openai", model="test", api_key="synthetic-key", tools=tools, open_url=fake_open, private_task_tools=True)
         principal = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
         conversation = gateway.new_conversation(principal)
         events = list(gateway.chat(principal, conversation["id"], f"解释任务 {task} 的摘要"))
