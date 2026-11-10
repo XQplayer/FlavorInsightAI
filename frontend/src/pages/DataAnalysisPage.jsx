@@ -62,7 +62,7 @@ export default function DataAnalysisPage({
   <header className="analysis-header">
     <div>
       <span className="analysis-eyebrow">
-        <FlaskConical size={18} aria-hidden="true" /> {t('Local research workbench · Beta', '本地科研工作台 · Beta')}
+        <FlaskConical size={18} aria-hidden="true" /> {w.hosted ? t('Controlled PCA workbench · Beta', '受控 PCA 工作台 · Beta') : t('Local research workbench · Beta', '本地科研工作台 · Beta')}
       </span>
       <h1>
         {t('Data analysis', '数据分析')}
@@ -75,7 +75,7 @@ export default function DataAnalysisPage({
       </code>}
     </div>
     <div className="analysis-service-card">
-      <span className="analysis-service-label">{t('LOCAL COMPUTE', '本地计算')}</span>
+      <span className="analysis-service-label">{w.hosted ? t('HOSTED PCA', '线上 PCA') : t('LOCAL COMPUTE', '本地计算')}</span>
       <p role="status" className={available.length ? 'is-ready' : 'is-offline'}>
         {t('Compute service', '计算服务')}: {available.length ? t('Ready', '已就绪') : t('Offline / unavailable', '离线 / 不可用')}
       </p>
@@ -189,13 +189,14 @@ export default function DataAnalysisPage({
           })} disabled={busy || w.dirty || !available.includes('preprocess')} t={t} />
       </fieldset>}
       {tab === 'analysis' && <fieldset disabled={busy}>
-        <AnalysisPanel dataset={w.dataset} analysis={w.analysis} onChange={w.setAnalysis} available={available} onRun={() => start()} disabled={busy || w.dirty} t={t} />
+        {w.hosted && <p role="status" className="analysis-notice">{t('Hosted runs require the confirmed PCA plan above. Other methods remain available in the local workbench.', '线上运行须先确认上方 PCA 计划；其他分析方法仍可在本地工作台使用。')}</p>}
+        <AnalysisPanel dataset={w.dataset} analysis={w.analysis} onChange={w.setAnalysis} available={available} onRun={() => start()} disabled={busy || w.dirty || w.hosted} t={t} />
       </fieldset>}
       {tab === 'results' && <ResultsPanel key={w.contextId} runs={w.runs} dataset={w.dataset} recipe={w.recipe} analysis={w.analysis} onRetry={start} onExplainPca={PCA_AGENT_ENABLED ? run => attempt(() => {
         const prompt = pcaExplanationPrompt(pcaExplanationExcerpt(run));
         sessionStorage.setItem('flavor-pca-explanation', prompt);
         onNavigate?.('assistant');
-      }) : null} disabled={busy || w.dirty || !available.length} t={t} />}
+      }) : null} disabled={busy || w.dirty || !available.length || w.hosted} t={t} />}
     </> : tab !== 'data' && <p>
       {t('Import data or load the clearly labelled synthetic example first.', '请先导入数据或加载明确标注的合成示例。')}
     </p>}

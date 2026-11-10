@@ -72,6 +72,61 @@ export function createAnalysisClient({
     cancel: (id, signal) => request(jobPath(id), 'DELETE', undefined, signal)
   };
 }
+/** Hosted PCA uses a verified Supabase session, never a browser-owned service key. */
+export function createHostedAnalysisClient({ base, supabase, fetch: fetcher = globalThis.fetch, timeout = 20000 }) {
+  if (!/^https:\/\/[^/]+\/?$/.test(base || '') && !/^http:\/\/(?:127\.0\.0\.1|localhost):\d+\/?$/.test(base || '')) throw codeError('INVALID_SERVICE_URL');
+  const root = base.replace(/\/$/, '');
+  const jobPath = id => {
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/.test(id)) throw codeError('INVALID_JOB_ID');
+    return `/jobs/${id}`;
+  };
+  async function request(path, method = 'GET', body, signal, authenticated = true) {
+    if (signal?.aborted) throw codeError('ABORTED');
+    const session = authenticated && supabase ? (await supabase.auth.getSession()).data?.session : null;
+    if (authenticated && !session?.access_token) throw codeError('AUTH_REQUIRED');
+    const controller = new AbortController();
+    let timedOut = false;
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeout);
+    try {
+      const response = await fetcher(root + path, {
+        method, signal: controller.signal,
+        headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const data = await response.json().catch(() => { throw codeError(method === 'POST' ? 'SUBMISSION_UNCERTAIN' : 'INVALID_RESPONSE'); });
+      if (!response.ok) throw codeError(/^[A-Z][A-Z0-9_]{0,95}$/.test(data?.error?.code) ? data.error.code : `HTTP_${response.status}`);
+      if (path === '/health') {
+        if (typeof data?.capabilities?.runtimeReady !== 'boolean' || !Array.isArray(data.capabilities.methods)) throw codeError('INVALID_RESPONSE');
+        return data;
+      }
+      if (!data || typeof data.id !== 'string' || !['queued', 'running', 'completed', 'failed', 'cancelled', 'interrupted'].includes(data.status)) throw codeError(method === 'POST' ? 'SUBMISSION_UNCERTAIN' : 'INVALID_RESPONSE');
+      return { id: data.id, status: data.status, requestHash: data.request_sha256,
+        result: data.result_json || null, error: data.error_code ? { code: data.error_code } : null,
+        logs: data.logs || [], createdAt: data.created_at, startedAt: data.started_at,
+        finishedAt: data.completed_at };
+    } catch (error) {
+      if (error.analysisClientError === true) throw error;
+      if (method === 'POST') throw codeError('SUBMISSION_UNCERTAIN');
+      throw codeError(timedOut ? 'TIMEOUT' : signal?.aborted ? 'ABORTED' : 'SERVICE_OFFLINE');
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+    }
+  }
+  return {
+    health: signal => request('/health', 'GET', undefined, signal, false),
+    submit: (body, signal, receipt) => {
+      if (!receipt?.idempotencyKey) throw codeError('PLAN_CONFIRMATION_REQUIRED');
+      return request('/jobs', 'POST', { datasetJson: JSON.stringify(body.dataset), recipe: body.recipe,
+        analysis: body.analysis, planReceipt: receipt, idempotencyKey: receipt.idempotencyKey }, signal);
+    },
+    poll: (id, signal) => request(jobPath(id), 'GET', undefined, signal),
+    cancel: (id, signal) => request(jobPath(id), 'DELETE', undefined, signal),
+  };
+}
 export function serviceError(error, language = 'en') {
   const candidate = String(error?.code || error?.message || '').split(':',1)[0];
   const code = /^[A-Z][A-Z0-9_]{0,95}$/.test(candidate) ? candidate : 'OPERATION_FAILED';
@@ -79,7 +134,10 @@ export function serviceError(error, language = 'en') {
     SUBMISSION_UNCERTAIN: ['Submission response was lost. A job may exist; do not blindly retry. Check the local service before explicitly submitting another run.', '提交响应丢失，任务可能已存在。请检查本地服务后再明确重试，避免重复任务。'],
     SERVICE_OFFLINE: ['Local service unavailable. Start the Python analysis service on 127.0.0.1:8890 and retry connection. Imports, editing and exports remain available.', '本地服务不可用。启动 127.0.0.1:8890 的 Python 分析服务后重连；导入、编辑和导出仍可使用。'],
     TIMEOUT: ['Request timed out. Check the local service and reconnect.', '请求超时，请检查本地服务并重连。'],
-    ABORTED: ['Request interrupted.', '请求已中断。']
+    ABORTED: ['Request interrupted.', '请求已中断。'],
+    AUTH_REQUIRED: ['Sign in with an approved account before running hosted PCA.', '请使用已获批准的账号登录后运行线上 PCA。'],
+    PLAN_CONFIRMATION_REQUIRED: ['Review and confirm the PCA plan before using hosted computation.', '请先检查并确认 PCA 参数，再使用线上计算。'],
+    PCA_DISABLED: ['Hosted PCA is disabled for this release.', '本次发布尚未开放线上 PCA。']
   };
   const guidance = {
     AMBIGUOUS_COMPARISON_LABEL: ['Distinct requested contrasts or omnibus/posthoc pairs have the same display label. Review group names or remove duplicate contrasts before rerunning. No source values or names are changed automatically.', '不同对比或总体检验/事后比较产生相同显示标签。请核对分组名称或删除重复对比后重新运行；系统不会自动修改源值或名称。'],

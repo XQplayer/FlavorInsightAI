@@ -122,6 +122,7 @@ export async function confirmAnalysis(plan, dataset) {
   if (inspected.units.length > 1 && !recipe.filter.allowMixedUnits) throw new Error('MIXED_UNITS_REQUIRE_ACKNOWLEDGEMENT')
   const receipt = {
     datasetId: plan.datasetId, datasetHash: plan.datasetHash,
+    idempotencyKey: crypto.randomUUID(),
     prompt: plan.prompt, confirmedAt: new Date().toISOString(),
     sampleIds: inspected.sampleIds, featureIds: inspected.featureIds,
     warnings: recommendAnalysis(plan.prompt, inspected).warnings,

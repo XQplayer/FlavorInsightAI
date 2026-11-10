@@ -13,3 +13,7 @@ The scoped Management API returned HTTP 200 for project `zwbzyrshzegwlgcaxudo`: 
 Prior real-JWT evidence and six synthetic cleanup checks are in [AI_RLS_REAL_VALIDATION.md](AI_RLS_REAL_VALIDATION.md): 26/26 checks passed on 2026-11-09. This turn confirmed identity and migration history, but did not rerun that destructive fixture probe. PAT scope/expiry cannot be independently read from the returned project metadata; the token remains in an ignored private file.
 
 **Permanent migration rule:** produce full SQL diff, affected objects, risk and rollback before *any* future remote migration, then obtain explicit approval. Prior Staging migration execution preceded the requested SQL-list review; this process deviation remains recorded in the earlier report.
+
+## Approved PCA extension — 2026-11-10
+
+The later, separately approved `ai_pca_jobs_20261110090000` migration was applied as Staging version `20261110014237` from the exact reviewed SQL SHA-256 `36873E47D15FB0BB5179FFF22A9732AA9F1C19A91F8F34889269081004D22174`. Real two-user JWT/RLS and synthetic R job results are in [AI_PCA_STAGING_VALIDATION.md](AI_PCA_STAGING_VALIDATION.md). This section supersedes the earlier five-migration count for the current Staging state; the table above remains the historical baseline.

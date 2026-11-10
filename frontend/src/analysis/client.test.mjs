@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createAnalysisClient, serviceError } from './client.mjs'
+import { createAnalysisClient, createHostedAnalysisClient, serviceError } from './client.mjs'
 const response=(body,status=200)=>({ok:status<400,status,json:async()=>body})
 test('fixed loopback; token only in auth header; no mutation retry on 401',async()=>{
  const calls=[]; const client=createAnalysisClient({fetch:async(url,options)=>{calls.push({url,options}); return calls.length===1?response({token:'secret'}):response({error:{code:'TOKEN_REQUIRED'}},401)}})
@@ -49,4 +49,20 @@ test('abort while establishing session does not dispatch a job afterward',async(
  const controller=new AbortController();let calls=0
  const client=createAnalysisClient({fetch:async()=>{calls++;controller.abort();return response({token:'x'})}})
  await assert.rejects(client.submit({},controller.signal),/ABORTED/);assert.equal(calls,1)
+})
+test('hosted PCA requires real session and explicit confirmation, then sends one bounded request', async()=>{
+ const calls=[]; const uuid='123e4567-e89b-42d3-a456-426614174000'
+ const client=createHostedAnalysisClient({base:'https://pca.example.test',supabase:{auth:{getSession:async()=>({data:{session:{access_token:'jwt-user-a'}}})}},fetch:async(url,options)=>{calls.push({url,options});return response({id:uuid,status:'queued',request_sha256:'a'.repeat(64),logs:[]},202)}})
+ assert.throws(()=>client.submit({dataset:{}},undefined,null),/PLAN_CONFIRMATION_REQUIRED/)
+ const job=await client.submit({dataset:{id:'synthetic'},recipe:{},analysis:{method:'pca'}},undefined,{idempotencyKey:uuid,datasetHash:'b'.repeat(64)})
+ assert.equal(job.status,'queued');assert.equal(job.requestHash,'a'.repeat(64))
+ assert.equal(calls.length,1);assert.equal(calls[0].options.headers.Authorization,'Bearer jwt-user-a')
+ assert.equal(calls[0].url,'https://pca.example.test/jobs')
+ assert.equal(JSON.parse(calls[0].options.body).datasetJson,'{"id":"synthetic"}')
+ assert.ok(!calls[0].options.body.includes('jwt-user-a'))
+})
+test('hosted PCA refuses absent user and non-HTTPS remote service', async()=>{
+ assert.throws(()=>createHostedAnalysisClient({base:'http://remote.example.test'}),/INVALID_SERVICE_URL/)
+ const client=createHostedAnalysisClient({base:'https://pca.example.test',supabase:{auth:{getSession:async()=>({data:{session:null}})}},fetch:async()=>{throw Error('must not fetch')}})
+ await assert.rejects(client.poll('123e4567-e89b-42d3-a456-426614174000'),/AUTH_REQUIRED/)
 })

@@ -11,3 +11,5 @@ Production project URL observed in GitHub Actions variables: `https://nwcoyhavzb
 | AI API | Local Responses API verified; Render Python service configured | Retried public Render `/health`: HTTP 200; `/ai/session`: HTTP 404 | Live chat route absent online |
 
 Required next read-only audit: obtain a production-scoped *read-only* Management credential, verify exact project identity, compare `pg_policies`, table RLS flags, bucket policies and migration history, then run two ordinary **approved production test accounts only after separate test-account approval**. No production database write was made here. The local retention-cron migration embeds another project URL and must not be applied without redesign and review.
+
+2026-11-10 update: the approved `ai_pca_jobs` migration and real-JWT owner/foreign probe passed on Staging. The scoped Staging PAT returned HTTP **403** for production project metadata; production comparison remains blocked. No production project write was attempted.

@@ -1,0 +1,15 @@
+FROM python:3.13-slim-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends r-base-core r-cran-jsonlite \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY services /app/services
+RUN Rscript --vanilla services/analysis/tests/test_reference_values.R
+
+ENV PYTHONUNBUFFERED=1 \
+    ANALYSIS_RSCRIPT=/usr/bin/Rscript \
+    FLAVOR_AI_PCA_ENABLED=false
+EXPOSE 10000
+CMD ["python", "-m", "services.analysis.hosted_http"]
