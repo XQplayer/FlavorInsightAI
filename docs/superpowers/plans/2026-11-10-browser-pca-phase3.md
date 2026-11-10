@@ -17,5 +17,5 @@
 - [x] Add Gateway plan and explanation endpoints with auth, limits, strict schemas, no raw matrix, and mock/live tests.
 - [x] Wire the existing adapter to the Browser PCA page with user confirmation for compute and separate confirmation for sharing bounded facts.
 - [x] Build the preview artifact under its own base and run local production-build E2E.
-- [ ] Publish to an isolated Pages address, run real online E2E with synthetic data, collect screenshots and Worker URL/status.
+- [x] Publish to an isolated Pages address, run real online E2E with synthetic data, collect screenshots and Worker URL/status. See `docs/ai-development/BROWSER_PCA_PHASE3_TEST_REPORT.md`.
 - [x] Run affected unit/API/browser/security checks and serial code review; record gaps and rollback in the final report.
