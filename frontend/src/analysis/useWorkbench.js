@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createDatasetStore } from './storage.mjs';
-import { createAnalysisClient } from './client.mjs';
+import { createAnalysisClient, createHostedAnalysisClient } from './client.mjs';
+import { supabase } from '../lib/supabase.js';
 import { defaultRecipe, defaultAnalysis, restoreSettings, validateRecipe, validateAnalysis } from './workbench.mjs';
 import { createDataset } from './dataset.mjs';
 import { mergeJobResponse } from './lifecycle.mjs';
 import { saveStatusForRevision } from './persistence.mjs';
-const terminal = status => ['completed', 'failed', 'cancelled'].includes(status);
+const terminal = status => ['completed', 'failed', 'cancelled', 'interrupted'].includes(status);
+const hostedBase = import.meta.env.VITE_AI_PCA_ENABLED === 'true' ? import.meta.env.VITE_ANALYSIS_API_URL : '';
 export default function useWorkbench() {
   const [dataset, setDataset] = useState(null),
     [recipe, setRecipe] = useState(defaultRecipe),
@@ -22,7 +24,7 @@ export default function useWorkbench() {
   const saveRevision = useMemo(() => ({dataset, recipe, analysis, runs}), [dataset, recipe, analysis, runs]);
   const saveState = saveStatusForRevision(saveRevision, saveReceipt);
   const [store] = useState(() => createDatasetStore()),
-    [client] = useState(() => createAnalysisClient()),
+    [client] = useState(() => hostedBase ? createHostedAnalysisClient({ base: hostedBase, supabase }) : createAnalysisClient()),
     scope = useRef(0),
     activeRef = useRef(null),
     saving = useRef(Promise.resolve()),
@@ -122,7 +124,7 @@ export default function useWorkbench() {
     const timer = setInterval(() => setClock(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [active]);
-  const run = async bound => {
+  const run = async (bound, planReceipt = null) => {
     if (activeRef.current || dirty || !dataset) return;
     const request = structuredClone(bound || {
       dataset,
@@ -141,7 +143,8 @@ export default function useWorkbench() {
         id: localId,
         status: 'queued',
         createdAt,
-        request
+        request,
+        ...(planReceipt ? { planReceipt: structuredClone(planReceipt) } : {})
       },
       work = {
         controller,
@@ -165,7 +168,7 @@ export default function useWorkbench() {
       setActive(terminal(job.status) ? null : next);
     };
     try {
-      let job = await client.submit(request, controller.signal);
+      let job = await client.submit(request, controller.signal, planReceipt);
       work.id = job.id;
       update(job);
       if (work.cancelRequested) {
@@ -241,6 +244,7 @@ export default function useWorkbench() {
     saveState,
     clock,
     contextId,
+    hosted: Boolean(hostedBase),
     connect,
     refresh,
     replace,

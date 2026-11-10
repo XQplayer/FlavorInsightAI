@@ -2731,6 +2731,9 @@ select:focus-visible,
   font-weight: 650;
 }
 
+.threshold-identity-row .compound-ask-ai { padding: 7px 11px; border: 1px solid var(--border-default); border-radius: 7px; color: var(--platform-brand); background: var(--surface-panel); font-size: 13px; font-weight: 700; cursor: pointer; }
+.threshold-identity-row .compound-ask-ai:focus-visible { outline: 3px solid var(--platform-brand); outline-offset: 2px; }
+
 .threshold-result-entity > .data-panel {
   margin: 24px 32px 0;
   padding: 0;
