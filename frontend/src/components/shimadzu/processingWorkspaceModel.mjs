@@ -16,6 +16,7 @@ export function resultAvailability(record, now = new Date()) {
   if (!record) return { downloadable: false, source: 'none' }
   if (record.downloadUrl?.startsWith('blob:')) return { downloadable: true, source: 'browser' }
   if (record.result_path && new Date(record.result_expires_at).getTime() > now.getTime()) return { downloadable: true, source: 'cloud' }
+  if (record.hasLocalArchive && new Date(record.local_result_expires_at || record.result_expires_at).getTime() > now.getTime()) return { downloadable: true, source: 'history' }
   return { downloadable: false, source: 'none' }
 }
 

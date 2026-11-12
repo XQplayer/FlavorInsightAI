@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx'
 import { createCsvZip, createReproductionBundle } from './resultExports.mjs'
 import { createReportBundle } from './report.mjs'
 import { runFixture } from './evidenceFixture.mjs'
+import { restoreSettings } from './workbench.mjs'
 
 const origin = { taskNumber: 'FI-20261112-153045-A7C92E', taskName: '源任务', taskId: 'origin', taskCreatedAt: '2026-11-12T07:30:45.000Z', parentTaskId: null, parentTaskNumber: null }
 const dataset = () => createDataset({ id:'d', name:'Synthetic', samples:[{id:'s'}], features:[{id:'f'}], matrix:[[1]], provenance:{taskIdentity:origin} })
@@ -50,4 +51,25 @@ test('analysis CSV, reproduction and report ZIPs retain both run and source iden
     assert.equal(trace.sourceTaskIdentity.taskNumber, 'FI-20261112-153045-A7C92E')
     assert.equal(trace.datasetId, run.request.dataset.id)
   }
+})
+
+test('new analysis identity round-trips through the actual strict settings restore contract', () => {
+  const run = createAnalysisTask(runFixture().request)
+  const restored = restoreSettings(importProject(exportProject(run.request.dataset, { runs: [run] })).settings)
+  assert.deepEqual(restored.runs[0].taskIdentity, run.taskIdentity)
+  assert.equal(restored.runs[0].status, 'interrupted')
+  const legacy = { ...run }; delete legacy.taskIdentity
+  assert.equal(restoreSettings({ runs: [legacy] }).runs[0].taskIdentity, undefined)
+  assert.throws(() => restoreSettings({ runs: [{ ...run, taskIdentity: { ...run.taskIdentity, taskNumber: 'invalid' } }] }), /RUN/)
+  assert.throws(() => restoreSettings({ runs: [{ ...run, taskIdentity: { ...run.taskIdentity, arbitrarySecret: 'not-allowed' } }] }), /RUN/)
+})
+
+test('analysis retry links the selected run, retaining the original processing source separately', () => {
+  const parent = createAnalysisTask({ ...runFixture().request, dataset: dataset() })
+  const child = createAnalysisTask(parent.request, { parent })
+  assert.notEqual(child.taskIdentity.taskNumber, parent.taskIdentity.taskNumber)
+  assert.equal(child.taskIdentity.parentTaskId, parent.id)
+  assert.equal(child.taskIdentity.parentTaskNumber, parent.taskIdentity.taskNumber)
+  assert.equal(analysisTaskMetadata(child).sourceTaskIdentity.taskNumber, origin.taskNumber)
+  assert.equal(child.request, parent.request)
 })

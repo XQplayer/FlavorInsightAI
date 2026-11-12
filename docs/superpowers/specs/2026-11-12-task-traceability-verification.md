@@ -26,7 +26,29 @@ Skills actually used: executing-plans (continuous inline execution), test-driven
 6. Full Node suite initially passed 455 with one Edge smoke skipped under system Node (bundled Playwright unavailable via that runtime). Running with bundled Node exposed an old readiness-selector failure. The identical failure was reproduced in unchanged baseline worktree `71f059e`: test waited for removed hero title `仪器数据处理平台`. Changed only that test to wait for the actual `.processing-preflight` surface. Full bundled-runtime suite then passed 456/456, with no skips.
 7. Full ESLint and production build passed. Existing third-party bundle-size, browser-externalized fs/crypto and 3Dmol eval warnings remain; they are not new task-identity behavior.
 
-Final post-review commands/results are recorded in the release review section before delivery. Remote CI and production authenticated downloads are deliberately not exercised; cloud adapter boundary tests verify the signed filename option without touching production.
+Remote CI and production authenticated downloads are deliberately not exercised; cloud adapter boundary tests verify the signed filename option without touching production.
+
+## Final independent review and corrective pass
+
+A read-only independent reviewer found three Important defects: strict analysis settings rejected the new run identity, local rerun overwrote the only parent evidence copy, and analysis retry linked the processing source instead of the selected analysis parent. No Critical or actionable Minor findings. All three were reproduced with failing integration tests, then fixed in one pass.
+
+The restore contract now explicitly validates the additive identity shape and still accepts legacy runs. Analysis retries retain a separate selected parent and unchanged numerical request. Browser task history now preserves UUID-keyed terminal metadata and evidence before replacing the active pointer: evidence seven days, metadata ninety days, scoped by owner. No raw workbooks are duplicated in history. Maximum 100 unexpired local records per scope; quota/capacity failures warn and never silently evict existing evidence or replace an unsafe-to-archive parent. Parent ZIP downloads after rerun and refresh were verified in desktop/mobile browsers.
+
+Visual review also caught a mobile-only ellipsis hiding part of the task number/name. A real-browser clipping assertion failed first, then passed after the existing console label was allowed to wrap fully. Desktop/mobile screenshots were inspected.
+
+### Final accepted checks
+
+- Bundled Node 24 `node --test` in `frontend`: **461 passed, zero failed, zero skipped**, including actual Edge router smoke. System Node had previously skipped that browser test; the accepted run does not.
+- `pnpm run test:shimadzu-browser`: 104/104 before the review fixes; final full suite includes these tests and added history/restore cases.
+- `pnpm run test:analysis`: 108/108 before the review fixes; final full suite includes added strict restoration and analysis retry cases.
+- `pnpm run test:platform`: 33/33; full ESLint exit 0; production build/static routes exit 0; `git diff --check` exit 0.
+- Bundled Node `scripts/e2e/verify_task_traceability.mjs`: 1440px and 390px actual complete/failure downloads, refresh/language stability, explicit rerun, UUID-keyed parent evidence download after rerun and refresh, verified analysis handoff, full unclipped label, keyboard cancellation and bounded long-name downloads passed.
+- Existing `verify_processing_feedback.mjs`: desktop completion/mobile failure passed. Existing `verify_shimadzu_failure_details.mjs`: all eight viewport/language/theme cases passed.
+- Verified candidate preview HTTP 200 at `http://127.0.0.1:5176/FlavorInsightAI/data-processing/`, including its current compiled task-history code. Serves this isolated worktree's production build, not the original 5174 checkout. Original 5174 also remains reachable. No push, PR, merge or production deployment performed.
+
+### Main changed modules
+
+`lib/taskIdentity.mjs`, `shimadzuTaskLifecycle.mjs`, `shimadzuTaskStore.js`, `shimadzuCloud.js`: identity, rerun persistence, scoped history and signed download names. Worker client/worker/pipeline: metadata propagation and complete/failed/cancelled archives. Shimadzu console/workspace/CSS: frozen identity displays, parent/history access and mobile wrapping. Analysis adapter/traceability/exports/report/workbench/UI: verified origin, independent analysis identity, strict restore/retry compatibility and export provenance. Related tests, focused E2E, package test routing, README, plan and design/verification documentation are included. No formula or source research file was changed.
 
 ## Decisions and rollback
 

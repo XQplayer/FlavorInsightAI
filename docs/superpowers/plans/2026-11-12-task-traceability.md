@@ -1,6 +1,6 @@
 # Unified Task Traceability Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Consistently identify each processing run and its derived analysis using a timestamp-based task number plus task name.
 
@@ -32,9 +32,9 @@
 
 **Interfaces:** `createTaskIdentity({name, now, parent})` returns `{taskNumber, taskName, taskCreatedAt, parentTaskId, parentTaskNumber}`; `taskIdentity(record)` normalizes browser/cloud/archive identity without inventing it; `taskLabel(record)` returns public number plus name or a legacy label; `taskArchiveFileName(record, status)` sanitizes names and selects the approved suffix. Crypto may be injected in tests but production must use Web Crypto.
 
-- [ ] Add failing helper tests for timestamp boundaries, randomness, parent, sanitization and legacy shapes; run `node --test src/lib/taskIdentity.test.mjs`.
-- [ ] Implement the helper; test round-trip identity persistence through browser storage and cloud `source_names.taskIdentity`. Extend signed URL helper with optional download filename; preserve other callers.
-- [ ] Run helper, task store and cloud tests; inspect diff and commit scoped files.
+- [x] Add failing helper tests for timestamp boundaries, randomness, parent, sanitization and legacy shapes; run `node --test src/lib/taskIdentity.test.mjs`.
+- [x] Implement the helper; test round-trip identity persistence through browser storage and cloud `source_names.taskIdentity`. Extend signed URL helper with optional download filename; preserve other callers.
+- [x] Run helper, task store and cloud tests; inspect diff and commit scoped files.
 
 ### Task 2: Worker identity and verifiable ZIPs
 
@@ -42,9 +42,9 @@
 
 **Interfaces:** Optional `taskIdentity` on worker run/start; include in pipeline parameters and all terminal results. Pipeline and UI both use `taskArchiveFileName(record, status)`; missing identity preserves legacy compatibility.
 
-- [ ] Add failing complete/failure/cancel tests asserting identical identity across ZIP task information, parameters, run documents, manifests and filenames; verify regenerated hashes with the existing importer.
-- [ ] Thread identity through messages and archive builders without altering numerical tables or gate rules. Ensure early failures and cancellation have identity.
-- [ ] Run `pnpm run test:shimadzu-browser`, compare scientific regression outputs, inspect and commit.
+- [x] Add failing complete/failure/cancel tests asserting identical identity across ZIP task information, parameters, run documents, manifests and filenames; verify regenerated hashes with the existing importer.
+- [x] Thread identity through messages and archive builders without altering numerical tables or gate rules. Ensure early failures and cancellation have identity.
+- [x] Run `pnpm run test:shimadzu-browser`, compare scientific regression outputs, inspect and commit.
 
 ### Task 3: Creation, rerun, displays and cloud downloads
 
@@ -52,9 +52,9 @@
 
 **Interfaces:** Creation calls `createTaskIdentity` once, freezes name, persists before run. Explicit retry creates a new UUID/public identity with parent fields, resets stages/terminal artifacts and starts from 0. Restore passes stored fields unchanged. All displays and downloads normalize via the shared helper; cloud downloads use a server-specified signed download filename.
 
-- [ ] Add failing lifecycle tests: start, restore, language change, rerun and historical cloud download. Pin no new UUID/number on restore and new identity on rerun.
-- [ ] Implement lifecycle/persistence and number/name/parent displays across monitor, results and task history; preserve existing routes and account gates.
-- [ ] Verify desktop/mobile (390px), long names, keyboard, result/failure/cancel downloads and rerun parent association; inspect and commit.
+- [x] Add failing lifecycle tests: start, restore, language change, rerun and historical cloud download. Pin no new UUID/number on restore and new identity on rerun.
+- [x] Implement lifecycle/persistence and number/name/parent displays across monitor, results and task history; preserve existing routes and account gates.
+- [x] Verify desktop/mobile (390px), long names, keyboard, result/failure/cancel downloads and rerun parent association; inspect and commit.
 
 ### Task 4: Downstream provenance and final integration
 
@@ -62,11 +62,11 @@
 
 **Interfaces:** Import identity only from integrity-verified archive metadata into dataset provenance. Derived analysis exports include origin task identity and retain dataset-specific identity. Legacy imports without identity still work.
 
-- [ ] Add failing tests for complete archive handoff, analysis export lineage, legacy imports and tampered metadata/hash rejection.
-- [ ] Implement origin identity propagation using existing provenance/export mechanisms; no statistical or scientific behavior changes.
-- [ ] Run `pnpm run test:shimadzu-browser`, `pnpm run test:analysis`, `pnpm run test:platform`, `pnpm run lint`, `pnpm run build`, focused browser E2E and `git diff --check`.
-- [ ] Perform serial second-pass review and record tests actually run, any gaps and rollback to b3be4c7 by reverting feature commits. Verify a reachable preview serves this worktree/build and report its URL; do not push or deploy.
+- [x] Add failing tests for complete archive handoff, analysis export lineage, legacy imports and tampered metadata/hash rejection.
+- [x] Implement origin identity propagation using existing provenance/export mechanisms; no statistical or scientific behavior changes.
+- [x] Run `pnpm run test:shimadzu-browser`, `pnpm run test:analysis`, `pnpm run test:platform`, `pnpm run lint`, `pnpm run build`, focused browser E2E and `git diff --check`.
+- [x] Perform serial second-pass review and record tests actually run, any gaps and rollback to b3be4c7 by reverting feature commits. Verify a reachable preview serves this worktree/build and report its URL; do not push or deploy.
 
 ## Plan self-review
 
-The shared identity is additive, avoids production schema changes and leaves UUID ownership untouched. Tasks cover all approved naming and tracing rules, including cloud downloads and subsequent analysis. Statistical formulas and raw research inputs are out of scope. Execution approach awaits user review per the planning skill; native execution is recommended because these steps share a small identity contract and this task does not require parallel agents.
+The shared identity is additive, avoids production schema changes and leaves UUID ownership untouched. Tasks cover all approved naming and tracing rules, including cloud downloads and subsequent analysis. Statistical formulas and raw research inputs are out of scope. User approved direct native execution with no online publication. Implementation and one final independent read-only review/corrective pass are complete; see the verification report for fresh test evidence and remaining environment boundaries.

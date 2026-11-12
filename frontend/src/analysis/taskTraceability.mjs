@@ -5,10 +5,10 @@ const identityWithId = value => {
   return identity ? { ...identity, taskId: value?.taskId ? String(value.taskId) : null } : null
 }
 
-export function createAnalysisTask(request) {
+export function createAnalysisTask(request, { parent = null } = {}) {
   const id = crypto.randomUUID()
   const origin = request.dataset?.provenance?.taskIdentity
-  const task = createTaskIdentity({ name: `${request.dataset?.name || 'Analysis'} · ${request.analysis?.method || 'analysis'}`, parent: origin })
+  const task = createTaskIdentity({ name: `${request.dataset?.name || 'Analysis'} · ${request.analysis?.method || 'analysis'}`, parent: parent || origin })
   return { id, status: 'queued', createdAt: task.taskCreatedAt, request, taskIdentity: { ...task, taskId: id } }
 }
 

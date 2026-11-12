@@ -123,7 +123,7 @@ export default function useWorkbench() {
     const timer = setInterval(() => setClock(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [active]);
-  const run = async bound => {
+  const run = async (bound, parent = null) => {
     if (activeRef.current || dirty || !dataset) return;
     const request = structuredClone(bound || {
       dataset,
@@ -136,7 +136,7 @@ export default function useWorkbench() {
     }
     const version = scope.current,
       controller = new AbortController(),
-      entry = createAnalysisTask(request),
+      entry = createAnalysisTask(request, { parent }),
       localId = entry.id,
       work = {
         controller,

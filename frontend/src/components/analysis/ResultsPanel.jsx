@@ -75,7 +75,7 @@ export default function ResultsPanel({
       <button onClick={() => downloadFile(`analysis-${run.id}-result.json`, JSON.stringify(run, null, 2))}>
         {t('Export raw result & audit JSON', '导出原始结果及审计 JSON')}
       </button>
-      <button disabled={disabled} onClick={() => onRetry(run.request)}>
+      <button disabled={disabled} onClick={() => onRetry(run.request, run)}>
         {t('Retry as NEW run using this exact bound request', '以此绑定请求新建运行重试')}
       </button>
     </div>

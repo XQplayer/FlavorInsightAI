@@ -161,6 +161,8 @@ New processing tasks have a public `FI-YYYYMMDD-HHmmss-XXXXXX` number (UTC+08:00
 
 Identity is persisted in existing browser/cloud JSON metadata and hash-covered processing run/manifests; ZIPs also include `任务信息.txt`. Verified analysis imports retain source identity. Subsequent statistical-analysis executions get separate public numbers with their source task retained; analysis report/table/reproduction ZIPs include `task-traceability.json`. XLSX matrix exports add a scalar-only task provenance sheet, while CSV matrices keep their existing layout and carry identity in filenames. Legacy tasks/archives remain supported without inventing historical numbers. UUID storage paths, account gates, retention and scientific calculations are unchanged. This candidate is not deployed automatically.
 
+Local terminal task history keeps evidence for seven days and metadata for ninety, scoped to the current browser/account, without duplicating raw workbooks. Up to 100 unexpired local records are retained; storage/capacity errors are shown and do not silently evict old evidence. Explicit rerun preserves its parent before replacing active inputs; parent evidence can be downloaded from Task management. Clearing browser site data removes these local copies, not original source files or separately retained cloud copies.
+
 - [FEMA Flavor Ingredient Library](https://www.femaflavor.org/flavor-library)
 - [PubChem PUG REST](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)
 - [FlavorDB2](https://cosylab.iiitd.edu.in/flavordb2/)

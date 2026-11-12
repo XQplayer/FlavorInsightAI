@@ -53,8 +53,8 @@ export default function DataAnalysisPage({
     if (type === 'csv') downloadFile(datasetExportFileName(w.dataset,'csv'), exportDatasetCsv(w.dataset), 'text/csv;charset=utf-8');
     if (type === 'xlsx') downloadFile(datasetExportFileName(w.dataset,'xlsx'), exportDatasetXlsx(w.dataset), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   });
-  const start = bound => {
-    w.run(bound);
+  const start = (bound, parent) => {
+    w.run(bound, parent);
     setTab('results');
   };
   return <div className="analysis-workbench">

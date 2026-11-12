@@ -9,9 +9,10 @@ export function createTaskRun(input = {}, { parent = null, now = new Date(), cry
   return { ...base, ...identity, id: crypto.randomUUID(), name: identity.taskName, startedAt: identity.taskCreatedAt, status: 'running', nextStage: 0, stageSummary: [], error: null }
 }
 
-export async function persistTaskRun(task, { store, cloud }) {
+export async function persistTaskRun(task, { store, cloud, parent }) {
   let created = false
   try {
+    if (parent) await store.saveHistory(parent)
     if (cloud?.configured) {
       await cloud.createJob({ id: task.id, userId: task.userId, name: task.name, mode: task.mode, sourceNames: {
         taskIdentity: { ...taskIdentity(task), taskId: task.id },

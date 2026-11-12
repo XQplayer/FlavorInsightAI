@@ -482,7 +482,7 @@ function ResultsWorkspace({ job, record, selectedTaskId, language, onDownload, h
       return <article key={item.stage} className="processing-result-item"><div><h3>{item.title}</h3><span className={`state-${status}`}>{label}</span></div><p>{item.detail}</p></article>
     })}</div>
     <div className="processing-result-record"><h3>{textFor(language, '运行参数与证据记录', 'Run parameters and evidence')}</h3><p>{textFor(language, '真实阶段记录、质量证据和运行参数保存在结果包内；当前页面只显示已有任务元数据。', 'Actual stage records, QC evidence, and run parameters are retained in the result archive; this page only shows available task metadata.')}</p><dl><div><dt>{textFor(language, '任务 ID', 'Task ID')}</dt><dd><code>{source.id}</code></dd></div><div><dt>{textFor(language, '结果校验', 'Archive checksum')}</dt><dd><code>{source.archiveSha256 || source.result_sha256 || textFor(language, '暂无记录', 'Unavailable')}</code></dd></div></dl></div>
-    <div className="processing-result-download"><h3>{textFor(language, '完整结果包', 'Complete result package')}</h3>{availability.source === 'browser' ? <a className="primary" href={source.downloadUrl} download={source.resultFileName}><Download />{textFor(language, '下载结果 ZIP', 'Download result ZIP')}</a> : availability.source === 'cloud' ? <button type="button" onClick={() => onDownload(record)}><CloudDownload />{textFor(language, '获取私有结果包', 'Get private result package')}</button> : <p>{source.status === 'complete' ? textFor(language, '本地结果包已不在当前浏览器内；若此前未下载，请重新运行。', 'The local archive is no longer in this browser; rerun if it was not downloaded.') : textFor(language, '结果包尚未生成。', 'The result archive has not been generated yet.')}</p>}</div>
+    <div className="processing-result-download"><h3>{textFor(language, '完整结果包', 'Complete result package')}</h3>{availability.source === 'browser' ? <a className="primary" href={source.downloadUrl} download={source.resultFileName}><Download />{textFor(language, '下载结果 ZIP', 'Download result ZIP')}</a> : ['cloud', 'history'].includes(availability.source) ? <button type="button" onClick={() => onDownload(source)}><CloudDownload />{textFor(language, '获取私有结果包', 'Get private result package')}</button> : <p>{source.status === 'complete' ? textFor(language, '本地结果包已不在当前浏览器内；若此前未下载，请重新运行。', 'The local archive is no longer in this browser; rerun if it was not downloaded.') : textFor(language, '结果包尚未生成。', 'The result archive has not been generated yet.')}</p>}</div>
     {current?.status === 'complete' && handoff}
   </section>
 }
@@ -492,7 +492,7 @@ function HistoricalRunView({ record, language, onResults }) {
   const failure = [...stageSummary].reverse().find(item => item?.type === 'error' || item?.type === 'interrupted')
   return <section className="processing-historical-run" aria-label={textFor(language, '历史任务运行详情', 'Historical task run details')}>
     <div className="processing-workspace-heading"><div><h3>{taskLabel(record)}</h3><TaskParent record={record} language={language} /><p title={record.id}>{textFor(language, '任务 ID', 'Task ID')} · {record.id}</p></div><span className={`shimadzu-job-badge ${record.status}`}>{statusLabel(record.status, language)}</span></div>
-    <p>{textFor(language, '此处显示服务端保留的任务摘要；浏览器关闭后不会继续计算。', 'This is the retained service task summary; processing does not continue after the browser closes.')}</p>
+    <p>{textFor(language, record.local ? '此处显示当前浏览器保留的任务摘要；关闭浏览器后不会继续计算。' : '此处显示服务端保留的任务摘要；关闭浏览器后不会继续计算。', record.local ? 'This summary is retained in this browser; processing stops when it closes.' : 'This summary is retained by the service; processing stops when the browser closes.')}</p>
     <ol>{stageSummary.filter(item => Number.isInteger(item?.stage)).map(item => <li key={item.stage}>{String(item.stage).padStart(2, '0')} · {statusLabel(item.status || 'pending', language)} · {item.message || textFor(language, '无补充日志', 'No additional log')}</li>)}</ol>
     {failure && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><strong>{failure.code}</strong><p>{failure.message}</p></div></div>}
     <button type="button" onClick={onResults}>{textFor(language, '查看结果与 QC', 'View results and QC')}</button>
@@ -518,7 +518,7 @@ function TaskManager({ history, job, session, isAdmin, interruptedJobIds, langua
     {!visible.length ? <p className="processing-empty">{textFor(language, '当前范围没有符合条件的任务。', 'No tasks match this scope and filter.')}</p> : <ul className="processing-task-list">{visible.map(item => {
       const interrupted = interruptedJobIds.has(item.id)
       const downloadable = resultAvailability(item).downloadable || job?.id === item.id && resultAvailability(job).downloadable
-      return <li key={item.id}><div><strong>{taskLabel(item)}</strong><TaskParent record={item} language={language} /><small>{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false })} · {statusLabel(interrupted ? 'interrupted' : item.status, language)}{Number.isFinite(item.progress) ? ` · ${Math.round(item.progress)}%` : ''}</small>{adminTab && <small>{textFor(language, '用户', 'User')} {item.user_id}</small>}</div><div className="processing-task-actions"><button type="button" onClick={() => onOpen('monitor', item.id)}>{textFor(language, '运行详情', 'Run details')}</button><button type="button" onClick={() => onOpen('results', item.id)}>{textFor(language, '结果与 QC', 'Results & QC')}</button>{interrupted && <button type="button" onClick={() => onMarkInterrupted(item)}>{textFor(language, '确认中断', 'Confirm interruption')}</button>}{downloadable && !item.local && <button type="button" onClick={() => onDownload(item)}>{textFor(language, '下载', 'Download')}</button>}{downloadable && !item.local && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>{textFor(language, '删除结果', 'Delete result')}</button>}</div></li>
+      return <li key={item.id}><div><strong>{taskLabel(item)}</strong><TaskParent record={item} language={language} /><small>{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'zh-CN', { hour12: false })} · {statusLabel(interrupted ? 'interrupted' : item.status, language)}{Number.isFinite(item.progress) ? ` · ${Math.round(item.progress)}%` : ''}</small>{adminTab && <small>{textFor(language, '用户', 'User')} {item.user_id}</small>}</div><div className="processing-task-actions"><button type="button" onClick={() => onOpen('monitor', item.id)}>{textFor(language, '运行详情', 'Run details')}</button><button type="button" onClick={() => onOpen('results', item.id)}>{textFor(language, '结果与 QC', 'Results & QC')}</button>{interrupted && <button type="button" onClick={() => onMarkInterrupted(item)}>{textFor(language, '确认中断', 'Confirm interruption')}</button>}{downloadable && (!item.local || item.hasLocalArchive) && <button type="button" onClick={() => onDownload(item)}>{textFor(language, '下载', 'Download')}</button>}{downloadable && !item.local && <button type="button" className="danger" onClick={() => onDeleteResult(item)}>{textFor(language, '删除结果', 'Delete result')}</button>}</div></li>
     })}</ul>}
     <div className="processing-task-pagination"><button type="button" disabled={page <= 1} onClick={() => setPage(value => value - 1)}>{textFor(language, '上一页', 'Previous')}</button><span>{page} / {Math.max(1, Math.ceil(records.length / 8))}</span><button type="button" disabled={page * 8 >= records.length} onClick={() => setPage(value => value + 1)}>{textFor(language, '下一页', 'Next')}</button></div>
   </section>
@@ -580,7 +580,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const [error, setError] = useState('')
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [history, setHistory] = useState([])
+  const [cloudHistory, setHistory] = useState([])
+  const [localHistory, setLocalHistory] = useState([])
+  const history = useMemo(() => [
+    ...cloudHistory.map(item => ({ ...localHistory.find(local => local.id === item.id), ...item, local: false })),
+    ...localHistory.filter(item => !cloudHistory.some(cloudItem => cloudItem.id === item.id)),
+  ], [cloudHistory, localHistory])
   const [cloudLoading, setCloudLoading] = useState(analyticsEnabled)
   const [cloudError, setCloudError] = useState('')
   const [proxyState, setProxyState] = useState({ status: 'pending', message: textFor(language, '尚未检查；联网补充时按需连接。', 'Not checked; connected when enrichment needs it.') })
@@ -875,6 +880,9 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
         }
       }
       await taskSyncRef.current
+      await taskStore.saveHistory({ ...task, status: 'complete', nextStage: 7, stageSummary: stageSummaryRef.current.filter(Boolean), archiveBytes: result.archiveBytes, resultFileName: result.fileName, archiveSha256: result.archiveSha256 })
+        .then(async () => setLocalHistory(await taskStore.listHistory(task.scope)))
+        .catch(value => setError(`${textFor(language, '本地历史保存失败，请先下载当前结果包：', 'Local history could not be saved; download the current archive first: ')}${value.message}`))
       await taskStore.clear(task.scope)
       setActiveTaskId('')
       setRecoveryNotice('')
@@ -909,6 +917,9 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           partialArchiveFileName: value.fileName || taskArchiveFileName(task, cancelled ? 'cancelled' : 'failed'),
         } : {}),
       }).catch(() => {})
+      await taskStore.saveHistory({ ...task, status: cancelled ? 'cancelled' : 'failed', nextStage, stageSummary: stageSummaryRef.current.filter(Boolean), error: failure, partialArchiveBytes: value.archiveBytes, partialArchiveFileName: partialResult.partialArchiveFileName, partialArchiveSha256: value.archiveSha256 })
+        .then(async () => setLocalHistory(await taskStore.listHistory(task.scope)))
+        .catch(historyError => setError(`${textFor(language, '本地历史保存失败，请先下载当前证据包：', 'Local history could not be saved; download the current evidence first: ')}${historyError.message}`))
       if (cloud.configured && activeJobIdRef.current) {
         await cloudSyncRef.current.catch(() => {})
         if (value.archiveBytes) {
@@ -964,6 +975,8 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const restoreActiveTask = async scope => {
     setRecoveryChecked(false)
     try {
+      taskScopeRef.current = scope
+      setLocalHistory(await taskStore.listHistory(scope))
       const task = await taskStore.load(scope)
       if (!task) {
         setActiveTaskId('')
@@ -1018,7 +1031,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     if (cloud.configured && cloudLoading) return
     if (cloud.configured && (!session?.user || profile?.approval_status !== 'approved')) {
       restoreScopeRef.current = ''
-      queueMicrotask(() => setRecoveryChecked(true))
+      queueMicrotask(() => { setRecoveryChecked(true); setLocalHistory([]) })
       return
     }
     const scope = cloud.configured ? session.user.id : 'local'
@@ -1061,7 +1074,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       const parent = await taskStore.load(taskScopeRef.current)
       if (!parent) throw new Error(textFor(language, '本地恢复数据已不存在，请重新选择两个输入文件。', 'Local recovery data is no longer available. Select both input files again.'))
       const task = createTaskRun({}, { parent })
-      await persistTaskRun(task, { store: taskStore, cloud })
+      await persistTaskRun(task, { store: taskStore, cloud, parent })
       if (partialResultUrlRef.current) { URL.revokeObjectURL(partialResultUrlRef.current); partialResultUrlRef.current = '' }
       await runTask(task)
     } catch (value) { setError(value.message) }
@@ -1071,6 +1084,16 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const downloadCloudResult = async item => {
     setCloudError('')
     try {
+      if (item.hasLocalArchive) {
+        const stored = await taskStore.loadHistory(taskScopeRef.current, item.id)
+        if (!stored?.archiveBytes) throw new Error(textFor(language, '本地证据包已过期或不存在。', 'The local evidence archive expired or is unavailable.'))
+        const url = URL.createObjectURL(new Blob([stored.archiveBytes], { type: 'application/zip' }))
+        const link = document.createElement('a')
+        link.href = url; link.download = stored.resultFileName || taskArchiveFileName(item, item.status)
+        document.body.append(link); link.click(); link.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 30000)
+        return
+      }
       const url = await cloud.downloadUrl(item.result_path, 'shimadzu-results', taskArchiveFileName(item, item.status))
       window.location.assign(url)
     } catch (value) { setCloudError(`${textFor(language, '无法建立下载链接：', 'Could not create the download link: ')}${value.message}`) }

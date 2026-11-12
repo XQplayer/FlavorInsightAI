@@ -2115,6 +2115,7 @@
 }
 .analysis-console-status-primary > strong,
 .analysis-console-status-primary > small,
+.processing-task-list .processing-task-parent,
 .processing-task-list strong,
 .processing-workspace-heading h3,
-.processing-workspace-heading p { overflow-wrap: anywhere; }
+.processing-workspace-heading p { overflow-wrap: anywhere; white-space: normal; overflow: visible; text-overflow: clip; }
