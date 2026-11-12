@@ -22,6 +22,6 @@
 
 [查看或下载原图](flavorinsight-ai-mark.png) · PNG · 1254 × 1254 · 保留透明通道
 
-本次仅添加仓库品牌展示素材，不修改网站导航、登录页、图标配置、分析流程或版本号。
+原始素材首次添加时仅用于仓库展示。2026-11-12起，网站标签页、触屏收藏图标和侧栏品牌位共用独立图标：`frontend/public/brand/flavorinsight-ai-mark.png` 是上方原图的逐字节副本，不裁剪、不重绘、不重新压缩；仅由浏览器按显示尺寸缩放。侧栏保留品牌文字与首页链接。此项不改变分析流程或产品版本号。
 
 [返回项目 README](../../README.md) · [访问 FlavorInsight AI](https://xqplayer.github.io/FlavorInsightAI/)
