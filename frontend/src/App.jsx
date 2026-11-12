@@ -2018,6 +2018,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
             })}
             candidateScopeKey={workbenchSelectionScopeKey}
             onRetrySource={retryWorkbenchSource}
+            onAskAI={onNavigate ? cas => onNavigate('assistant', { cas }) : undefined}
             apiUrl={FEMA_API_URL}
             citationText={citationExampleText}
             onExportCompact={() => exportCSV('compact')}
@@ -2123,6 +2124,7 @@ FlavorDB2. (${accessYear}). Flavor molecule and food entity database. Retrieved 
                           </span>
                         )}
                         <span className="compound-cas">CAS {item.cas}</span>
+                        {onNavigate && <button type="button" className="compound-ask-ai" onClick={() => onNavigate('assistant', { cas: item.cas })}>{isEnglish ? 'Ask AI about this record' : '询问 AI：此化合物'}</button>}
                       </div>
                       
                       <div className="mt-4 md:mt-0 flex shrink-0">

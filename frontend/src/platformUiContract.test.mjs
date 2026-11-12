@@ -23,6 +23,7 @@ const analysisSource = await readFile(
   new URL('./pages/LocalAnalysisWorkbench.jsx', import.meta.url),
   'utf8',
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
+const browserAnalysisSource = await readFile(new URL('./pages/DataAnalysisPage.jsx', import.meta.url), 'utf8');
 const resourcesSource = await readFile(
   new URL('./pages/ResourcesPage.jsx', import.meta.url),
   'utf8',
@@ -52,7 +53,7 @@ test('provides a skip link and a labelled main landmark', () => {
   assert.match(source, /<main[^>]*id="main-content"/);
 });
 
-test('defines the six platform destinations and labels', () => {
+test('defines the seven platform destinations and labels', () => {
   const navigation = source.match(/const NAV_ITEMS = Object\.freeze\(\[[\s\S]*?\]\);/)?.[0] ?? '';
   const destinations = [
     ['home', '首页', 'Home'],
@@ -60,6 +61,7 @@ test('defines the six platform destinations and labels', () => {
     ['processing', '数据处理', 'Data processing'],
     ['analysis', '数据分析', 'Data analysis'],
     ['models', '智能模型', 'AI Models'],
+    ['assistant', 'AI 科研助手', 'AI Research Assistant'],
     ['resources', '资源中心', 'Resources'],
   ];
 
@@ -228,6 +230,12 @@ test('offers a real bilingual local analysis workbench without claiming deployed
   assert.match(analysisSource, /Export portable project/);
   assert.doesNotMatch(analysisSource, /<main\b/i);
   assert.doesNotMatch(analysisSource, /用户数量|使用次数|客户评价|production AI (?:is live|is available)/i);
+});
+
+test('browser PCA is an additional mode and keeps the original R workbench reachable', () => {
+  assert.match(browserAnalysisSource, /BrowserPcaPage/);
+  assert.match(browserAnalysisSource, /LocalAnalysisWorkbench/);
+  assert.match(browserAnalysisSource, /engine.*local/);
 });
 
 test('offers only verified resources and keeps pending resources non-interactive', () => {

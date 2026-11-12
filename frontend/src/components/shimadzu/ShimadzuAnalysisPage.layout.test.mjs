@@ -35,6 +35,23 @@ test('new analysis retains local workbook controls and scientific defaults', () 
   assert.doesNotMatch(source, /uploadInputs/)
 })
 
+test('completed current and historical tasks expose a scoped AI interpretation route', () => {
+  assert.match(source, /item\.status === 'complete' && onExplain/)
+  assert.match(source, /onExplain=\{onNavigate && cloud\.configured && session \? item => onNavigate\('assistant', \{ task_id: item\.id \}\)/)
+  assert.match(source, /source\.status === 'complete' && onExplain && record/)
+})
+
+test('uses one Analysis Console with a selectable 00–07 rail and one stage detail', () => {
+  assert.match(source, /分析任务控制台|Analysis Console/)
+  assert.match(source, /deriveAnalysisConsole/)
+  assert.match(source, /className="analysis-console-steps"/)
+  assert.match(source, /className="analysis-console-detail"/)
+  assert.match(source, /aria-pressed=\{selectedStep === index\}/)
+  assert.doesNotMatch(source, /<WorkflowMap job=\{job\}/)
+  assert.doesNotMatch(source, /<StageRail job=\{job\}/)
+  assert.doesNotMatch(source, /<LiveMonitor job=\{job\}/)
+})
+
 test('preflight does not claim unexecuted workbook structure checks passed', () => {
   assert.match(source, /structureState === 'pending'/)
   assert.match(source, /Worker 阶段 0 验证/)
