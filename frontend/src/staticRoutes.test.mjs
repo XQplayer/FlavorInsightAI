@@ -19,9 +19,19 @@ const EXPECTED_STATIC_ROUTES = [
   'login',
 ]
 
-test('Vite uses the FlavorInsightAI project base', async () => {
-  const viteConfig = await readFile(path.resolve('vite.config.js'), 'utf8')
-  assert.match(viteConfig, /base:\s*'\/FlavorInsightAI\/'/)
+test('Vite keeps the Pages base and uses an isolated preview root', async () => {
+  const previous = process.env.VITE_PCA_PREVIEW
+  try {
+    delete process.env.VITE_PCA_PREVIEW
+    const pages = (await import('../vite.config.js?target=pages')).default
+    assert.equal(pages.base, '/FlavorInsightAI/')
+    process.env.VITE_PCA_PREVIEW = 'true'
+    const preview = (await import('../vite.config.js?target=preview')).default
+    assert.equal(preview.base, '/')
+  } finally {
+    if (previous === undefined) delete process.env.VITE_PCA_PREVIEW
+    else process.env.VITE_PCA_PREVIEW = previous
+  }
 })
 
 test('static route generator creates index entries for public application routes', async () => {
