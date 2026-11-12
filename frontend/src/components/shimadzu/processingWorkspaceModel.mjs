@@ -1,3 +1,5 @@
+import { taskLabel } from '../../lib/taskIdentity.mjs'
+
 const COMPLETE = new Set(['PASS', 'WARN', 'REVIEW'])
 const STAGES = Object.freeze([
   { number: '00', label: '运行前预检', workerIndex: 0 },
@@ -36,6 +38,6 @@ export function deriveProcessingStages(job, preflight = {}) {
 
 export function filterTaskRecords(records = [], { query = '', status = 'all', newestFirst = true } = {}) {
   const needle = String(query).trim().toLocaleLowerCase()
-  return records.filter(item => (!needle || String(item.name || '').toLocaleLowerCase().includes(needle)) && (status === 'all' || item.status === status))
+  return records.filter(item => (!needle || taskLabel(item).toLocaleLowerCase().includes(needle) || String(item.id || '').toLocaleLowerCase().includes(needle)) && (status === 'all' || item.status === status))
     .sort((a, b) => (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * (newestFirst ? 1 : -1))
 }
