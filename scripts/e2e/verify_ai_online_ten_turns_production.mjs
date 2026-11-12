@@ -65,8 +65,28 @@ async function chat(token, conversationId, message) {
   const response = await request(token, '/ai/chat', { method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ conversation_id: conversationId, message }) })
-  const raw = await response.text()
-  const events = raw.split(/\r?\n/u).filter(line => line.startsWith('data: ')).map(line => JSON.parse(line.slice(6)))
+  const events = []
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let bytes = 0
+  try {
+    for await (const chunk of response.body) {
+      bytes += chunk.byteLength
+      if (bytes > 250_000) throw new Error('SSE_RESPONSE_TOO_LARGE')
+      buffer += decoder.decode(chunk, { stream: true })
+      let boundary
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const eventBlock = buffer.slice(0, boundary)
+        buffer = buffer.slice(boundary + 2)
+        for (const line of eventBlock.split(/\r?\n/u)) {
+          if (line.startsWith('data: ')) events.push(JSON.parse(line.slice(6)))
+        }
+      }
+    }
+  } catch (error) {
+    error.events_seen = events.length
+    throw error
+  }
   const answer = events.filter(event => event.type === 'delta').map(event => event.text).join('')
   const error = events.find(event => event.type === 'error')
   if (response.status !== 200 || error || !events.some(event => event.type === 'done')) {
@@ -144,7 +164,9 @@ try {
   evidence.status = 'FAIL'
   evidence.failed_turn = activeTurn || null
   evidence.error_type = String(error?.name || 'Error').slice(0, 40)
-  evidence.transport_code = String(error?.cause?.code || '').replace(/[^A-Z0-9_]/giu, '').slice(0, 40)
+  evidence.transport_code = String(error?.cause?.code || error?.cause?.cause?.code || '')
+    .replace(/[^A-Z0-9_]/giu, '').slice(0, 40)
+  evidence.failed_stream_events = Number.isInteger(error?.events_seen) ? error.events_seen : null
   evidence.error = String(error.message).replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/giu, '[redacted]').slice(0, 180)
   process.exitCode = 1
   console.error(`FAIL online synthetic chat: ${evidence.error}`)
