@@ -1,6 +1,12 @@
+<p align="center">
+  <a href="https://xqplayer.github.io/FlavorInsightAI/">
+    <img src="docs/brand/flavorinsight-ai-wordmark.png" width="880" alt="FlavorInsight AI — 智能风味科学研究平台" />
+  </a>
+</p>
+
 # FlavorInsight AI
 
-[Public website](https://xqplayer.github.io/FlavorInsightAI/) | [Search](https://xqplayer.github.io/FlavorInsightAI/aroma-threshold/) | [Project history](PROJECT_HISTORY.md)
+[Public website](https://xqplayer.github.io/FlavorInsightAI/) | [Search](https://xqplayer.github.io/FlavorInsightAI/aroma-threshold/) | [Project history](PROJECT_HISTORY.md) | [Brand assets / 品牌标识](docs/brand/README.md)
 
 FlavorInsight AI is a bilingual, local-first food-flavor research platform. Its FlavorThresholdDB database provides traceable odor-threshold and flavor-descriptor retrieval by CAS number or compound name; the Shimadzu workspace processes GC–MS workbooks with quality gates and auditable exports. Statistical analysis and AI prediction remain in development or planned, not deployed capabilities.
 
