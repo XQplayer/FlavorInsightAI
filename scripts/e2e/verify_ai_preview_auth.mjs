@@ -54,13 +54,14 @@ try {
     'https://flavorinsight-ai-gateway-preview.onrender.com/ai/session' && response.status() === 200,
   { timeout: 20000 })
   await page.getByRole('button', { name: /Sign in|登录/ }).click()
-  await authenticatedSession
+  const configuration = await (await authenticatedSession).json()
+  if (process.env.FLAVOR_AI_EXPECTED_MODE) assert.equal(configuration.mode, process.env.FLAVOR_AI_EXPECTED_MODE)
   await page.getByText(email, { exact: true }).waitFor({ timeout: 20000 })
   await page.getByRole('button', { name: /Sign out|退出登录/ }).click()
   await page.getByRole('textbox', { name: /Email|邮箱/ }).waitFor({ timeout: 20000 })
   assert.ok(sessionResponses.includes(200), 'authenticated Gateway session must succeed')
   console.log(JSON.stringify({ status: 'PASS', environment: 'Staging synthetic account',
-    preview, authenticatedSession: true, signOut: true }))
+    preview, mode: configuration.mode, authenticatedSession: true, signOut: true }))
   await context.close()
 } finally {
   await browser?.close()

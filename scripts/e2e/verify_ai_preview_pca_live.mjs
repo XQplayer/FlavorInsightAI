@@ -113,6 +113,7 @@ try {
       answer_excerpt: answer.slice(0, 800), stream_types: [...new Set(stream.split(/\r?\n/u).filter(line => line.startsWith('data: ')).map(line => JSON.parse(line.slice(6)).type))] }))
   }
   mark('followup_uses_linked_pc1', /PC1/iu.test(answer) && numbers.some(value => Math.abs(value - percent) < 1))
+  await page.getByRole('button', { name: /^Send$|^发送$/ }).waitFor({ timeout: 20000 })
   await mkdir(path.dirname(output), { recursive: true })
   await page.screenshot({ path: output, fullPage: true })
   report.status = 'PASS'
