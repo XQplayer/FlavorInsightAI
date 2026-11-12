@@ -198,6 +198,27 @@
 .shimadzu-inline-error a { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--sz-accent-deep); font-size: 13px; font-weight: 700; }
 .shimadzu-inline-error a svg { width: 14px; }
 
+.shimadzu-failure-report { overflow-wrap: anywhere; }
+.shimadzu-failure-report > div { width: 100%; }
+.shimadzu-failure-report .shimadzu-failure-heading { margin-bottom: 5px; font-size: 16px; }
+.shimadzu-failure-report .shimadzu-failure-totals { margin-top: 12px; }
+.shimadzu-failure-counts { margin-top: 5px !important; }
+.shimadzu-failure-causes { display: grid; gap: 14px; margin: 14px 0; }
+.shimadzu-failure-cause { padding-top: 12px; border-top: 1px solid currentColor; }
+.shimadzu-failure-cause dl { display: grid; grid-template-columns: minmax(75px, 110px) minmax(0, 1fr); gap: 5px 12px; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+.shimadzu-failure-cause dt { font-weight: 700; }
+.shimadzu-failure-cause dd { min-width: 0; margin: 0; }
+.shimadzu-failure-notices { margin-top: 14px; padding-top: 12px; border-top: 1px solid currentColor; }
+.shimadzu-failure-technical { margin-top: 14px; }
+.shimadzu-failure-technical summary { cursor: pointer; padding: 8px 0; font-weight: 700; }
+.shimadzu-failure-technical summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.shimadzu-failure-technical li { margin-bottom: 9px; }
+.shimadzu-failure-technical li span { display: block; font-size: 12px; }
+@media (max-width: 560px) {
+  .shimadzu-failure-cause dl { grid-template-columns: 1fr; gap: 2px; }
+  .shimadzu-failure-cause dd { margin-bottom: 7px; }
+}
+
 .shimadzu-recovery-notice {
   margin-bottom: 18px;
   padding: 14px 18px;

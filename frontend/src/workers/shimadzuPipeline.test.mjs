@@ -16,6 +16,34 @@ const runShimadzuBrowserPipeline = options => runPipeline({ resolveWaterDetectio
 
 const resource = name => new URL(`../../../resources/shimadzu/templates/${name}`, import.meta.url)
 
+test('failure evidence retains workbook, section rows and separate template reminders', async () => {
+  const { default: XLSX } = await import('xlsx')
+  const raw = XLSX.read(await readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')), { type: 'buffer' })
+  raw.Sheets[raw.SheetNames[0]] = XLSX.utils.aoa_to_sheet([['[MC Peak Table]'], ['[MS Similarity Search Results for Spectrum Process Table]']])
+  const samples = XLSX.read(await readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx')), { type: 'buffer' })
+  const sheet = samples.Sheets[samples.SheetNames[0]]
+  const headers = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0]
+  sheet[XLSX.utils.encode_cell({ r: 1, c: headers.indexOf('备注') })] = { t: 's', v: '虚构数据，仅用于验证模板结构' }
+  let failure
+  await assert.rejects(runShimadzuBrowserPipeline({
+    rawBytes: XLSX.write(raw, { type: 'buffer', bookType: 'xlsx' }),
+    sampleBytes: XLSX.write(samples, { type: 'buffer', bookType: 'xlsx' }),
+    rawName: 'raw.xlsx', sampleName: 'config.xlsx',
+  }), error => { failure = error; return error.code === 'STAGE_GATE_FAILED' })
+  {
+    const error = failure
+    const issue = error.details.issues.find(issue => issue.severity === 'FAIL')
+    assert.equal(issue.sourceWorkbook, 'raw.xlsx')
+    assert.equal(issue.sourceRow, 1)
+    assert.equal(issue.nextSectionRow, 2)
+    assert.equal(error.details.contextWarnings[0].sourceWorkbook, 'config.xlsx')
+    assert.ok(error.details.contextWarnings[0].count >= 1)
+    const zip = await JSZip.loadAsync(error.archiveBytes)
+    const archived = JSON.parse(await zip.file('失败任务/错误明细.json').async('string'))
+    assert.deepEqual(archived.contextWarnings, error.details.contextWarnings)
+  }
+})
+
 test('warns when identity lookup fails instead of marking an NA-only enrichment as passed', async () => {
   const [rawBytes, sampleBytes] = await Promise.all([
     readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx')),

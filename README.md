@@ -115,6 +115,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\local_runtime.ps1 
 
 ## Quality checks
 
+Shimadzu failed tasks show a bilingual cause, sample/workbook/worksheet location, recorded source rows, missing fields and corrective action directly on the task page. Blocking errors and warnings are counted separately; raw technical details and the downloadable evidence archive remain available. New tasks record structural section-row metadata. Legacy errors without row metadata display only the evidence actually stored. Configuration example markers are separate reminders and do not change gate decisions or scientific calculations.
+
 Shimadzu Stage 4 waits for the public data API to wake up before starting online enrichment. It looks up at most two CAS entries concurrently, uses the lightweight PubChem/FlavorDB2 endpoints, and downloads each water-threshold database once per worker. Temporary request failures are retried and retained in the compound-information audit; incomplete enrichment produces a warning instead of a silent pass. A database download failure stops Stage 4 with a recoverable partial archive rather than exporting an NA-only threshold column. Local database names remain available when an individual external source fails.
 
 Regression checks: `pnpm run test:shimadzu-browser`; after a production build, `pnpm run test:e2e:shimadzu-enrichment` checks the compiled browser worker, real threshold databases and preservation of enrichment in Stage 5/6 workbooks (external API responses are fixtures in this reproducible check).
