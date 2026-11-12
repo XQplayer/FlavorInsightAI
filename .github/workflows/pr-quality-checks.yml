@@ -24,7 +24,7 @@ jobs:
       - name: Shimadzu service and HTTP integration
         run: python3 -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
       - name: AI Gateway and read-only tool contracts
-        run: python3 -m unittest scripts.tests.test_ai_gateway scripts.tests.test_ai_tools -v
+        run: python3 -m unittest scripts.tests.test_ai_gateway scripts.tests.test_ai_tools scripts.tests.test_ai_only_server -v
       - name: Release metadata and archive safety contracts
         run: python3 -m unittest scripts.tests.test_deployment_metadata scripts.tests.test_release_rebaseline -v
 
