@@ -118,3 +118,4 @@
 @media (prefers-reduced-motion: reduce) {
   .analysis-workbench button { transition: none; }
 }
+.analysis-task-identity { overflow-wrap: anywhere; }

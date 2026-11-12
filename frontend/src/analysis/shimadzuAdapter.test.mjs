@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 const api = await import('./shimadzuAdapter.mjs').catch(() => ({}))
 const dirs = ['00_输入配置与清单','01_Hit1整理','02_化合物筛查','03_平行峰面积处理','04_跨样品合并与半定量','05_统计_CV_CAS与QC','06_按矩阵拆分']
 const hash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2,'0')).join('')
-export async function fixture({ status = 'PASS', mutate, imputedStandard = false, measuredAnalyteUnknownStandard = false } = {}) {
+export async function fixture({ status = 'PASS', mutate, taskIdentity, imputedStandard = false, measuredAnalyteUnknownStandard = false } = {}) {
   const zip = new JSZip(); const enc = new TextEncoder()
   async function signed(path, value) { const bytes = enc.encode(JSON.stringify(value)); zip.file(path, bytes); zip.file(path.replace(/\.json$/, '.sha256'), await hash(bytes)); return bytes }
   const sampleConfigs = [{sampleName:'S1',sampleGroup:'G',internalStandardCas:'123-96-6'}, {sampleName:'S2',sampleGroup:'G',internalStandardCas:'123-96-6'}]
@@ -16,13 +16,29 @@ export async function fixture({ status = 'PASS', mutate, imputedStandard = false
     if (i === 4 && imputedStandard) { data.sampleCalculations = { S1: {internalStandardAreaStatus:'Imputed_Internal_Standard_Area'} }; data.concentrationStatus = [{cas:'64-17-5',sampleName:'S1',areaStatus:'Measured'}] }
     if (i === 4 && measuredAnalyteUnknownStandard) data.concentrationStatus = [{cas:'64-17-5',sampleName:'S1',areaStatus:'Measured'}]
     const bytes = enc.encode(JSON.stringify(data)); zip.file(`${dirs[i]}/data.json`, bytes)
-    await signed(`${dirs[i]}/manifest.json`, {schemaVersion:'shimadzu-browser-manifest-1',stage:dirs[i],severity:'PASS',canAdvance:true,outputHashes:[{path:`${dirs[i]}/data.json`,sha256:await hash(bytes),size:bytes.length}]})
+    await signed(`${dirs[i]}/manifest.json`, {schemaVersion:'shimadzu-browser-manifest-1',stage:dirs[i],severity:'PASS',canAdvance:true,parameters:{taskIdentity},outputHashes:[{path:`${dirs[i]}/data.json`,sha256:await hash(bytes),size:bytes.length}]})
   }
-  await signed('v2-run.json',{schemaVersion:'shimadzu-browser-run-1',status,name:'Synthetic',completedStages:dirs})
-  await signed('完整性验证/v2-completeness-verification.json',{schemaVersion:'shimadzu-v2-completeness-1',status:'PASS',completedStages:dirs})
+  await signed('v2-run.json',{schemaVersion:'shimadzu-browser-run-1',status,name:'Synthetic',parameters:{taskIdentity},completedStages:dirs})
+  await signed('完整性验证/v2-completeness-verification.json',{schemaVersion:'shimadzu-v2-completeness-1',status:'PASS',parameters:{taskIdentity},completedStages:dirs})
   if (mutate) await mutate(zip)
   return zip.generateAsync({type:'uint8array',compression:'DEFLATE'})
 }
+
+test('propagates only consistent hash-verified task identity into analysis provenance', async () => {
+  const taskIdentity = { taskId: 'source-uuid', taskNumber: 'FI-20261112-153045-A7C92E', taskName: '溯源测试', taskCreatedAt: '2026-11-12T07:30:45.000Z', parentTaskId: null, parentTaskNumber: null }
+  const data = await api.importShimadzuArchive(await fixture({ taskIdentity }), { selection: 'before-cv' })
+  assert.deepEqual(data.provenance.taskIdentity, taskIdentity)
+  const legacy = await api.importShimadzuArchive(await fixture(), { selection: 'before-cv' })
+  assert.equal(legacy.provenance.taskIdentity, undefined)
+  await assert.rejects(api.importShimadzuArchive(await fixture({ taskIdentity, mutate: zip => zip.file('v2-run.json', '{}') }), { selection: 'before-cv' }), /HASH_MISMATCH/)
+  await assert.rejects(api.importShimadzuArchive(await fixture({ taskIdentity, mutate: async zip => {
+    const path = `${dirs[4]}/manifest.json`
+    const manifest = JSON.parse(await zip.file(path).async('string'))
+    manifest.parameters.taskIdentity.taskNumber = 'FI-20261112-153046-A7C92E'
+    const text = JSON.stringify(manifest)
+    zip.file(path, text); zip.file(path.replace(/\.json$/, '.sha256'), await hash(new TextEncoder().encode(text)))
+  } }), { selection: 'before-cv' }), /TASK_IDENTITY_MISMATCH/)
+})
 test('archive and direct handoff share verified adapter and preserve sample concentrations and masks', async () => {
   assert.equal(typeof api.importShimadzuArchive, 'function')
   const archiveBytes = await fixture(); const pre = await api.importShimadzuArchive(archiveBytes,{selection:'before-cv'})

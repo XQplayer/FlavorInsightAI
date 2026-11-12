@@ -83,8 +83,8 @@ export function createShimadzuCloud(client) {
       unwrap(await requireClient(client).storage.from('shimadzu-results').upload(path, body, { contentType: 'application/zip', upsert: true }))
       return this.updateJob(jobId, { result_path: path, result_sha256: sha256, result_size: body.size, status, current_stage: currentStage, progress, completed_at: completedAt })
     },
-    async downloadUrl(path, bucketName = 'shimadzu-results') {
-      return unwrap(await requireClient(client).storage.from(bucketName).createSignedUrl(path, 300))?.signedUrl
+    async downloadUrl(path, bucketName = 'shimadzu-results', fileName) {
+      return unwrap(await requireClient(client).storage.from(bucketName).createSignedUrl(path, 300, fileName ? { download: fileName } : undefined))?.signedUrl
     },
     async deleteResult({ jobId, path }) {
       unwrap(await requireClient(client).storage.from('shimadzu-results').remove([path]))

@@ -227,7 +227,7 @@ export default function PlatformHomeV2({ onNavigate }) {
     </aside>
 
     <footer className="fi-home__footer">
-      <div><strong>{t.footerPlatform}</strong><span>{t.footerVersion} {packageMetadata.version}</span><p>{t.footerPrivacy}</p></div>
+      <div><strong>{t.footerPlatform}</strong><span><a data-release="current" href={`https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v${packageMetadata.version}`} target="_blank" rel="noopener noreferrer">{t.footerVersion} {packageMetadata.version}</a>{' · '}<a data-release="archive" href="https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.0.0" target="_blank" rel="noopener noreferrer">{language === 'zh' ? '历史归档 1.0.0' : 'History 1.0.0'}</a></span><p>{t.footerPrivacy}</p></div>
       <nav aria-label={language === 'zh' ? '页脚链接' : 'Footer links'}>
         <RouteLink route="resources" onNavigate={onNavigate}>{t.footerCitation}</RouteLink>
         <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">{t.footerRepository}<ArrowUpRight size={14} aria-hidden="true" /></a>

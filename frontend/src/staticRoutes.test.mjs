@@ -59,7 +59,7 @@ test('static route generator creates index entries for public application routes
   }
 })
 
-test('homepage metadata and package scripts identify FlavorInsight AI without changing the release version', async () => {
+test('homepage metadata and package scripts identify the shipped FlavorInsight AI version', async () => {
   const html = await readFile(path.resolve('index.html'), 'utf8')
   const packageJson = JSON.parse(await readFile(path.resolve('package.json'), 'utf8'))
 
@@ -68,8 +68,8 @@ test('homepage metadata and package scripts identify FlavorInsight AI without ch
   assert.match(html, /<meta property="og:title" content="FlavorInsight AI \| 食品风味信息学智能分析平台"/)
   assert.match(html, /<meta property="og:description" content="FlavorInsight AI /)
   assert.doesNotMatch(html, /%BASE_URL%favicon/)
-  assert.match(html, /href="\/favicon\.svg"/)
-  assert.equal(packageJson.version, '1.5.0')
+  assert.match(html, /rel="icon" type="image\/png" href="\/brand\/flavorinsight-ai-mark\.png"/)
+  assert.equal(packageJson.version, (await readFile(path.resolve('../VERSION'), 'utf8')).trim())
   assert.equal(
     packageJson.scripts['test:platform'],
     'node --test src/platformRoutes.test.mjs src/platformUiContract.test.mjs src/platformHomeV2.test.mjs',
