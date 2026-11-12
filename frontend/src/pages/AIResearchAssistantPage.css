@@ -6,6 +6,16 @@
 .ai-research-header p:last-child { margin: 9px 0 0; color: var(--text-secondary); font-size: 14px; }
 .ai-research-mode { padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 999px; color: var(--text-secondary); background: var(--surface-panel); font-size: 12px; white-space: nowrap; }
 .ai-research-mode.is-mock { color: var(--platform-brand); }
+.ai-research-auth, .ai-research-account { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: -4px 0 16px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--surface-panel); font-size: 13px; }
+.ai-research-auth > svg { color: var(--platform-brand); }
+.ai-research-auth label { display: grid; gap: 4px; min-width: min(180px, 100%); flex: 1; color: var(--text-secondary); font-size: 11px; }
+.ai-research-auth input { width: 100%; min-height: 36px; padding: 6px 9px; border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); background: var(--surface-workbench); font: inherit; font-size: 13px; }
+.ai-research-auth button, .ai-research-account button { min-height: 36px; padding: 7px 12px; border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); background: var(--surface-workbench); font: inherit; cursor: pointer; }
+.ai-research-auth button { align-self: end; color: #fff; background: var(--platform-brand); border-color: var(--platform-brand); }
+.ai-research-auth button:disabled { opacity: .6; cursor: not-allowed; }
+.ai-research-auth [role='alert'] { flex-basis: 100%; color: #d64b54; }
+.ai-research-account { justify-content: space-between; color: var(--text-secondary); overflow-wrap: anywhere; }
+.ai-research-account button { display: inline-flex; align-items: center; gap: 6px; }
 .ai-research-task-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: -5px 0 16px; padding: 10px 13px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-panel); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
 .ai-research-task-context strong { color: var(--text-primary); }
 .ai-research-layout { min-height: min(720px, calc(100dvh - 210px)); display: grid; grid-template-columns: 244px minmax(0, 1fr); gap: 14px; }
@@ -60,8 +70,9 @@
 .ai-research-submit { min-height: 42px; padding: 0 14px; border: 0; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px; color: #fff; background: var(--platform-brand); font-weight: 700; white-space: nowrap; }
 .ai-research-submit.stop { background: #bd4651; }
 .ai-research-submit:disabled { opacity: .55; cursor: not-allowed; }
-.ai-research-page :is(button, textarea, a):focus-visible { outline: 3px solid var(--platform-brand); outline-offset: 2px; }
+.ai-research-page :is(button, input, textarea, a):focus-visible { outline: 3px solid var(--platform-brand); outline-offset: 2px; }
 @media (max-width: 900px) { .ai-research-layout { grid-template-columns: 190px minmax(0, 1fr); } }
 @media (max-width: 700px) { .ai-research-page { padding: 14px; } .ai-research-header { flex-wrap: wrap; } .ai-research-layout { display: flex; flex-direction: column; } .ai-research-history { max-height: 140px; } .ai-research-history ul { display: flex; gap: 5px; overflow-x: auto; margin: 7px 0; } .ai-research-history li:not(.ai-research-empty-history) { min-width: 150px; } .ai-research-history li > button:first-child { min-width: 0; } .ai-research-knowledge { display: none; } .ai-research-messages { min-height: 350px; max-height: 52vh; } .ai-research-welcome { margin-top: 1vh; } .ai-research-composer { padding: 10px; } }
 @media (max-width: 420px) { .ai-research-header h1 { font-size: 26px; } .ai-research-composer form { align-items: stretch; flex-direction: column; } .ai-research-composer textarea { width: 100%; } .ai-research-submit { align-self: flex-end; } }
+@media (max-width: 700px) { .ai-research-auth label { flex-basis: 100%; } .ai-research-auth button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .ai-research-page * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
