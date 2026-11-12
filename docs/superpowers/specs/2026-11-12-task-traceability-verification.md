@@ -56,3 +56,9 @@ Visual review also caught a mobile-only ellipsis hiding part of the task number/
 - Subsequent statistical analysis also receives a public number, preserving its source processing identity and service run ID; no backend numerical request schema change.
 - Repaired one stale baseline browser test selector to test the current UI, not an obsolete heading.
 - Original dirty main checkout remains untouched. Keep the local branch/worktree for review; rollback is to stop using the candidate preview and continue using the unchanged main checkout. No data migration must be undone.
+
+## Authorised publication, 2026-11-12
+
+After the local candidate was completed, the user explicitly authorised publication. Release source is `codex/task-traceability` at functional commit `2cf5d7e`, based on main `b3be4c7e3b43a9a655eab3f1bb9af807d2946a02`. No newer main changes were present at the release audit. Keep version 1.5.0 and the existing UUID storage/database contracts; no migration, secrets or scientific-rule change is required. Rerun local tests, require matching PR quality checks, merge into main and verify the Pages deployment plus served task/worker metadata resources before reporting publication complete. The pre-publication no-push statements above describe the earlier local-only stage, not this later user authorization.
+
+Production rollback: revert the release merge commit with mainline parent 1, then redeploy Pages. Existing public task numbers are additive metadata and remain readable; no raw-data deletion or database rollback is required. Preserve the primary dirty checkout and isolated evidence directories.
