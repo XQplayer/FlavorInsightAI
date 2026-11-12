@@ -1,6 +1,6 @@
 # Deployment
 
-FlavorThresholdDB uses a static frontend plus an external Python data proxy.
+FlavorInsight AI 1.1.0 uses a static frontend plus an external Python data proxy. FlavorThresholdDB is its retrieval module; the aggregate historical software archive is 1.0.0. The root `VERSION` identifies shipped build metadata; frontend package, homepage and proxy health must agree. Existing dataset/schema/engine versions are separate.
 
 ## Production components
 
@@ -28,7 +28,7 @@ Never commit production credentials to `.env`, source files, or documentation.
 The included Blueprint starts `python fema_proxy_server.py`, enables automatic
 deployment, and checks `/health`. The health response includes `api_version`
 and Render's `deploy_commit` so a frontend release can be tied to a specific API
-deployment. The public service supports:
+deployment. A stale `API_VERSION` environment label does not override shipped `VERSION`; no secret/environment editing is required to refresh build identity. The public service supports:
 
 - `/fema`
 - `/compound`

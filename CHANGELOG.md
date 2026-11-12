@@ -1,81 +1,22 @@
-# Changelog
+# FlavorInsight AI 更新记录
 
-All notable changes to FlavorThresholdDB are recorded here. Versions follow
-[Semantic Versioning](https://semver.org/).
+新产品编号与旧 FlavorThresholdDB 标签分开管理；历史编号不改写，详见[版本规则](docs/VERSIONING.md)。
 
-## [1.3.1] - 2026-08-01
+## [1.1.0] — 2026-11-12
 
-### Added
+- 将当前完整平台纳入新的 FlavorInsight AI 发布体系，统一构建版本、首页页脚、代理健康信息和仓库说明。
+- 发布页只保留当前1.1.0、历史1.0.0及独立数据资源入口；旧软件发布备份后收起，原标签和提交不移动。
+- 当前能力包括多源风味检索、浏览器内岛津处理、阈值/分类补充、可追溯任务编号及依赖本机服务的分析工作台；这些功能此前已逐步交付，不声称本次重新实现。
+- 保留既有缓存版本、科学来源和统计计算边界；没有重写分析公式、原始数据或数据库模式。
 
-- Rebuilt the Wine Flavor Chemistry book index with source-page traceability.
-- Added merged CAS entity cards with threshold media grouping and per-source excerpts.
-- Added English-name and Chinese-name exact matching backed by canonical CAS filtering.
+## [1.0.0] — 历史归档
 
-### Fixed
 
-- Prevented related ester compounds from appearing in exact book searches.
-- Added separate expandable source excerpts, stable card layout, and overflow-safe evidence display.
-- Unified book-card identity typography and added English names beside Chinese names and CAS.
+- 汇总旧体系 v1.1.0、v1.2.0、v1.3.0、v1.3.1、v1.5.0 的软件发布记录。
+- 冻结当前平台能力作为归档快照；原始说明、发布时间、提交与标签逐项保留。
+- GNPS 数据索引保持独立发布，不纳入软件版本重编号。
+- 保留既有 PubChem 实验属性缓存版本、失效策略与科学来源边界，本次不改缓存算法。
+- 原始更新内容见[历史版本映射](docs/history/releases/README.md)和[未改写的旧 CHANGELOG](docs/history/releases/LEGACY_CHANGELOG.md)。
 
-## [Unreleased]
-
-## [1.5.0] - 2026-08-02
-
-### Added
-
-- Added evidence-bound NCBI Gene and NCBI Taxonomy records derived only from verified ChEBI–Rhea–UniProt protein relationships.
-- Added public MetaboLights study discovery with stable study accessions and original-record links.
-- Added BRENDA EC-number links and an HMDB link-only integration that explicitly preserves redistribution restrictions.
-- Added a responsive biological-context card with per-source failure isolation, bounded lists, and desktop/mobile E2E coverage.
-- Added exact-identity PubChem BioAssay and ChEMBL activity records, plus identity-gated GtoPdb and exact-structure BindingDB searches.
-- Added a source-tabbed, bounded bioactivity evidence card with assay identifiers, target links, measurement context, and causal-interpretation warnings.
-- Added UniProt-linked RCSB PDB experimental structures, AlphaFold DB predicted models, and exact-accession GPCRdb records with explicit evidence-type separation.
-
-## [1.4.0] - 2026-08-02
-
-- Added project history and maintainership documentation.
-- Established local-only release-candidate and backup directories.
-- Upgraded the live flavor-data integration from FlavorDB to FlavorDB2.
-- Added natural food-source relationships, food-entity search, taxonomy details, and food-to-compound records.
-- Added one-request PubChem PUG View retrieval for eight experimental-property groups: boiling point, vapor pressure, Henry's law constant, water solubility, experimental LogP/LogKow, density, melting point, and physical state.
-- Added responsive, keyboard-accessible multi-source property evidence in the compound UI, preserving raw records, source citations, and links instead of averaging experimental values.
-- Isolated PubChem experimental-property failures so local records, FEMA, FlavorDB2, and basic PubChem identity and structure data remain available.
-- Versioned PubChem experimental-property cache entries by schema and parser, with a 30-day expiry for automatic scientific-rule refresh.
-- Suspended Excel upload and removed the vulnerable SheetJS production dependency; text batch input and CSV export remain available.
-- Standardized hidden single-instance local startup on frontend port 5174 and proxy port 8787, with project ownership and health checks.
-- Promoted desktop/mobile/failure-isolation Playwright coverage to a repository-owned E2E command and isolated generated artifacts under `_local/`.
-- Added MassBank and GNPS open-spectrum search, license-gated downloads, peak tables, mirror comparison, PNG/SVG/CSV/JSON exports, and a separately distributed GNPS metadata index.
-- Added NIST Chemistry WebBook original-page availability links without copying restricted spectra.
-- Added identity-safe ChEBI to Rhea to reviewed UniProt biochemical relationships with source-specific caching, pagination, partial-failure isolation, and evidence caveats.
-
-## [1.3.0] - 2026-07-31
-
-### Added
-
-- Compound dossier integrating FEMA, PubChem, and FlavorDB records.
-- PubChem 2D, 3D, crystal-structure, image, and record downloads.
-- RDKit SMARTS-based primary compound classification.
-- Source-specific descriptor presentation and traceability links.
-- Threshold sorting by publication year and numeric value.
-
-## [1.2.0] - 2026-07-30
-
-### Added
-
-- Supabase-backed visits, active users, search totals, and daily searches.
-- Popular-compound treemap with direct search navigation.
-
-## [1.1.0] - 2026-07-30
-
-### Changed
-
-- Unified the public home, navigation, and search workbench design.
-- Added bilingual UI, responsive behavior, metadata, and route fallback.
-
-[Unreleased]: https://github.com/XQplayer/FlavorInsightAI/compare/v1.5.0...HEAD
-[1.5.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.5.0
-[1.4.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.4.0
-[1.3.1]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.3.1
-[1.3.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.3.0
-[1.2.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.2.0
-[1.1.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.1.0
+[1.0.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.0.0
+[1.1.0]: https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.1.0

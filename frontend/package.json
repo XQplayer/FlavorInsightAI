@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "test:book-search": "node --test src/bookSearch.test.mjs",
     "test:platform": "node --test src/platformRoutes.test.mjs src/platformUiContract.test.mjs src/platformHomeV2.test.mjs",
     "test:search-workbench": "node --test src/resultViewPreference.test.mjs src/searchSourceState.test.mjs src/searchWorkbenchModel.test.mjs src/scientificChapterPreload.test.mjs",
-    "test:static-routes": "node --test src/staticRoutes.test.mjs",
+    "test:static-routes": "node --test src/staticRoutes.test.mjs src/releaseVersion.test.mjs",
     "test:shimadzu": "node --test src/shimadzuApi.test.mjs src/lib/taskIdentity.test.mjs src/lib/shimadzuTaskLifecycle.test.mjs src/lib/shimadzuTaskStore.test.mjs",
     "test:shimadzu-browser": "node --test src/components/shimadzu/ShimadzuFailureDetails.test.mjs src/lib/shimadzuIssues.test.mjs src/components/shimadzu/analysisConsoleModel.test.mjs src/components/shimadzu/ShimadzuAnalysisPage.layout.test.mjs src/components/shimadzu/taskFeedback.test.mjs src/lib/shimadzuBrowserContract.test.mjs src/lib/shimadzuCloud.test.mjs src/lib/shimadzuWorkerClient.test.mjs src/lib/shimadzuCompoundEnrichment.test.mjs src/lib/shimadzuWaterDetectionThreshold.test.mjs src/lib/shimadzuCasRecovery.test.mjs src/lib/shimadzuDataRequest.test.mjs src/shimadzu-core/*.test.mjs src/workers/*.test.mjs",
     "test:analysis": "node --test src/analysis/*.test.mjs src/releaseHardening.test.mjs",

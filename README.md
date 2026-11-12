@@ -6,169 +6,76 @@
 
 # FlavorInsight AI
 
-[Public website](https://xqplayer.github.io/FlavorInsightAI/) | [Search](https://xqplayer.github.io/FlavorInsightAI/aroma-threshold/) | [Project history](PROJECT_HISTORY.md) | [Brand assets / 品牌标识](docs/brand/README.md)
+食品风味信息学研究平台 / Food-flavor informatics research platform
 
-FlavorInsight AI is a bilingual, local-first food-flavor research platform. Its FlavorThresholdDB database provides traceable odor-threshold and flavor-descriptor retrieval by CAS number or compound name; the Shimadzu workspace processes GC–MS workbooks with quality gates and auditable exports. Statistical analysis and AI prediction remain in development or planned, not deployed capabilities.
+[平台首页](https://xqplayer.github.io/FlavorInsightAI/) · [FlavorThresholdDB 检索](https://xqplayer.github.io/FlavorInsightAI/aroma-threshold/) · [数据处理](https://xqplayer.github.io/FlavorInsightAI/data-processing/) · [数据分析](https://xqplayer.github.io/FlavorInsightAI/data-analysis/) · [项目历程](PROJECT_HISTORY.md) · [品牌标识](docs/brand/README.md)
 
-## Version 1.5.0
+## 当前版本 1.1.0
 
-Version 1.5.0 is the current public release. In addition to the v1.4.0 FlavorDB2, PubChem property, open-spectrum, NIST, and ChEBI–Rhea–UniProt layers, it adds evidence-bound genes and taxonomy, MetaboLights studies, bioactivity and target records, and experimental-versus-predicted protein structures.
+[当前发布与说明](https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.1.0) · [1.0.0 历史归档](https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.0.0)
 
-Open-spectrum records retain source identity and license status. Peak downloads and comparison exports are enabled only for reviewed redistributable licenses. The large GNPS metadata index is distributed as a verified GitHub Release asset rather than committed to Git.
+FlavorInsight AI 将 FlavorThresholdDB 数据检索、岛津 GC–MS 数据处理和可追溯分析工作台整合为统一平台。界面默认英文，可切换中文；保留数据来源、质量门禁、警告和任务身份，不将缺失值当作真实观测。
 
-Excel upload in the database search app remains suspended. Bulk text input and compact/detailed CSV export remain available there. The separate, lazy-loaded instrument/analysis workbenches use the official SheetJS 0.20.3 distribution pinned in the frontend lockfile; this is not a repository-wide dependency-removal or security-certification claim.
+| 能力 | 当前范围 |
+| --- | --- |
+| FlavorThresholdDB | CAS / 中英文名称检索，感觉阈值、风味描述、多源化合物信息与来源链接 |
+| 岛津数据处理 | 浏览器内工作簿处理、CAS 日期恢复、筛查、平行样处理、半定量、统计/QC 与矩阵拆分 |
+| 信息补充与导出 | 可选身份/分类、水中觉察阈值、估算参考 OAV、CV 筛查；保留来源、缺失原因和审核记录 |
+| 任务溯源 | 日期时间编号＋任务名称，完整/失败/取消结果包，刷新恢复、父任务和本地历史证据 |
+| 数据分析 | 分析界面与结果/证据导出已集成；实际统计计算需要本机 Python/R 服务（8890） |
+| AI | 可追溯本地证据查询不等同于模型生成；模型推理、预测和自动未知物鉴定不宣称已实现 |
 
-## Local unreleased analysis workbench
+This repository provides a bilingual flavor-research interface, source-aware compound retrieval and browser-local instrument processing. Statistical execution requires the local analysis service; AI model inference is not a released capability.
 
-The `codex/analysis-workbench` worktree adds local statistical analysis and deterministic **local evidence query — not AI-generated**. This is an unreleased local capability, not a claim about the public deployment. Model configuration and AI inference are deferred. See [analysis workbench usage and scientific boundaries](docs/analysis-workbench.md).
+## 版本与历史
 
-The isolated preview uses `http://127.0.0.1:5180/FlavorInsightAI/data-analysis/` and the Python/R service on `127.0.0.1:8890`; the original frontend on 5174 remains untouched. Source imports and saved project JSON stay local. The current workbench supports HTML/Markdown report ZIPs with complete result attachments, not PDF reports.
+- **1.0.0 历史归档**：汇总旧版 FlavorThresholdDB 软件发布，并冻结本次版本体系整理前的平台能力。
+- 原 FlavorThresholdDB 软件版本统一见1.0.0归档；原标签与提交保留，不改写历史。
+- 新体系使用 `flavorinsight-v*` 标签，避免覆盖旧标签。这是产品版本重新建系，不是功能降级。
+- [历史归档与原版本映射](docs/history/releases/README.md) · [更新记录](CHANGELOG.md) · [版本规则](docs/VERSIONING.md)
 
-## Version 1.3.1
+## 科研与数据边界
 
-This small update adds two CSV export formats while preserving the current filter-aware workflow.
+数据库检索页的 Excel 上传目前暂停；仍支持文本批量输入及 CSV 导出。仪器数据处理工作台的 Excel 导入属于独立流程，不受该暂停范围影响。
 
-- Compact export: one row per compound with CAS, Chinese and common English names, compound class, molecular formula, FEMA descriptors, and horizontally grouped threshold fields for every selected medium
-- Detailed export: one row per threshold record, retaining all current compound, source, medium, threshold, database, and book-result fields
-- Export filenames identify the selected format, and CAS values remain Excel-safe
-- Accessible export menu with bilingual labels and concise format descriptions
+- 阈值保留原始数值、单位、介质、类型及来源；范围和不等号不强行压缩成单值。
+- 结构/风味数据库信息是来源证据，不自动证明感官贡献、因果关系或最终化合物定性。
+- “估算参考 OAV”有明确单位及适用边界；技术平行样不能直接视为独立生物重复。
+- 原始工作簿在运行浏览器处理；云端账号、审批及结果保留按平台配置执行。结果包与质量记录应自行保存。
+- 本地历史证据保留七天、元数据九十天，每个浏览器/账户最多100条；存储满时提示，不覆盖旧证据。
+- 数据分析/导出边界见 [分析工作台说明](docs/analysis-workbench.md)。
 
-## Version 1.3.0
+## 数据来源与资源版本
 
-This release expands FlavorThresholdDB from a threshold lookup interface into a multi-source compound research workspace.
+资料包括 Van Gemert (2011)《Flavour Thresholds》、Fan & Xu (2020)《Wine Flavor Chemistry》、FEMA、PubChem、FlavorDB2、MassBank/GNPS、NIST、ChEBI/Rhea/UniProt 等。不同来源分别标注，不把数据库记录合并成未经核验的结论。
 
-- Unified compound profiles with Chinese name, common English name, CAS, and PubChem CID
-- PubChem 2D structures, interactive 3D conformers, crystal records, physicochemical properties, and structure downloads
-- SMARTS-based compound classification powered by RDKit
-- FEMA and FlavorDB2 descriptors displayed separately with source-specific colors
-- Live FlavorDB2 food entities, natural sources, taxonomy, and bidirectional food–compound relationships
-- Threshold records prioritized by publication year and threshold value, with additional records collapsed
-- Filter-aware CSV export for selected media, threshold types, databases, and book results
-- Excel-safe CAS export to prevent values such as `60-12-8` from becoming dates
-- Updated scientific color system and consistent source/result-card styling
-- Live activity metrics and popular-compound visualization backed by Supabase
+开放谱图下载和比较遵守逐条许可证审查。GNPS 索引属于独立的数据资源，不是软件版本；保留其 `spectra-index-2026.08.02` 发布、附件、校验值和下载链接，约121 MB压缩包不提交到 Git。FlavorDB2 衍生记录保留 CC BY-NC-SA 3.0 来源标注；书籍索引等材料在再分发前仍需核对权利边界。
 
-## Data sources
+## 本地运行
 
-- Van Gemert (2011), *Flavour Thresholds* (2nd ed.)
-- Fan, W. L., & Xu, Y. (2020), *Wine Flavor Chemistry*
-- FEMA Flavor Ingredient Library
-- PubChem PUG REST
-- FlavorDB2
-- MassBank Europe and GNPS/GNPS2
-- NIST Chemistry WebBook links
-- ChEBI, Rhea, UniProt, NCBI Gene, and NCBI Taxonomy
-- MetaboLights, BRENDA links, and HMDB link-only search
-- PubChem BioAssay, ChEMBL, BindingDB, and GtoPdb
-- RCSB PDB, AlphaFold DB, and GPCRdb
-
-The interface preserves the original source, measurement medium, threshold type, value, and unit where available. Linked source pages are provided for verification.
-
-FlavorDB2-derived records retain their source attribution and CC BY-NC-SA 3.0 license. This repository is intended for personal study and academic exchange. Verify redistribution rights before publishing local book indexes or derived datasets.
-
-## Public deployment
-
-The official GitHub Pages site is built automatically from `main` by `.github/workflows/deploy-pages.yml`.
-
-The public external-data API is already deployed at:
-
-```text
-https://flavorthresholddb-api.onrender.com
-```
-
-The repository variable `FEMA_API_URL` points to that service. The same API supplies the frontend with identity, properties, flavor, spectra, biochemical, biological-context, bioactivity, and structure evidence.
-
-`/pubchem-volatile?cid=<CID>` retrieves eight source-attributed PubChem PUG View Experimental Properties groups, with upstream failures isolated from other data sources. The integrated `/compound` response includes the same evidence under `pubchem_volatile`.
-
-When deploying a fork, create a new Render service with the included Blueprint and set the fork's GitHub Actions variable `FEMA_API_URL` to the generated HTTPS URL:
-
-[Deploy the API to Render](https://render.com/deploy?repo=https://github.com/XQplayer/FlavorInsightAI)
-
-## Local development
-
-Requirements:
-
-- Node.js 20 or later
-- pnpm 11 or later
-- Python 3.10 or later for the optional local external-data proxy
-
-Start or reuse the project-owned frontend and local data proxy from the repository root:
+从包含当前源码的仓库根目录启动或复用后台服务：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\local_runtime.ps1 start
 ```
 
-The controller uses one hidden project-owned process per service and checks both endpoints:
-
-```text
-http://127.0.0.1:5174/FlavorInsightAI/
-http://127.0.0.1:5174/FlavorInsightAI/aroma-threshold/
-http://127.0.0.1:5174/FlavorInsightAI/shimadzu-analysis/
-http://127.0.0.1:5174/FlavorInsightAI/login/
-http://127.0.0.1:8787/health
-```
-
-The first visit defaults to English. Use the header language control to switch to Chinese and back; a saved preference takes precedence. The platform account page is informational in this local deployment and does not request credentials. Its “Continue locally” action returns to the live homepage.
-
-The local Shimadzu GC-MS workbench accepts one raw `.xlsx` workbook and one sample/internal-standard `.xlsx` workbook. Matching example workbooks can be downloaded beside each upload control. It runs the verified Stage 0-6 workflow in continuous mode, maps the seven scientific stages to a persistent process diagram, streams the current command log into a 1.5-second monitor, and exposes the result ZIP only after completeness verification passes. Estimated reference OAV is off by default; when enabled, it uses the retained water detection-threshold evidence and is exported after Stage 6. Raw workbooks remain in the current browser and are never uploaded to cloud storage.
-
-Check or stop only confirmed FlavorThresholdDB processes with:
+- 前端：`http://127.0.0.1:5174/FlavorInsightAI/`
+- 外部数据代理：`http://127.0.0.1:8787/health`
+- 统计计算：本地 Python/R 服务 `127.0.0.1:8890`，启动要求见分析工作台文档。
+- 需要 Node.js 22+、pnpm 11；Python/R 依赖按相关服务文档配置。不要在浏览器前端配置服务端密钥。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\local_runtime.ps1 check
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\local_runtime.ps1 stop
-```
-
-## Quality checks
-
-Shimadzu failed tasks show a bilingual cause, sample/workbook/worksheet location, recorded source rows, missing fields and corrective action directly on the task page. Blocking errors and warnings are counted separately; raw technical details and the downloadable evidence archive remain available. New tasks record structural section-row metadata. Legacy errors without row metadata display only the evidence actually stored. Configuration example markers are separate reminders and do not change gate decisions or scientific calculations.
-
-Shimadzu Stage 4 waits for the public data API to wake up before starting online enrichment. It looks up at most two CAS entries concurrently, uses the lightweight PubChem/FlavorDB2 endpoints, and downloads each water-threshold database once per worker. Temporary request failures are retried and retained in the compound-information audit; incomplete enrichment produces a warning instead of a silent pass. A database download failure stops Stage 4 with a recoverable partial archive rather than exporting an NA-only threshold column. Local database names remain available when an individual external source fails.
-
-Regression checks: `pnpm run test:shimadzu-browser`; after a production build, `pnpm run test:e2e:shimadzu-enrichment` checks the compiled browser worker, real threshold databases and preservation of enrichment in Stage 5/6 workbooks (external API responses are fixtures in this reproducible check).
-
-Set `SHIMADZU_E2E_LIVE=1` when running the enrichment E2E script to check the deployed GitHub Pages worker against the real public data API instead of fixtures. This uses only the public example workbooks and keeps workbook processing inside the test browser.
-
-```bash
 cd frontend
+pnpm install --frozen-lockfile
+pnpm run test:shimadzu
+pnpm run test:shimadzu-browser
+pnpm run test:analysis
 pnpm run lint
 pnpm run build
-pnpm run test:shimadzu
-pnpm audit --prod
-pnpm run test:e2e
 ```
 
-The focused Shimadzu backend and browser checks are:
+## 部署与项目文档
 
-```powershell
-python -m unittest scripts.tests.test_shimadzu_analysis_service scripts.tests.test_shimadzu_proxy -v
-node .\scripts\e2e\verify_shimadzu_workbench.mjs
-```
+GitHub Pages 从 `main` 构建；外部数据代理使用 Render。统计计算服务不是 GitHub Pages 自动托管能力。应用构建版本以根目录 `VERSION` 为准，前端包、首页和代理健康信息保持一致；数据集/协议/模型版本独立管理。
 
-The deployment workflow also creates `dist/404.html` so routed pages can load through GitHub Pages.
-
-## Project documentation
-
-- [Changelog](CHANGELOG.md)
-- [Project history](PROJECT_HISTORY.md)
-- [Release workflow](RELEASE_WORKFLOW.md)
-- [Data dictionary](docs/DATA_DICTIONARY.md)
-- [Data sources and use boundaries](docs/DATA_SOURCES.md)
-- [Deployment guide](docs/DEPLOYMENT.md)
-- [Release checklist](docs/RELEASE_CHECKLIST.md)
-- [Book OCR and knowledge-index pipeline](docs/BOOK_INDEX_PIPELINE.md)
-- [Migration from Aroma analysis](docs/MIGRATION_FROM_AROMA_ANALYSIS.md)
-
-## References
-
-### Task numbers and traceability
-
-New processing tasks have a public `FI-YYYYMMDD-HHmmss-XXXXXX` number (UTC+08:00 and a secure random short suffix) alongside the existing UUID. Creation freezes the task name. Refresh/resume retains the identity; explicit rerun creates a new UUID/number and records the parent. Complete, failed and cancelled ZIPs start with the same number and safe task name; only filenames are sanitized/truncated (80 characters and 160 UTF-8 bytes per segment), never the original metadata.
-
-Identity is persisted in existing browser/cloud JSON metadata and hash-covered processing run/manifests; ZIPs also include `任务信息.txt`. Verified analysis imports retain source identity. Subsequent statistical-analysis executions get separate public numbers with their source task retained; analysis report/table/reproduction ZIPs include `task-traceability.json`. XLSX matrix exports add a scalar-only task provenance sheet, while CSV matrices keep their existing layout and carry identity in filenames. Legacy tasks/archives remain supported without inventing historical numbers. UUID storage paths, account gates, retention and scientific calculations are unchanged. Publication requires explicit authorization and passing release checks.
-
-Local terminal task history keeps evidence for seven days and metadata for ninety, scoped to the current browser/account, without duplicating raw workbooks. Up to 100 unexpired local records are retained; storage/capacity errors are shown and do not silently evict old evidence. Explicit rerun preserves its parent before replacing active inputs; parent evidence can be downloaded from Task management. Clearing browser site data removes these local copies, not original source files or separately retained cloud copies.
-
-- [FEMA Flavor Ingredient Library](https://www.femaflavor.org/flavor-library)
-- [PubChem PUG REST](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)
-- [FlavorDB2](https://cosylab.iiitd.edu.in/flavordb2/)
+[部署说明](docs/DEPLOYMENT.md) · [数据字典](docs/DATA_DICTIONARY.md) · [数据来源](docs/DATA_SOURCES.md) · [质量门禁](docs/ai-development/QUALITY_GATES.md) · [项目历史](PROJECT_HISTORY.md)

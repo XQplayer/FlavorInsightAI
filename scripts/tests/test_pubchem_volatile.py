@@ -491,7 +491,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
         response = {
             **parse_pubchem_volatile_properties({"Record": {"Section": []}}, "8857"),
             "status": "ok",
-            "retrieved_at": "2026-08-02T00:00:00Z",
+            "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         with (
             patch.object(fema_proxy_server, "query_pubchem_volatile_properties", return_value=response) as query,
@@ -519,7 +519,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
         volatile = {
             **parse_pubchem_volatile_properties({"Record": {}}, "8857"),
             "status": "no_data",
-            "retrieved_at": "2026-08-02T00:00:00Z",
+            "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         with (
             patch.object(fema_proxy_server, "query_pubchem_volatile_properties", return_value=volatile),
@@ -557,7 +557,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
     def test_no_data_is_cached_with_consistent_cached_flag(self):
         response = {
             **fema_proxy_server._empty_pubchem_volatile("8857", "no_data"),
-            "retrieved_at": "2026-08-02T00:00:00Z",
+            "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         with (
             patch.object(fema_proxy_server, "query_pubchem_volatile_properties", return_value=response) as query,
@@ -574,7 +574,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
         started = threading.Event()
         response = {
             **fema_proxy_server._empty_pubchem_volatile("8857", "no_data"),
-            "retrieved_at": "2026-08-02T00:00:00Z",
+            "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
 
         def slow_query(_cid):
@@ -624,7 +624,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
     def test_single_flight_cleans_up_after_exception(self):
         response = {
             **fema_proxy_server._empty_pubchem_volatile("8857", "no_data"),
-            "retrieved_at": "2026-08-02T00:00:00Z",
+            "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         with (
             patch.object(
@@ -646,7 +646,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
         def result_for(cid):
             return {
                 **fema_proxy_server._empty_pubchem_volatile(cid, "no_data"),
-                "retrieved_at": "2026-08-02T00:00:00Z",
+                "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
 
         with tempfile.TemporaryDirectory() as directory:
@@ -672,7 +672,7 @@ class PubChemVolatilePropertyHandlerTests(unittest.TestCase):
         cache = {}
         response = {
             **fema_proxy_server._empty_pubchem_volatile("8857", "no_data"),
-            "retrieved_at": "2026-08-02T00:00:00Z",
+            "retrieved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         with (
             patch.object(fema_proxy_server, "query_pubchem_volatile_properties", return_value=response) as query,
