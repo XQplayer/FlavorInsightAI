@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-11-12T08:19:56.023Z",
+  "repository": "XQplayer/FlavorInsightAI",
+  "original_latest": {
+    "html_url": "https://github.com/XQplayer/FlavorInsightAI/releases/tag/v1.5.0",
+    "id": 363856960,
+    "name": "FlavorThresholdDB v1.5.0",
+    "published_at": "2026-08-02T18:10:39Z",
+    "tag_name": "v1.5.0"
+  },
+  "restore_operation": "gh release edit v1.5.0 --draft=false --latest"
+}

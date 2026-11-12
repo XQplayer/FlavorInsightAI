@@ -15,6 +15,7 @@ FlavorInsight AI 的新版本体系将此前更新统一收录为 **1.0.0 历史
 旧软件 Release 转为草稿后，公开发布页不再列出，旧发布说明页面可能不可访问；上表的 Git 标签源码仍可访问，原文和元数据保存在本目录。新归档快照在版本配置统一为1.0.0后单独冻结，确切提交在当前主分支的 version-map.json 及新 Release 中记录。
 
 - [原始发布 JSON（含原文、ID、标志、附件和旧标签 SHA）](2026-11-12-legacy-release-backup.json)
+- [原 Latest 标记与恢复命令](2026-11-12-original-latest.json)：原 Latest 为 `v1.5.0`；回滚时先恢复旧发布公开状态，再恢复此标记。
 - [机器可读映射](version-map.json)
 - [旧 README 原样副本](LEGACY_README.md)（相对路径保持历史上下文，内容不改写）
 - [旧 CHANGELOG 原样副本](LEGACY_CHANGELOG.md)

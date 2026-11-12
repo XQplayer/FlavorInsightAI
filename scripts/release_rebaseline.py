@@ -1,6 +1,7 @@
 """Read-only release rebaseline planner; this module never performs remote writes."""
 import argparse
 import json
+import re
 from pathlib import Path
 
 LEGACY_SOFTWARE_TAGS = frozenset({"v1.1.0", "v1.2.0", "v1.3.0", "v1.3.1", "v1.5.0"})
@@ -12,7 +13,7 @@ def _assets(release):
     return sorted((tuple(asset.get(key) for key in keys) for asset in release.get("assets", [])), key=lambda item: str(item[0]))
 
 
-def build_archive_plan(snapshot, current_releases, current_tag_refs, *, replacements_ready=False):
+def build_archive_plan(snapshot, current_releases, current_tag_refs, *, replacements_ready=False, expected_replacements=None):
     """Refuse changed targets and emit only reversible allowlisted metadata updates."""
     if not replacements_ready:
         raise ValueError("REPLACEMENTS_NOT_VERIFIED")
@@ -26,6 +27,15 @@ def build_archive_plan(snapshot, current_releases, current_tag_refs, *, replacem
     current = {release["tag_name"]: release for release in current_releases}
     if len(current) != len(current_releases):
         raise ValueError("DUPLICATE_RELEASE_TAG")
+    if not expected_replacements or set(expected_replacements) != {"flavorinsight-v1.0.0", "flavorinsight-v1.1.0"}:
+        raise ValueError("INVALID_REPLACEMENT_ALLOWLIST")
+    for tag, expected_sha in expected_replacements.items():
+        release = current.get(tag)
+        if not release or release.get("draft") is not False or release.get("prerelease") is not False:
+            raise ValueError(f"REPLACEMENT_RELEASE_NOT_READY: {tag}")
+        actual_sha = current_tag_refs.get(tag + "^{}", current_tag_refs.get(tag))
+        if not re.fullmatch(r"[0-9a-f]{40}", expected_sha) or actual_sha != expected_sha:
+            raise ValueError(f"REPLACEMENT_TAG_CONFLICT: {tag}")
     actions = []
     for tag in [*tags, DATA_TAG]:
         if tag not in before or tag not in current:
@@ -56,6 +66,7 @@ if __name__ == "__main__":
     parser.add_argument("current_releases", type=Path)
     parser.add_argument("current_tag_refs", type=Path)
     parser.add_argument("--replacements-verified", action="store_true")
+    parser.add_argument("--expected-replacements", type=Path, required=True)
     args = parser.parse_args()
     read = lambda path: json.loads(path.read_text(encoding="utf-8"))
-    print(json.dumps(build_archive_plan(read(args.snapshot), read(args.current_releases), read(args.current_tag_refs), replacements_ready=args.replacements_verified), ensure_ascii=False, indent=2))
+    print(json.dumps(build_archive_plan(read(args.snapshot), read(args.current_releases), read(args.current_tag_refs), replacements_ready=args.replacements_verified, expected_replacements=read(args.expected_replacements)), ensure_ascii=False, indent=2))
