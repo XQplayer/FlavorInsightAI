@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import JSZip from 'jszip'
 
-import { createPartialFailureArchive, runShimadzuBrowserPipeline as runPipeline } from './shimadzuPipeline.js'
+import { createPartialFailureArchive, createPartialCancellationArchive, runShimadzuBrowserPipeline as runPipeline } from './shimadzuPipeline.js'
 import { createShimadzuWaterDetectionThresholdService } from '../lib/shimadzuWaterDetectionThreshold.js'
 
 // Node has no browser origin: load the real public databases explicitly.
@@ -15,6 +15,43 @@ const waterThresholds = createShimadzuWaterDetectionThresholdService({
 const runShimadzuBrowserPipeline = options => runPipeline({ resolveWaterDetectionThreshold: waterThresholds.resolve, ...options })
 
 const resource = name => new URL(`../../../resources/shimadzu/templates/${name}`, import.meta.url)
+
+const traceIdentity = { taskId: '11111111-1111-4111-8111-111111111111', taskNumber: 'FI-20261112-153045-A7C92E', taskName: '溯源测试', taskCreatedAt: '2026-11-12T07:30:45.000Z', parentTaskId: null, parentTaskNumber: null }
+const digest = async bytes => Buffer.from(await crypto.subtle.digest('SHA-256', bytes)).toString('hex')
+
+test('complete archive carries one identity in names and hash-covered evidence without changing scientific tables', async () => {
+  const rawBytes = await readFile(resource('Shimadzu_Raw_Workbook_Example.xlsx'))
+  const sampleBytes = await readFile(resource('Shimadzu_Sample_Internal_Standard_Template.xlsx'))
+  const originalHash = await digest(rawBytes)
+  const common = { rawBytes, sampleBytes, name: '溯源测试', enableWaterDetectionThreshold: false }
+  const baseline = await runShimadzuBrowserPipeline(common)
+  const result = await runShimadzuBrowserPipeline({ ...common, taskIdentity: traceIdentity })
+  assert.equal(result.fileName, 'FI-20261112-153045-A7C92E_溯源测试_分析结果.zip')
+  assert.deepEqual(result.stages[4].table, baseline.stages[4].table)
+  assert.deepEqual(result.stages.map(s => s.counts), baseline.stages.map(s => s.counts))
+  assert.equal(await digest(rawBytes), originalHash)
+  const zip = await JSZip.loadAsync(result.archiveBytes)
+  assert.match(await zip.file('任务信息.txt').async('string'), /FI-20261112-153045-A7C92E/)
+  for (const path of ['v2-run.json', '完整性验证/v2-completeness-verification.json', ...result.manifests.map(m => `${m.stage}/manifest.json`)]) {
+    const bytes = await zip.file(path).async('uint8array')
+    const json = JSON.parse(new TextDecoder().decode(bytes))
+    assert.deepEqual(json.parameters.taskIdentity, traceIdentity)
+    assert.equal((await zip.file(path.replace(/\.json$/, '.sha256')).async('string')).trim(), await digest(bytes))
+  }
+})
+
+test('failure and cancellation archives retain identity before any stage has completed', async () => {
+  for (const [make, suffix, path] of [[createPartialFailureArchive, '失败证据与部分结果', '失败任务/错误明细.json'], [createPartialCancellationArchive, '取消审计与部分结果', '取消任务/取消状态.json']]) {
+    const result = await make({ zip: new JSZip(), name: '溯源测试', stage: 0, parameters: { taskIdentity: traceIdentity } })
+    assert.equal(result.fileName, `FI-20261112-153045-A7C92E_溯源测试_${suffix}.zip`)
+    const zip = await JSZip.loadAsync(result.archiveBytes)
+    assert.match(await zip.file('任务信息.txt').async('string'), /溯源测试/)
+    const audit = JSON.parse(await zip.file(path).async('string'))
+    assert.deepEqual(audit.parameters.taskIdentity, traceIdentity)
+    const run = JSON.parse(await zip.file('v2-run.json').async('string'))
+    assert.deepEqual(run.parameters.taskIdentity, traceIdentity)
+  }
+})
 
 test('failure evidence retains workbook, section rows and separate template reminders', async () => {
   const { default: XLSX } = await import('xlsx')

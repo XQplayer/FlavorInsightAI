@@ -1,3 +1,4 @@
+import { taskArchiveFileName, taskIdentity as readTaskIdentity, taskLabel } from '../lib/taskIdentity.mjs'
 import JSZip from 'jszip'
 
 import { extractHit1, HIT1_OUTPUT_COLUMNS } from '../shimadzu-core/parse-shimadzu.mjs'
@@ -170,12 +171,11 @@ async function addStage(zip, index, data, workbookSpecs, parameters = {}) {
   return manifest
 }
 
-const archiveFileName = name => {
-  const invalidName = new Set('<>:"/\\|?*')
-  const safeName = [...String(name || '岛津气质分析')]
-    .map(character => invalidName.has(character) || character.charCodeAt(0) < 32 ? '_' : character)
-    .join('').slice(0, 80) || '岛津气质分析'
-  return `${safeName}_部分结果.zip`
+const archiveRecord = (name, parameters) => ({ name, taskIdentity: parameters.taskIdentity })
+function addTaskInformation(zip, name, parameters) {
+  if (!readTaskIdentity(parameters.taskIdentity)) return
+  const identity = parameters.taskIdentity
+  zip.file('任务信息.txt', [taskLabel(identity), `UUID: ${identity.taskId || ''}`, `Created at (UTC): ${identity.taskCreatedAt || ''}`, 'Task number timezone: UTC+08:00', `Parent task: ${identity.parentTaskNumber || identity.parentTaskId || ''}`].join('\n') + '\n')
 }
 
 export async function createPartialFailureArchive({ zip, name, stage, issues = [], completedStages = [], parameters = {}, contextWarnings = [] }) {
@@ -185,7 +185,7 @@ export async function createPartialFailureArchive({ zip, name, stage, issues = [
   const failure = {
     schemaVersion: 'shimadzu-browser-failure-1', status: 'FAILED', failedStage: stage,
     failedStageName: V2_STAGE_DIRECTORIES[stage] || `stage-${stage}`, issues: normalizedIssues,
-    completedStages: completed, contextWarnings: clone(contextWarnings), generatedAt,
+    completedStages: completed, contextWarnings: clone(contextWarnings), parameters: clone(parameters), generatedAt,
   }
   const state = {
     schemaVersion: 'shimadzu-browser-partial-run-1', status: 'PARTIAL_FAILED', name,
@@ -204,13 +204,14 @@ export async function createPartialFailureArchive({ zip, name, stage, issues = [
   }, null, 2)}\n`)
   zip.file('v2-run.json', runBytes)
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)
+  addTaskInformation(zip, name, parameters)
   const archiveBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } })
   const archiveSha256 = await sha256(archiveBytes)
-  const details = { stage, issues: normalizedIssues, completedStages: completed, contextWarnings: clone(contextWarnings), archiveStatus: 'PARTIAL_FAILED' }
+  const details = { stage, issues: normalizedIssues, completedStages: completed, contextWarnings: clone(contextWarnings), parameters: clone(parameters), archiveStatus: 'PARTIAL_FAILED' }
   return Object.assign(new Error(`第${Number(stage) + 1}步未通过质量门禁`), {
     code: 'STAGE_GATE_FAILED', details, ...details,
     archiveBytes, archiveSha256, archiveSize: archiveBytes.byteLength,
-    fileName: archiveFileName(name),
+    fileName: taskArchiveFileName(archiveRecord(name, parameters), 'failed'),
   })
 }
 
@@ -241,12 +242,13 @@ export async function createPartialCancellationArchive({ zip, name, stage, compl
   const runBytes = textBytes(`${JSON.stringify(run, null, 2)}\n`)
   zip.file('v2-run.json', runBytes)
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)
+  addTaskInformation(zip, name, parameters)
   const archiveBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } })
   const archiveSha256 = await sha256(archiveBytes)
   const details = { stage, completedStages: completed, archiveStatus: 'CANCELLED', parameters: normalizedParameters }
   return Object.assign(new Error('ANALYSIS_CANCELLED'), {
     code: 'ANALYSIS_CANCELLED', details, archiveBytes, archiveSha256,
-    archiveSize: archiveBytes.byteLength, fileName: archiveFileName(name),
+    archiveSize: archiveBytes.byteLength, fileName: taskArchiveFileName(archiveRecord(name, parameters), 'cancelled'),
   })
 }
 
@@ -497,7 +499,7 @@ function workbookSpecs(index, data) {
 }
 
 export async function runShimadzuBrowserPipeline({
-  rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析',
+  rawBytes, sampleBytes, rawName = 'raw.xlsx', sampleName = 'samples.xlsx', name = '岛津气质分析', taskIdentity = null,
   onEvent = () => {}, reviewGate, signal, enableCvScreening = true, cvThreshold = 30,
   enableClassification = false, enableWaterDetectionThreshold = true, enableEstimatedReferenceOav = false,
   enrichCasValues = shimadzuCompoundEnrichmentService.enrichCasValues,
@@ -509,7 +511,7 @@ export async function runShimadzuBrowserPipeline({
   const zip = new JSZip()
   const stages = []
   const effectiveEnableWaterDetectionThreshold = enableEstimatedReferenceOav || enableWaterDetectionThreshold
-  const parameters = { enableClassification, enableWaterDetectionThreshold: effectiveEnableWaterDetectionThreshold, enableEstimatedReferenceOav, enableCvScreening, cvThreshold }
+  const parameters = { ...(taskIdentity ? { taskIdentity: clone(taskIdentity) } : {}), enableClassification, enableWaterDetectionThreshold: effectiveEnableWaterDetectionThreshold, enableEstimatedReferenceOav, enableCvScreening, cvThreshold }
   const builders = [
     () => stage0(raw, samples, rawName, sampleName),
     () => stage1(stages[0], rawName, recoverCasRecord),
@@ -587,12 +589,9 @@ export async function runShimadzuBrowserPipeline({
   const runBytes = textBytes(`${JSON.stringify(run, null, 2)}\n`)
   zip.file('v2-run.json', runBytes)
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)
+  addTaskInformation(zip, name, parameters)
   const archiveBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } })
   const archiveSha256 = await sha256(archiveBytes)
   onEvent({ type: 'complete', progress: 100, archiveSize: archiveBytes.byteLength, archiveSha256 })
-  const invalidName = new Set('<>:"/\\|?*')
-  const safeName = [...String(name || '岛津气质分析')]
-    .map(character => invalidName.has(character) || character.charCodeAt(0) < 32 ? '_' : character)
-    .join('').slice(0, 80) || '岛津气质分析'
-  return { ...run, stages, manifests, archiveBytes, archiveSha256, fileName: `${safeName}_步骤0-6结果.zip` }
+  return { ...run, taskIdentity, stages, manifests, archiveBytes, archiveSha256, fileName: taskArchiveFileName(archiveRecord(name, parameters), 'complete') }
 }
