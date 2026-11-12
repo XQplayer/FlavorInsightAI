@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "product": "FlavorInsight AI",
+  "current_version": "1.0.0",
+  "current_tag": "flavorinsight-v1.0.0",
+  "archive_version": "1.0.0",
+  "archive_tag": "flavorinsight-v1.0.0",
+  "archive_source_base": "fc0f678d2907c80b603ef074f086952165b3d502",
+  "archive_snapshot_commit": null,
+  "legacy_versions": [
+    {
+      "legacy_tag": "v1.1.0",
+      "release_id": 362005591,
+      "original_name": "FlavorThresholdDB v1.1.0 - UI optimization",
+      "original_published_at": "2026-07-29T19:31:46Z",
+      "tag_object": "d5ba82fdf867e5a381f44d064ac35e6c6fa7dce8",
+      "commit": "d5ba82fdf867e5a381f44d064ac35e6c6fa7dce8",
+      "archive_version": "1.0.0",
+      "source_url": "https://github.com/XQplayer/FlavorInsightAI/tree/v1.1.0"
+    },
+    {
+      "legacy_tag": "v1.2.0",
+      "release_id": 362131839,
+      "original_name": "FlavorThresholdDB v1.2.0 - Live analytics",
+      "original_published_at": "2026-07-30T01:16:27Z",
+      "tag_object": "091f8b656f81cd3c4382158744cbd98e78660c62",
+      "commit": "091f8b656f81cd3c4382158744cbd98e78660c62",
+      "archive_version": "1.0.0",
+      "source_url": "https://github.com/XQplayer/FlavorInsightAI/tree/v1.2.0"
+    },
+    {
+      "legacy_tag": "v1.3.0",
+      "release_id": 362710388,
+      "original_name": "FlavorThresholdDB v1.3.0 - Multi-source compound workspace",
+      "original_published_at": "2026-07-30T20:39:15Z",
+      "tag_object": "746ad3937c37aed004a80f52d884f7b30cb73b9e",
+      "commit": "10051271db473c2d4b7e6e2ee87b2d862ed461a0",
+      "archive_version": "1.0.0",
+      "source_url": "https://github.com/XQplayer/FlavorInsightAI/tree/v1.3.0"
+    },
+    {
+      "legacy_tag": "v1.3.1",
+      "release_id": 363368097,
+      "original_name": "FlavorThresholdDB v1.3.1",
+      "original_published_at": "2026-07-31T23:24:38Z",
+      "tag_object": "5af7619ffaa697119dc4382e4b2e394e9806795e",
+      "commit": "5af7619ffaa697119dc4382e4b2e394e9806795e",
+      "archive_version": "1.0.0",
+      "source_url": "https://github.com/XQplayer/FlavorInsightAI/tree/v1.3.1"
+    },
+    {
+      "legacy_tag": "v1.5.0",
+      "release_id": 363856960,
+      "original_name": "FlavorThresholdDB v1.5.0",
+      "original_published_at": "2026-08-02T18:10:39Z",
+      "tag_object": "2c191a8d4086e8e64197cd784c54eb6b1ee474c8",
+      "commit": "2080f5d3df2e9ca6efab2112df4209774cea0e3f",
+      "archive_version": "1.0.0",
+      "source_url": "https://github.com/XQplayer/FlavorInsightAI/tree/v1.5.0"
+    }
+  ],
+  "protected_data_tag": "spectra-index-2026.08.02"
+}
