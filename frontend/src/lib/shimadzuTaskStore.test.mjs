@@ -29,6 +29,51 @@ const task = (overrides = {}) => ({
   ...overrides,
 })
 
+test('rerun preserves a UUID-keyed parent evidence record without retaining raw input copies', async () => {
+  const { createTaskRun, persistTaskRun } = await import('./shimadzuTaskLifecycle.mjs')
+  const adapter = memoryAdapter()
+  const store = createShimadzuTaskStore({ adapter, now: () => new Date('2026-11-12T07:30:45Z') })
+  const parent = { ...createTaskRun(task()), status: 'failed', partialArchiveBytes: new Uint8Array([80,75,1]).buffer, partialArchiveFileName: 'parent.zip' }
+  await store.save(parent)
+  const child = createTaskRun({}, { parent })
+  await persistTaskRun(child, { parent, store, cloud: { configured: false } })
+  assert.equal((await store.load(parent.scope)).id, child.id)
+  const history = await store.listHistory(parent.scope)
+  assert.deepEqual(await store.listHistory('another-user'), [])
+  assert.equal(history[0].id, parent.id)
+  assert.equal(history[0].hasLocalArchive, true)
+  assert.equal(history[0].rawBytes, undefined)
+  const saved = await store.loadHistory(parent.scope, parent.id)
+  assert.deepEqual([...new Uint8Array(saved.archiveBytes)], [80,75,1])
+  assert.equal(saved.rawBytes, undefined)
+})
+
+test('local history expires evidence after seven days and metadata after ninety days', async () => {
+  let now = new Date('2026-11-12T07:30:45Z')
+  const store = createShimadzuTaskStore({ adapter: memoryAdapter(), now: () => now })
+  const record = task({ scope: 'local', startedAt: now.toISOString(), status: 'failed', partialArchiveBytes: new ArrayBuffer(2) })
+  await store.saveHistory(record)
+  now = new Date('2026-11-20T07:30:45Z')
+  const expired = await store.listHistory('local')
+  assert.equal(expired.length, 1)
+  assert.equal(expired[0].hasLocalArchive, false)
+  assert.equal((await store.loadHistory('local', record.id)).archiveBytes, undefined)
+  now = new Date('2027-02-12T07:30:45Z')
+  assert.deepEqual(await store.listHistory('local'), [])
+})
+
+test('full local history never evicts evidence or overwrites the active parent to start a rerun', async () => {
+  const { createTaskRun, persistTaskRun } = await import('./shimadzuTaskLifecycle.mjs')
+  const store = createShimadzuTaskStore({ adapter: memoryAdapter(), now: () => new Date('2026-11-12T07:30:45Z') })
+  for (let i = 0; i < 100; i++) await store.saveHistory(task({ id: `retained-${i}`, status: 'failed', partialArchiveBytes: new Uint8Array([i]).buffer }))
+  const parent = createTaskRun(task({ scope: 'user-1' }))
+  await store.save(parent)
+  await assert.rejects(persistTaskRun(createTaskRun({}, { parent }), { parent, store, cloud: { configured: false } }), /LOCAL_TASK_HISTORY_CAPACITY_REACHED/)
+  assert.equal((await store.load('user-1')).id, parent.id)
+  assert.equal((await store.listHistory('user-1')).length, 100)
+  assert.deepEqual([...new Uint8Array((await store.loadHistory('user-1','retained-0')).archiveBytes)], [0])
+})
+
 test('stores workbook buffers separately and restores only the matching scope', async () => {
   const adapter = memoryAdapter()
   const store = createShimadzuTaskStore({ adapter, now: () => new Date('2026-08-03T00:00:00.000Z') })

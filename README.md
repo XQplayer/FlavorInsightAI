@@ -155,6 +155,14 @@ The deployment workflow also creates `dist/404.html` so routed pages can load th
 
 ## References
 
+### Task numbers and traceability
+
+New processing tasks have a public `FI-YYYYMMDD-HHmmss-XXXXXX` number (UTC+08:00 and a secure random short suffix) alongside the existing UUID. Creation freezes the task name. Refresh/resume retains the identity; explicit rerun creates a new UUID/number and records the parent. Complete, failed and cancelled ZIPs start with the same number and safe task name; only filenames are sanitized/truncated (80 characters and 160 UTF-8 bytes per segment), never the original metadata.
+
+Identity is persisted in existing browser/cloud JSON metadata and hash-covered processing run/manifests; ZIPs also include `任务信息.txt`. Verified analysis imports retain source identity. Subsequent statistical-analysis executions get separate public numbers with their source task retained; analysis report/table/reproduction ZIPs include `task-traceability.json`. XLSX matrix exports add a scalar-only task provenance sheet, while CSV matrices keep their existing layout and carry identity in filenames. Legacy tasks/archives remain supported without inventing historical numbers. UUID storage paths, account gates, retention and scientific calculations are unchanged. Publication requires explicit authorization and passing release checks.
+
+Local terminal task history keeps evidence for seven days and metadata for ninety, scoped to the current browser/account, without duplicating raw workbooks. Up to 100 unexpired local records are retained; storage/capacity errors are shown and do not silently evict old evidence. Explicit rerun preserves its parent before replacing active inputs; parent evidence can be downloaded from Task management. Clearing browser site data removes these local copies, not original source files or separately retained cloud copies.
+
 - [FEMA Flavor Ingredient Library](https://www.femaflavor.org/flavor-library)
 - [PubChem PUG REST](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)
 - [FlavorDB2](https://cosylab.iiitd.edu.in/flavordb2/)

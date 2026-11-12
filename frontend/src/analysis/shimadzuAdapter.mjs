@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import { createDataset } from './dataset.mjs'
 import { inspectZip, safeArchivePath, readBoundedZipEntry } from './imports.mjs'
+import { taskIdentity } from '../lib/taskIdentity.mjs'
 
 export const SHIMADZU_STAGE_DIRECTORIES = Object.freeze(['00_输入配置与清单','01_Hit1整理','02_化合物筛查','03_平行峰面积处理','04_跨样品合并与半定量','05_统计_CV_CAS与QC','06_按矩阵拆分'])
 const sha256 = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -25,6 +26,14 @@ export async function importShimadzuArchive(input, options = {}) {
   const completeness = await signedJson('完整性验证/v2-completeness-verification.json')
   if (completeness.schemaVersion !== 'shimadzu-v2-completeness-1' || completeness.status !== 'PASS' || !SHIMADZU_STAGE_DIRECTORIES.every(d => completeness.completedStages?.includes(d))) throw new Error('RUN_NOT_COMPLETE')
   const stages = []; const manifests = []
+  const normalizedIdentity = record => {
+    const value = record.parameters?.taskIdentity
+    if (!value) return null
+    const identity = taskIdentity(value)
+    if (!identity) throw new Error('INVALID_TASK_IDENTITY')
+    return { ...identity, taskId: value.taskId ? String(value.taskId) : null }
+  }
+  const originTaskIdentity = normalizedIdentity(run)
   for (const [index, directory] of SHIMADZU_STAGE_DIRECTORIES.entries()) {
     const manifest = await signedJson(`${directory}/manifest.json`)
     if (manifest.schemaVersion !== 'shimadzu-browser-manifest-1' || manifest.stage !== directory || manifest.canAdvance !== true || !['PASS','WARN','REVIEW'].includes(manifest.severity) || !Array.isArray(manifest.outputHashes)) throw new Error('INVALID_STAGE_MANIFEST')
@@ -42,6 +51,9 @@ export async function importShimadzuArchive(input, options = {}) {
     stages.push(stage); manifests.push(manifest)
   }
   const pre = stages[4], post = stages[5]; const table = options.selection === 'before-cv' ? pre.table : post.triplicateAfter
+  for (const record of [completeness, ...manifests]) {
+    if (JSON.stringify(normalizedIdentity(record)) !== JSON.stringify(originTaskIdentity)) throw new Error('TASK_IDENTITY_MISMATCH')
+  }
   if (!Array.isArray(pre.sampleOrder) || !Array.isArray(pre.sampleConfigs) || !table?.columns || !Array.isArray(table.rows)) throw new Error('INVALID_SAMPLE_TABLE')
   if (options.selection === 'after-cv' && JSON.stringify(pre.sampleOrder) !== JSON.stringify(post.sampleOrder)) throw new Error('SAMPLE_ORDER_MISMATCH')
   const sampleNames = pre.sampleOrder
@@ -81,7 +93,7 @@ export async function importShimadzuArchive(input, options = {}) {
   const archiveSha256 = await sha256(bytes)
   return createDataset({ id: `shimadzu-${archiveSha256}-${options.selection}`, name: `${run.name || 'Shimadzu'} · ${options.selection}`, samples, features, matrix,
     quality: { originalImputedMask, qcFilteredMask, cellStates, unknownSourceMask: cellStates.map(row => row.map(s => s === 'unknown')), inheritedLogs: inherited, groupStatistics: post.groupStatistics || [], cvScreeningExecuted: post.cvScreeningExecuted === true, cvThreshold: post.cvThreshold ?? null, qcRows: [...(pre.qcRows || []), ...(post.qcRows || [])], issues: stages.flatMap(s => s.issues || []) },
-    provenance: { source: 'shimadzu-verified-archive', archiveSha256, selection: options.selection, sourceStage: options.selection === 'before-cv' ? SHIMADZU_STAGE_DIRECTORIES[4] : SHIMADZU_STAGE_DIRECTORIES[5], run, manifests, independenceConfirmed: false, groupedIndependenceConfirmed: false, warnings: ['Technical replicates must not be assumed to be independent biological replicates.'] } })
+    provenance: { ...(originTaskIdentity ? { taskIdentity: originTaskIdentity } : {}), source: 'shimadzu-verified-archive', archiveSha256, selection: options.selection, sourceStage: options.selection === 'before-cv' ? SHIMADZU_STAGE_DIRECTORIES[4] : SHIMADZU_STAGE_DIRECTORIES[5], run, manifests, independenceConfirmed: false, groupedIndependenceConfirmed: false, warnings: ['Technical replicates must not be assumed to be independent biological replicates.'] } })
 }
 export function datasetFromShimadzuResult(result, options) {
   if (!result?.archiveBytes) return Promise.reject(new Error('VERIFIABLE_ARCHIVE_REQUIRED'))

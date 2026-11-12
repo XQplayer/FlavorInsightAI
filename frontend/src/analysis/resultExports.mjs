@@ -91,6 +91,8 @@ export async function createCsvZip(run) {
     });
   });
   zip.file('table-manifest.json', JSON.stringify(manifest, null, 2));
+  const trace = analysisTaskMetadata(run);
+  if (trace.taskIdentity || trace.sourceTaskIdentity) zip.file('task-traceability.json', JSON.stringify(trace, null, 2));
   zip.file('README.txt', 'Complete result tables; table-manifest.json maps safe archive filenames to original table paths. NA denotes missing. Formula-like text is prefixed with an apostrophe. Nested objects are JSON text; all-result-fields contains every scalar leaf using JSON Pointer paths. IDs refer to the bound request, never a newer dataset.');
   return zip;
 }
@@ -123,3 +125,4 @@ export async function createReproductionBundle(run, metadata = {}) {
   zip.file('README.txt', 'Run Rscript --vanilla reproduce.R request.json PATH_TO_TRUSTED_services/analysis output.json. Use the matching reviewed engine and R/package versions recorded in methods-provenance.txt. The engine and dependencies are not bundled. No request strings are executable code. Output must be a new file in an existing directory. Numerical results can depend on runtime versions. Tables include the complete result; charts may display explicit subsets. NA is missing, not zero. Formula-like strings receive an apostrophe. No PDF report or automatic 300-DPI claim. All artifacts are generated locally.');
   return zip;
 }
+import { analysisTaskMetadata } from './taskTraceability.mjs';
