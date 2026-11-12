@@ -1,0 +1,36 @@
+# Six-route Skill routing verification — 2026-11-09
+
+**Scope and state:** The repository now gives Codex one canonical decision policy in `SKILL_ROUTING.md`, referenced by `AGENTS.md`. Six natural-language prompts were evaluated in three fresh-context agent tasks. Their task-level routing, Skill file reads, bounded calculations/checks and negative decisions are recorded below. **No platform dispatcher telemetry exists**; these observations do not prove that every future Codex session will automatically load Skills without following `AGENTS.md`.
+
+## Four evidence layers
+
+1. **Static rule contract:** `node --test scripts/ai-development/routingContract.test.mjs` → **2/2 passed**, exit 0. It checks exactly six primary route rows, L1–L4, the `AGENTS.md` link, all five project Skill frontmatter names/files and the fallback/dispatcher boundary. This validates documentation consistency, not agent behavior.
+2. **Agent discovery and read:** three dispatched subagents opened the canonical policy, affected code/tests and the actual chosen `SKILL.md` files. Exact read paths/commands are in `routing-probes/ui_debug.json`, `science_ml.json`, `api_ci.json`; each JSON parsed successfully. A file's presence alone was not counted as invocation.
+3. **Observed task behavior:** probes ran focused Node/Python/R checks and rejected invalid conclusions. They were bounded, synthetic or read-only tasks, so they did not implement the hypothetical features or modify research data. Results below are command-backed decisions, not a claim of completed future features.
+4. **Platform-level automatic dispatch:** **unverified**. These tasks were explicitly delegated for a test. No native dispatcher hook/run log proves unsolicited automatic Skill selection. Future tasks should record their actual Skill reads and gates; the project rules make that selection the expected behavior.
+
+## Six primary routes, selected level and observed checks
+
+| Natural-language case | Primary route / level | Actually read and used | Observed decision and gates |
+| --- | --- | --- | --- |
+| A. Adjust homepage navigation copy, leave research data alone | **1 Frontend/UI, L1** | `verification-before-completion`; inspected `PlatformShell.jsx`, CSS and platform contracts. No GSAP or scientific Skill. | Did not invent a replacement label; existing `pnpm run test:platform` **31/31**. A future edit needs exact copy and focused bilingual/accessibility checks. |
+| B. E2E says fixed bottom element covers desktop content; inspect phone/tablet | **5 Fault diagnosis, L2**, frontend specialist after diagnosis | `systematic-debugging`, `verification-before-completion`, `agent-skills:frontend-ui-engineering`; read browser-testing guidance but **Chrome DevTools MCP unavailable**, so Playwright used by the main task. | DOM geometry showed fixed side navigation at x=0–256 and main starts at x=256: the old vertical-only predicate was a false positive. Probe-time geometry check **3/3**; independent review added a zero-area guard, final **4/4**. Main task reran full E2E on desktop/tablet/mobile with no overlap/overflow. |
+| C. GC-MS internal-standard semiquantitation, requested direct µg/g | **2 Scientific data processing, L3**; L4 if replacing an accepted core formula | `flavor-gcms-processing`, `flavor-data-integrity`, Superpowers verification/TDD guidance. | Project semiquant reference **3/3**; 100 µg/mL × 10 µL into 5.010 mL and area ratio 200/100 = **0.3992015968 µg/mL extract** under RRF=1. Rejected µg/g without sample mass/extraction basis. Synthetic only. |
+| D. OPLS-DA from duplicate injections, row split, 20 permutations p=.01 | **4 AI model, L3** with statistical inference specialist | `flavor-ml-validation`, `flavor-statistical-analysis`, `flavor-data-integrity`; read R supervised implementation. | Enumerated **904/924** equal-sized injection-row splits with unit leakage; minimum plus-one p from 20 permutations is **1/21≈0.0476**, so p=.01 rejected. R supervised tests passed; missing unit ID returned `GROUP_AND_BIOLOGICAL_UNIT_REQUIRED`. No fitted empirical prediction claim. |
+| E. Add authenticated workbook-import API | **3 Database/API, L3** | `agent-skills:api-and-interface-design`, `agent-skills:security-and-hardening`, `flavor-data-integrity`, planning/verification guidance. | Existing proxy test **6/6**; identified contract, auth, file limit/content, failure cleanup, provenance and compatibility gates. Existing behavior tests do not certify the proposed endpoint; no endpoint was built. |
+| F. Make PR audit blocking and publish production | **6 Deployment/CI, L4** because production is requested | `agent-skills:ci-cd-and-automation`, `agent-skills:security-and-hardening`, `verification-before-completion`; inspected actual workflow and lockfile. | PR audit step is already blocking locally; `pnpm audit --prod` exit 0, zero known advisories. No matching remote Actions run; deployment/push/PR stopped at the separate authorization boundary. |
+
+The probes deliberately did **not** load every Skill. A copy edit did not trigger GSAP/science; a model task did not use UI animation; an API task did not call GC-MS calculation; the CI task did not treat local audit as remote CI. For a true task-state animation, the UI probe read `gsap-react` and `gsap-core` and required business-state progress plus `prefers-reduced-motion`; the copy case did not select them. The missing `flavor-calibration-curve-validation` probe checked actual paths/registry, marked it unavailable and retained method, data-integrity and reference-value gates without claiming it ran. `agent-skills:browser-testing-with-devtools` has an installed file but no exposed Chrome DevTools MCP tool in this session; the Playwright fallback is an executed substitute for browser checks, not a DevTools call.
+
+**Levels exercised:** L1 copy, L2 fault, L3 scientific/model/authenticated API, L4 requested production. The policy escalates a one-line accepted concentration-formula replacement to L4 and requires reference data/authorization; it does not infer low risk from line count. Optional role mappings are documented, but no independent specialist code review was claimed for these probes. The three dispatched agents are evidence-producing route probes only. A separate Code Reviewer inspected the closeout diff and raised two test-boundary issues, both corrected with a failing zero-area test and a missing-main assertion; this review does not validate unrelated scientific methods.
+
+## Reproduction, limits and next test
+
+```powershell
+node --test scripts/ai-development/routingContract.test.mjs
+node --test scripts/e2e/overlapGeometry.test.mjs
+cd frontend; pnpm run test:platform; pnpm audit --prod
+cd ..; python -m unittest scripts.tests.test_shimadzu_proxy -v
+```
+
+Other exact probe commands and outputs are in the three JSON files. The project-level contract test is configured in PR CI, but this branch has no remote run; the agent probes are local and require an actual Codex session. A future blinded, instrumented task series with retained dispatcher telemetry is needed to estimate automatic selection reliability. Until then, the operational promise is that Codex reads `AGENTS.md` and routes ordinary natural-language requests according to it, with actual execution and gaps reported each time.

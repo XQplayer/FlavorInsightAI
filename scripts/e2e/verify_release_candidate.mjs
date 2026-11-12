@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { rectanglesOverlap } from './overlapGeometry.mjs';
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptRoot, '..', '..');
@@ -296,18 +297,20 @@ async function runViewport(browser, name, viewport, baseUrl, proxyOrigin) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   assert.equal(overflow, false, `${name}: horizontal overflow`);
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const fixedBottomOverlap = await page.evaluate(() => {
+  const fixedBottomLayout = await page.evaluate(() => {
     const main = document.querySelector('#main-content');
-    if (!main) return false;
-    const mainRect = main.getBoundingClientRect();
-    return [...document.querySelectorAll('body *')].some(element => {
+    if (!main) return { mainRect: null, fixedBottomRects: [] };
+    const fixedBottomRects = [...document.querySelectorAll('body *')].flatMap(element => {
       const style = getComputedStyle(element);
-      if (style.position !== 'fixed' || style.display === 'none' || style.visibility === 'hidden') return false;
+      if (style.position !== 'fixed' || style.display === 'none' || style.visibility === 'hidden') return [];
       const rect = element.getBoundingClientRect();
       const touchesBottom = Math.abs(rect.bottom - window.innerHeight) < 2;
-      return touchesBottom && rect.top < mainRect.bottom && rect.bottom > mainRect.top;
+      return touchesBottom ? [rect.toJSON()] : [];
     });
+    return { mainRect: main.getBoundingClientRect().toJSON(), fixedBottomRects };
   });
+  assert.ok(fixedBottomLayout.mainRect, `${name}: main content exists for overlap check`);
+  const fixedBottomOverlap = fixedBottomLayout.fixedBottomRects.some(rect => rectanglesOverlap(rect, fixedBottomLayout.mainRect));
   assert.equal(fixedBottomOverlap, false, `${name}: fixed bottom element overlaps main content`);
   const screenshot = path.join(screenshotsDir, `pubchem-volatile-${name}.png`);
   await page.screenshot({ path: screenshot, fullPage: true });
@@ -373,6 +376,7 @@ try {
   result = {
     ports: { proxyPort, vitePort, usedPreferredProxyPort: proxyPort === 18787, usedPreferredVitePort: vitePort === 5175 },
     desktop: await runViewport(browser, 'desktop', { width: 1280, height: 800 }, baseUrl, proxyOrigin),
+    tablet: await runViewport(browser, 'tablet', { width: 768, height: 1024 }, baseUrl, proxyOrigin),
     mobile: await runViewport(browser, 'mobile', { width: 375, height: 667 }, baseUrl, proxyOrigin),
     failureIsolation: await runFailureIsolation(browser, baseUrl, proxyOrigin),
   };

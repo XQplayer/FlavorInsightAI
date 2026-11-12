@@ -12,8 +12,11 @@
     "test:search-workbench": "node --test src/resultViewPreference.test.mjs src/searchSourceState.test.mjs src/searchWorkbenchModel.test.mjs src/scientificChapterPreload.test.mjs",
     "test:static-routes": "node --test src/staticRoutes.test.mjs",
     "test:shimadzu": "node --test src/shimadzuApi.test.mjs",
-    "test:shimadzu-browser": "node --test src/components/shimadzu/ShimadzuAnalysisPage.layout.test.mjs src/components/shimadzu/ShimadzuFailureDetails.test.mjs src/lib/shimadzuIssues.test.mjs src/lib/shimadzuBrowserContract.test.mjs src/lib/shimadzuCloud.test.mjs src/lib/shimadzuWorkerClient.test.mjs src/lib/shimadzuCompoundEnrichment.test.mjs src/lib/shimadzuWaterDetectionThreshold.test.mjs src/lib/shimadzuCasRecovery.test.mjs src/lib/shimadzuDataRequest.test.mjs src/shimadzu-core/*.test.mjs src/workers/*.test.mjs",
+    "test:shimadzu-browser": "node --test src/components/shimadzu/ShimadzuFailureDetails.test.mjs src/lib/shimadzuIssues.test.mjs src/components/shimadzu/analysisConsoleModel.test.mjs src/components/shimadzu/ShimadzuAnalysisPage.layout.test.mjs src/components/shimadzu/taskFeedback.test.mjs src/lib/shimadzuBrowserContract.test.mjs src/lib/shimadzuCloud.test.mjs src/lib/shimadzuWorkerClient.test.mjs src/lib/shimadzuCompoundEnrichment.test.mjs src/lib/shimadzuWaterDetectionThreshold.test.mjs src/lib/shimadzuCasRecovery.test.mjs src/lib/shimadzuDataRequest.test.mjs src/shimadzu-core/*.test.mjs src/workers/*.test.mjs",
+    "test:analysis": "node --test src/analysis/*.test.mjs src/releaseHardening.test.mjs",
+
     "test:e2e:shimadzu-enrichment": "node ../scripts/e2e/verify_shimadzu_enrichment.mjs",
+    "test:e2e:processing-feedback": "node ../scripts/e2e/verify_processing_feedback.mjs",
     "test:e2e": "node ../scripts/e2e/verify_release_candidate.mjs",
     "test:e2e:platform": "node ../scripts/e2e/verify_platform_shell.mjs",
     "test:e2e:search-workbench": "node ../scripts/e2e/verify_search_results_workbench.mjs",
@@ -34,7 +37,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -46,6 +49,6 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "gh-pages": "^6.3.0",
     "globals": "^17.4.0",
-    "vite": "^8.0.1"
+    "vite": "^8.1.6"
   }
 }

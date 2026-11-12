@@ -1,0 +1,134 @@
+{
+  "probe_date": "2026-11-09",
+  "scope": "Read-only routing investigations for two hypothetical prompts; no application code, workflow, research data, remote repository, or production environment changed.",
+  "worktree": "E:/codex/Projects/FlavorThresholdDB/.worktrees/ai-development",
+  "branch": "codex/ai-development-phase4",
+  "canonical_policy": "docs/ai-development/SKILL_ROUTING.md",
+  "policy_sha256": "8AC05E4D5FBDE88B2FE6C65579D0FBD3B7EA765C80547876CEBCEEE84FC19288",
+  "shared_reads": [
+    "AGENTS.md",
+    "README.md",
+    "docs/ai-development/SKILL_ROUTING.md",
+    "docs/ai-development/DEVELOPMENT_WORKFLOW.md",
+    "docs/ai-development/QUALITY_GATES.md",
+    "docs/ai-development/SKILL_REGISTRY.md",
+    "docs/ai-development/AGENT_ROLES.md",
+    "docs/ai-development/ROLLBACK_PLAN.md",
+    "E:/codex/codex-personal-skills/verification-before-completion/SKILL.md"
+  ],
+  "probes": [
+    {
+      "id": "A",
+      "prompt": "给登录用户增加工作簿导入 API，检查文件类型/大小、权限、异常和向后兼容。",
+      "primary_route": "3. Database / API",
+      "level": "L3",
+      "level_reason": "A new authenticated server-side workbook upload crosses API, trust, permission, persistence and research-file boundaries; the canonical policy explicitly classifies authenticated workbook upload as route 3 L3. A sensitive permission architecture change would escalate to L4.",
+      "investigation_contract": {
+        "inputs": "Authenticated identity and workbook multipart bytes, filename, MIME type and options; exact endpoint and accepted workbook formats require a future contract.",
+        "outputs": "Structured accepted import or job response with source hash, user ownership and warnings, or consistent structured error; no import was implemented in this probe.",
+        "dependencies": "Existing Python Shimadzu handler/service and browser-local analysis import are separate existing paths; choose the intended API boundary before implementation.",
+        "failure_behavior": "Reject unauthenticated/unauthorized requests, unsupported or deceptive file type, empty/oversized or malformed archive, invalid options and service failure without leaking internals or persisting partial input.",
+        "acceptance_criteria": "Request/response/error contract, auth and per-resource permission tests, byte and expanded-size limits, content validation, provenance/hash and failure cleanup, old endpoint/client compatibility and focused API integration all pass."
+      },
+      "affected_reads": [
+        "fema_proxy_server.py (multipart parsing and POST /shimadzu/jobs)",
+        "shimadzu_analysis_service.py (create_job, upload validation and source_files hashes)",
+        "scripts/tests/test_shimadzu_proxy.py",
+        "frontend/src/analysis/imports.mjs",
+        "frontend/src/analysis/imports.test.mjs",
+        "E:/codex/codex-personal-skills/writing-plans/SKILL.md",
+        "E:/codex/codex-owned-skills/plugins-cache/agent-skills/agent-skills/0.6.15/skills/api-and-interface-design/SKILL.md",
+        "E:/codex/codex-owned-skills/plugins-cache/agent-skills/agent-skills/0.6.15/skills/security-and-hardening/SKILL.md",
+        "E:/codex/Projects/FlavorThresholdDB/.agents/skills/flavor-data-integrity/SKILL.md"
+      ],
+      "selected_skills": [
+        "writing-plans (future material implementation requires an explicit contract and written L3 plan)",
+        "verification-before-completion (fresh evidence before a passing claim)",
+        "agent-skills:api-and-interface-design (stable request, response and error contract)",
+        "agent-skills:security-and-hardening (untrusted upload and permissions)",
+        "flavor-data-integrity (research-file hash, source lineage and rejected-row accounting)"
+      ],
+      "optional_role": "Backend Architect plus Application Security Engineer for a future independent contract and threat-boundary review; neither was dispatched in this bounded probe.",
+      "gate_set": [
+        "New request/response and error contract tests",
+        "Python API integration and adjacent existing Shimadzu tests",
+        "Authentication, ownership/authorization and upload validation abuse cases",
+        "Byte/expanded-size, malformed-content and partial-persistence failure cases",
+        "Research source hash/lineage and compatibility checks",
+        "Diff and rollback review before any implementation delivery"
+      ],
+      "observations": [
+        "Existing POST /shimadzu/jobs requires two workbooks and caps combined Content-Length at 210 MiB; inspected handler has no visible authentication or authorization check in that route.",
+        "Existing service validates non-empty .xlsx extension and records source-file SHA-256 after writing; this is not proof of workbook content-type validation or ownership enforcement.",
+        "Existing frontend analysis import is browser-local and enforces archive limits; it is not an authenticated upload API."
+      ],
+      "commands": [
+        {
+          "command": "python -m unittest scripts.tests.test_shimadzu_proxy -v",
+          "exit_code": 0,
+          "output": "Ran 6 tests in 0.571s; OK. Includes existing create-job multipart acceptance and structured service error tests."
+        }
+      ],
+      "nonselected_skills": "No GC-MS processing, statistical, ML, visualization, frontend UI, GSAP or CI specialist: this prompt changes an API trust boundary, not a scientific algorithm, UI or build pipeline. No extra global process workflow was started.",
+      "limitations": "Existing tests are a behavior baseline, not tests for the proposed authenticated endpoint. No independent reviewer or new reference fixture ran."
+    },
+    {
+      "id": "B",
+      "prompt": "PR GitHub Actions 的依赖扫描要阻断高危告警；请验证本地配置并发布生产。",
+      "primary_route": "6. Deployment / CI",
+      "level": "L4",
+      "level_reason": "PR workflow and dependency scanning are route 6; the requested production release raises the whole request to L4 even though a CI-only edit would normally be L2/L3.",
+      "investigation_contract": {
+        "inputs": "PR workflow, frontend lockfile and production dependency advisory data; a future release additionally needs exact commit SHA and target environment.",
+        "outputs": "A blocking PR audit result and release evidence package; no workflow edit or release was performed in this probe.",
+        "dependencies": "Frozen pnpm install, current workflow job status, protected branch settings and approved release/rollback procedure.",
+        "failure_behavior": "A high-severity advisory must fail the PR check; audit/network failure should fail closed or receive documented risk disposition. Production promotion stops if matching remote CI, approval or rollback proof is missing.",
+        "acceptance_criteria": "Local workflow has an unsuppressed blocking audit, production audit passes or findings are resolved, affected test/lint/build and matching remote Actions run are green, and authorized production promotion plus recovery verification completes."
+      },
+      "affected_reads": [
+        ".github/workflows/pr-quality-checks.yml",
+        "frontend/package.json",
+        "frontend/pnpm-lock.yaml",
+        "docs/ai-development/QUALITY_GATES.md",
+        "E:/codex/codex-owned-skills/plugins-cache/agent-skills/agent-skills/0.6.15/skills/ci-cd-and-automation/SKILL.md",
+        "E:/codex/codex-owned-skills/plugins-cache/agent-skills/agent-skills/0.6.15/skills/security-and-hardening/SKILL.md"
+      ],
+      "selected_skills": [
+        "verification-before-completion (local audit must be run before reporting it)",
+        "agent-skills:ci-cd-and-automation (blocking quality gate and matching CI evidence)",
+        "agent-skills:security-and-hardening (dependency advisory and supply-chain review)",
+        "writing-plans (future L4 release needs written impact, backup and rollback plan)"
+      ],
+      "optional_role": "Security Architect or Application Security Engineer for dependency disposition and CI reviewer for release gate; neither was dispatched in this bounded probe.",
+      "gate_set": [
+        "Frozen pnpm install, affected tests, lint and production build before release",
+        "Blocking production-dependency audit and secret/configuration review",
+        "Exact remote Actions run SHA and job outcomes, including branch protection if merge blocking is claimed",
+        "Release impact, backup/recovery and rollback review",
+        "Separate authorization before remote push, PR or production deployment"
+      ],
+      "observations": [
+        "Inspected .github/workflows/pr-quality-checks.yml runs pnpm install --frozen-lockfile, tests, lint, build and a final pnpm audit --prod step on pull_request to main; the audit step has no continue-on-error or shell suppression, so an audit nonzero exit would fail that job.",
+        "The audit currently scans all production advisory severities; it would also block a high-severity advisory. This local file inspection does not prove GitHub branch protection or a remote run.",
+        "frontend/package.json pins xlsx to a SheetJS CDN tarball; pnpm audit --prod only reports advisories known through its audit source, not complete supply-chain assurance."
+      ],
+      "commands": [
+        {
+          "command": "pnpm audit --prod (working directory frontend)",
+          "exit_code": 0,
+          "output": "No known vulnerabilities found"
+        }
+      ],
+      "nonselected_skills": "No API, scientific processing, data-integrity, ML, visualization, frontend UI or GSAP specialist: no application data or interface is changed by a PR audit/release request. No second global process workflow was started.",
+      "limitations": "No fresh frozen install, full test/lint/build, matching remote Actions run, branch-protection verification, production backup or rollback proof was obtained in this probe. A local audit pass does not clear the production gate. No remote push, PR or deployment occurred."
+    }
+  ],
+  "missing_skill_fallback": {
+    "requested_name": "flavor-calibration-curve-validation",
+    "status": "Unavailable in the project skill directory and not listed in the inspected project skill registry; no SKILL.md was opened or claimed for it.",
+    "applies_to_these_prompts": false,
+    "safe_fallback_if_future_calibration_task_requires_it": "Use AGENTS.md, the affected calibration code/tests, approved independent reference fixture with units/formula/tolerance/source and QUALITY_GATES.md; retain the scientific gate and clearly report unavailable specialist and serial self-review. Do not silently substitute a similarly named Skill."
+  },
+  "dispatch_and_remote_status": "No automatic platform dispatch was observed or claimed. No subagent was dispatched. No remote CI run, push, PR or production deploy was performed.",
+  "rollback": "Only this probe JSON is intended to change; remove this file to undo the probe after preserving any desired record. Existing uncommitted work in the shared worktree must remain untouched."
+}

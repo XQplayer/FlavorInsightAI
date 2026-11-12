@@ -29,6 +29,43 @@ test('xlsx uses cached values only, missing formula cache remains missing with w
   assert.equal(result.warnings.length, 1)
   await assert.rejects(api.readImportFile(new Uint8Array(12), { name: 'data.csv', maxBytes: 10 }), /FILE_TOO_LARGE/)
 })
+
+test('xlsx import preserves sheet order, zero, blank cells and source-like labels', async () => {
+  const book = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([
+    ['Name', 'S1', 'S2'],
+    ['CAS 64-17-5', 0, null],
+    ['__proto__', 1.25, 'NA'],
+  ]), 'Raw')
+  XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([
+    ['样品名称', '体积（mL）'],
+    ['样品-1', 5],
+  ]), 'Config')
+  const bytes = XLSX.write(book, { type: 'array', bookType: 'xlsx' })
+  const result = await api.readImportFile(bytes, { name: 'synthetic.xlsx' })
+  assert.deepEqual(result.sheets.map(sheet => sheet.name), ['Raw', 'Config'])
+  assert.deepEqual(result.sheets[0].rows, [
+    ['Name', 'S1', 'S2'],
+    ['CAS 64-17-5', 0, null],
+    ['__proto__', 1.25, 'NA'],
+  ])
+  assert.deepEqual(result.sheets[1].rows[1], ['样品-1', 5])
+  assert.equal({}.polluted, undefined)
+})
+
+test('xlsx import rejects archive traversal and malformed entry count before workbook parsing', async () => {
+  const traversal = new JSZip()
+  traversal.file('../escape.xml', '<x/>')
+  const bytes = await traversal.generateAsync({ type: 'uint8array' })
+  await assert.rejects(api.readImportFile(bytes, { name: 'hostile.xlsx' }), /UNSAFE_ZIP_PATH/)
+  const malformed = new JSZip()
+  malformed.file('a.xml', '<x/>')
+  const malformedBytes = await malformed.generateAsync({ type: 'uint8array' })
+  const view = new DataView(malformedBytes.buffer, malformedBytes.byteOffset, malformedBytes.byteLength)
+  // A malformed central-directory entry count must fail closed.
+  for (let p = malformedBytes.length - 22; p >= 0; p--) if (view.getUint32(p, true) === 0x06054b50) { view.setUint16(p + 10, 2, true); break }
+  await assert.rejects(api.readImportFile(malformedBytes, { name: 'hostile.xlsx' }), /INVALID_ZIP/)
+})
 test('mean SD CV and status columns are rejected even with sample prefixes; hexadecimal is not numeric measurement', () => {
   assert.throws(() => api.previewTable([['Name','S1 Mean（μg/mL）'], ['A',2]], {headerRow:0,orientation:'features-rows',sampleColumns:[1],nameColumn:0}), /ANNOTATION/)
   const d = api.previewTable([['Name','S1'], ['A','0x10']], {headerRow:0,orientation:'features-rows',sampleColumns:[1],nameColumn:0})

@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "probeType": "real Codex task behavior probe",
+  "taskOriginal": "只做真实 Codex 任务行为探针，唯一可写文件 docs/ai-development/phase4-probes/stats_ml.json；不要改其他文件。你不是独自在代码库中工作，不得撤销他人修改，应适应并行编辑。工作目录 E:\\codex\\Projects\\FlavorThresholdDB\\.worktrees\\ai-development，分支 codex/ai-development-phase4。先读 AGENTS.md、实际相关 R 代码/要求、自己识别为适用的项目 Skill，并确实打开 SKILL.md。合成场景：每组3个独立生物样本、每样2次进样；用户想把12次进样当独立样本，先全表标准化/选特征，再随机按行拆分，报告 OPLS-DA 训练准确率和 p=0.01（只做20次置换）。请实际用小型枚举/代码/函数检查可达置换 p 和泄漏/独立性，指出可执行修正与不能声称的结果。负向：仅改模型页面标题；边界：缺 biologicalUnitId。保存任务原文、Skill 真实读命令/路径、运行命令/输出、结论、git status 前后和限制到负责 JSON。不得使用真实科研数据，不声称平台级自动派发。",
+  "worktree": "E:\\codex\\Projects\\FlavorThresholdDB\\.worktrees\\ai-development",
+  "branch": "codex/ai-development-phase4",
+  "sourceInspection": {
+    "commands": [
+      "Get-Content AGENTS.md -Raw",
+      "Get-Content docs/ai-development/SKILL_ROUTING.md -Raw; Get-Content docs/ai-development/QUALITY_GATES.md -Raw",
+      "Get-Content services/analysis/requirements.md -Raw; Get-Content services/analysis/supervised.R -Raw; Get-Content services/analysis/supervised_validation.R -Raw",
+      "Get-Content services/analysis/statistics.R -TotalCount 110; Get-Content services/analysis/tests/test_supervised.R -TotalCount 32",
+      "rg -n -i 'AI Models|模型页面|模型|opls' frontend/src --glob '*.jsx' --glob '*.tsx' --glob '*.js'"
+    ],
+    "relevantImplementation": [
+      "services/analysis/statistics.R prepare_independent checks independenceConfirmed and nonblank group/biologicalUnitId, then aggregates observed technical injections by biologicalUnitId plus group.",
+      "services/analysis/supervised.R supervised_dataset requires two classes for OPLS-DA, at least three independent units per class, and exploratory acknowledgement for fewer than five per class.",
+      "services/analysis/supervised.R supervised_partition calls fit_recipe on training IDs and apply_recipe on held-out rows.",
+      "services/analysis/supervised_validation.R uses nested unit-level folds and pooled outer out-of-fold balanced accuracy; permutation p=(1+exceedances)/(requested+1), counting ties, only if every requested permutation completes.",
+      "services/analysis/requirements.md documents that three units per class are exploratory and default five outer folds are infeasible; the documented small OPLS-DA configuration has no valid inner candidate."
+    ]
+  },
+  "skillSelectionAndReads": [
+    {
+      "path": ".agents/skills/flavor-statistical-analysis/SKILL.md",
+      "command": "Get-Content .agents/skills/flavor-statistical-analysis/SKILL.md -Raw",
+      "reason": "OPLS-DA, independence and permutation interpretation"
+    },
+    {
+      "path": ".agents/skills/flavor-ml-validation/SKILL.md",
+      "command": "Get-Content .agents/skills/flavor-ml-validation/SKILL.md -Raw",
+      "reason": "model validation, group-disjoint folds and leakage"
+    },
+    {
+      "path": ".agents/skills/flavor-data-integrity/SKILL.md",
+      "command": "Get-Content .agents/skills/flavor-data-integrity/SKILL.md -Raw",
+      "reason": "source injection to biological-unit lineage and metadata integrity"
+    }
+  ],
+  "syntheticScenario": {
+    "groups": [
+      "C",
+      "T"
+    ],
+    "biologicalUnits": [
+      "C1",
+      "C2",
+      "C3",
+      "T1",
+      "T2",
+      "T3"
+    ],
+    "injectionsPerUnit": 2,
+    "injectionRows": 12,
+    "independentBiologicalN": 6,
+    "independentNPerClass": 3,
+    "dataUse": "In-memory deterministic synthetic values only; no research file or empirical result used."
+  },
+  "executedChecks": [
+    {
+      "command": "PowerShell here-string piped to D:/Apps/Python313/python.exe -; itertools.combinations(range(12),6), random.Random(42).sample(range(12),6), math.comb(6,3), and plus-one p arithmetic",
+      "exitCode": 0,
+      "output": [
+        "synthetic units= ['C1', 'C2', 'C3', 'T1', 'T2', 'T3'] injections= 12 biological_n= 6 per_class_n=3",
+        "six/six row splits= 924 leaky= 904 rate= 0.978355",
+        "seed42 test_rows_1based= [1, 2, 4, 5, 11, 12] shared_units= ['C2', 'C3']",
+        "class-preserving unique label assignments= 20",
+        "20 permutation plus-one p_min= 0.047619047619047616 p_values_first_three= [0.047619047619047616, 0.09523809523809523, 0.14285714285714285]",
+        "minimum complete permutations for p<=0.01= 99"
+      ],
+      "reproducer": "python -c \"import itertools, math, random; units=[f'C{i}' for i in range(1,4)]+[f'T{i}' for i in range(1,4)]; rows=[u for u in units for _ in range(2)]; splits=list(itertools.combinations(range(12),6)); leaky=sum(bool({rows[i] for i in s}&{rows[i] for i in range(12) if i not in s}) for s in splits); print(len(splits),leaky,leaky/len(splits),math.comb(6,3),1/21)\""
+    },
+    {
+      "command": "PowerShell here-string piped to D:/Apps/Python313/python.exe -; compare statistics.mean(range(1,13)) with train-only mean for the seed-42 split",
+      "exitCode": 0,
+      "output": [
+        "synthetic feature all-row mean= 6.5 train-row mean= 7.166666666666667",
+        "pre-split standardization uses held-out rows= True",
+        "pre-split supervised selection uses held-out labels by construction"
+      ],
+      "reproducer": "python -c \"import random,statistics; r=random.Random(42); test=set(r.sample(range(12),6)); train=[i for i in range(12) if i not in test]; x=list(range(1,13)); print(statistics.mean(x),statistics.mean(x[i] for i in train))\""
+    },
+    {
+      "command": "Set R_LIBS_USER=E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library; D:/R-4.6.0/bin/Rscript.exe -e <one-line semicolon-joined in-memory R code sourcing preprocess.R, statistics.R, supervised.R, building 12 synthetic injections with eight deterministic features, calling supervised_dataset, testing missing biologicalUnitId, and calling analyze_supervised with method=oplsda, outerFolds=3, innerFolds=2, permutations=0, acknowledgeExploratory=TRUE, seed=41>",
+      "exitCode": 0,
+      "output": [
+        "aggregated_independent_n=6 counts=3,3 exploratory=TRUE",
+        "missing_unit_error=GROUP_AND_BIOLOGICAL_UNIT_REQUIRED",
+        "oplsda_result=NO_VALID_CANDIDATE",
+        "exit=0"
+      ],
+      "runtimeNote": "R startup emitted LC_COLLATE, LC_CTYPE, LC_MONETARY and LC_TIME C.UTF-8 locale warnings. The R call caught the expected model failure to print its code, so process exit 0 does not mean OPLS-DA fitting passed. An initial multiline PowerShell argument to Rscript -e evaluated only the first expression; the rerun joined lines with semicolons and produced the recorded results.",
+      "reproducer": "R_LIBS_USER=E:/codex/Projects/FlavorThresholdDB/_local/analysis-r-library; source preprocess.R, statistics.R, supervised.R; build the deterministic in-memory 12-row fixture described in syntheticScenario; call supervised_dataset(d,a), supervised_dataset(bad,a), and analyze_supervised(d,list(),a). The exact evaluated R expression follows.",
+      "evaluatedRExpression": "source('services/analysis/preprocess.R');source('services/analysis/statistics.R');source('services/analysis/supervised.R');units<-rep(c('C1','C2','C3','T1','T2','T3'),each=2);groups<-ifelse(substr(units,1,1)=='C','C','T');x<-outer(1:12,1:8,function(i,j) sin(i*j)+cos(i+j));d<-list(schemaVersion=1,id='synthetic-probe',samples=lapply(1:12,function(i)list(id=paste0('inj',i),group=groups[i],biologicalUnitId=units[i],subjectId='',include=TRUE)),features=lapply(1:8,function(j)list(id=paste0('f',j),unit='arbitrary synthetic unit')),matrix=lapply(1:12,function(i)as.list(x[i,])),quality=list(cellStates=rep(list(as.list(rep('observed',8))),12)),provenance=list(independenceConfirmed=TRUE));a<-list(method='oplsda',outerFolds=3,innerFolds=2,predictiveComponents=1,orthogonalComponents=1,permutations=0,acknowledgeExploratory=TRUE,seed=41);z<-supervised_dataset(d,a);cat('aggregated_independent_n=',z$independentN,' counts=',paste(unlist(z$counts),collapse=','),' exploratory=',z$exploratory,'\\n',sep='');bad<-d;bad$samples[[1]]$biologicalUnitId<-NULL;cat('missing_unit_error=',tryCatch({supervised_dataset(bad,a);'NONE'},error=function(e)conditionMessage(e)),'\\n',sep='');cat('oplsda_result=',tryCatch({analyze_supervised(d,list(),a);'SUCCESS'},error=function(e)conditionMessage(e)),'\\n',sep='')"
+    }
+  ],
+  "behavioralConclusion": {
+    "requestedRowLevelApproach": "Rejected. Technical injections are not independent biological samples. Random row splitting can place linked injections on both sides; 904 of 924 possible six/six splits do so. Fitting normalization or supervised feature selection on the full table exposes held-out information before evaluation.",
+    "permutationClaim": "A 20-permutation plus-one result cannot be p=0.01: its minimum is 1/21=0.047619, assuming all permutations complete and none ties or exceeds the observed statistic. With three biological units per class there are only choose(6,3)=20 distinct class-preserving unit-label assignments including observed, so exhaustive exact randomization has minimum one-sided tail resolution 1/20=0.05; merely repeating random labels cannot create more unique assignments.",
+    "modelClaim": "Do not report the requested training accuracy as held-out performance, generalization, or a valid OPLS-DA result. No user-provided feature matrix exists; the deliberately synthetic 3+3 R fixture returned NO_VALID_CANDIDATE. Training accuracy, even if fit succeeded on other data, would be apparent fit only.",
+    "executableCorrection": [
+      "Require a unique biologicalUnitId and explicit independence confirmation for every included injection; preserve injection-to-unit source IDs and check group consistency.",
+      "Aggregate observed technical injections within each biological unit and condition using the existing prepare_independent/supervised_dataset path, or keep linked injections in the same fold under a documented hierarchical design.",
+      "Split by biological unit before any learned imputation, normalization across samples, scaling, supervised feature selection or tuning. Fit each learned step inside the training fold; evaluate on disjoint outer folds or a truly independent test set.",
+      "Treat 3+3 units as exploratory; acknowledge it explicitly and use feasible outer=3, inner=2 only if the model candidate can fit. In this fixture OPLS-DA has no valid candidate, so gather more independent units or report an explicit modeling failure rather than substitute a classifier silently.",
+      "Use the existing complete-permutation audit and report the attainable resolution, ties, failed permutations and exact statistic. Do not state p=0.01 from 20 permutations or from this six-unit exact label space."
+    ]
+  },
+  "negativeAndBoundary": {
+    "titleOnly": "A change only to the AI Models page title is a light UI text edit; it does not trigger flavor-statistical-analysis, flavor-ml-validation or flavor-data-integrity, because no model, analysis result or research data changes. Inspect the affected page and run a focused UI check if actually editing it. No title was edited in this probe.",
+    "missingBiologicalUnitId": "Actual supervised_dataset call returned GROUP_AND_BIOLOGICAL_UNIT_REQUIRED. Do not infer units from row names, sample names or injection counts; request authoritative metadata before fitting or claiming generalization."
+  },
+  "gitStatusBefore": "## codex/ai-development-phase4\n M .github/workflows/pr-quality-checks.yml\n M frontend/package.json\n M frontend/pnpm-lock.yaml\n M frontend/src/analysis/imports.test.mjs\n M frontend/src/releaseHardening.test.mjs\n M frontend/src/workers/shimadzuWorkbook.js\n M services/analysis/tests/test_supervised.R\n?? docs/ai-development/dependency-audit-phase4-2026-11-09.json\n?? docs/superpowers/plans/2026-11-09-phase4-security-science-ci.md\n?? services/analysis/tests/test_ropls_published_reference.R",
+  "gitStatusAfter": "## codex/ai-development-phase4\n M .github/workflows/pr-quality-checks.yml\n M frontend/package.json\n M frontend/pnpm-lock.yaml\n M frontend/src/analysis/imports.test.mjs\n M frontend/src/releaseHardening.test.mjs\n M frontend/src/workers/shimadzuWorkbook.js\n M services/analysis/tests/test_supervised.R\n?? docs/ai-development/dependency-audit-phase4-2026-11-09.json\n?? docs/ai-development/phase4-probes/\n?? docs/superpowers/plans/2026-11-09-phase4-security-science-ci.md\n?? services/analysis/tests/test_ropls_published_reference.R",
+  "limits": [
+    "This is one task-level Codex probe, not telemetry or proof of platform-wide automatic skill dispatch.",
+    "No empirical data, held-out predictions, actual 20 fitted permutation models or independent model validation were produced.",
+    "The 904/924 count describes all equal-sized 6/6 row allocations, not a probability under every possible sampling or stratification policy.",
+    "Only docs/ai-development/phase4-probes/stats_ml.json was authored for this probe; other pre-existing working-tree changes belong to parallel work."
+  ],
+  "ownedPathStatus": "?? docs/ai-development/phase4-probes/stats_ml.json"
+}

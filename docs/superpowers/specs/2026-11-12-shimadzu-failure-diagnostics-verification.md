@@ -25,4 +25,10 @@ Implementation branch: `codex/shimadzu-error-diagnostics` in `.worktrees/shimadz
 
 Primary-agent serial review performed; no independent agent review was run. Raw cell data is not copied into diagnostic metadata. React text rendering escapes filenames, sample names and error messages. Scientific records and gates remain unchanged. Unknown codes retain the original message rather than guessing a cause. Historical tasks cannot show source rows or template notices that were never recorded. Production cloud-session testing awaits authorised deployment; local/online builds use the same error component and existing serializable error path.
 
-Rollback: the main checkout and production remain unchanged. Discarding this isolated branch removes the feature. After an authorised merge, revert its feature commit to restore baseline UI/metadata; no migration or raw-data rewrite is required.
+Rollback: the main checkout and production remained unchanged during initial verification. After an authorised merge, revert the feature changes to restore baseline UI/metadata; no migration or raw-data rewrite is required.
+
+## Authorised release integration
+
+The user authorised merging and production publication without changing version 1.5.0. Integrated remote main at 595fb931fd2a2972bbac1132ddd3c48211ca5000, retaining the new four-workspace console and patched SheetJS 0.20.3. Replaced the new console's generic error block with the detailed diagnostics component; retained upstream layout assertions and added the diagnostics integration assertion.
+
+Fresh integrated checks: 100/100 Shimadzu browser workflow tests; full ESLint; production build and static routes; complete desktop processing and mobile failure E2E; all eight bilingual/theme/viewport diagnostics E2E combinations; git diff --check. All passed. The reduced test count relative to the historical 118 reflects upstream replacement of obsolete layout assertions, not deletion of scientific regression tests. Existing third-party build warnings remain. Publication is subject to remote PR quality checks and Pages deployment verification.

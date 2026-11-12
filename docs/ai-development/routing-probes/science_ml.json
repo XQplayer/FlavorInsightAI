@@ -1,0 +1,132 @@
+{
+  "probeType": "synthetic natural-language routing; read-only application checks",
+  "date": "2026-11-09",
+  "policy": "docs/ai-development/SKILL_ROUTING.md",
+  "platformDispatchClaim": false,
+  "scope": "No application code, scientific data, formula, or model was changed. This file records task-level route decisions and executed local checks only.",
+  "reads": [
+    "AGENTS.md",
+    "README.md",
+    "docs/ai-development/SKILL_ROUTING.md",
+    "docs/ai-development/DEVELOPMENT_WORKFLOW.md",
+    "docs/ai-development/QUALITY_GATES.md",
+    "docs/ai-development/SKILL_REGISTRY.md",
+    "docs/ai-development/AGENT_ROLES.md",
+    "docs/analysis-supervised-validation-contract.md",
+    "docs/ai-development/OPLSDA_REFERENCE_VALIDATION.md",
+    "services/analysis/requirements.md",
+    "frontend/src/shimadzu-core/semiquant.mjs",
+    "frontend/src/shimadzu-core/semiquant.reference.test.mjs",
+    "services/analysis/statistics.R",
+    "services/analysis/supervised.R",
+    "services/analysis/supervised_validation.R",
+    "services/analysis/tests/test_supervised.R"
+  ],
+  "skillFilesActuallyOpened": [
+    "E:/codex/codex-personal-skills/using-superpowers/SKILL.md",
+    "E:/codex/codex-personal-skills/writing-plans/SKILL.md",
+    "E:/codex/codex-personal-skills/test-driven-development/SKILL.md",
+    "E:/codex/codex-personal-skills/verification-before-completion/SKILL.md",
+    ".agents/skills/flavor-gcms-processing/SKILL.md",
+    ".agents/skills/flavor-statistical-analysis/SKILL.md",
+    ".agents/skills/flavor-ml-validation/SKILL.md",
+    ".agents/skills/flavor-data-integrity/SKILL.md"
+  ],
+  "prompts": [
+    {
+      "id": "A",
+      "syntheticPrompt": "GC-MS 中内标 100 ug/mL 加 10 uL 至加样前 5 mL，目标峰/内标峰 200/100；请算提取液半定量浓度并直接报告 ug/g。",
+      "primaryRoute": "2. Scientific data processing",
+      "impactLevel": "L3 for a real semiquantitation algorithm or output-contract change; this documentation-only probe changes no algorithm",
+      "skillsToReadForRealTask": [
+        "writing-plans",
+        "test-driven-development",
+        "verification-before-completion",
+        "flavor-gcms-processing",
+        "flavor-data-integrity if research-file lineage or export is touched"
+      ],
+      "roleAndGateSet": {
+        "roles": "Scientific reviewer for units/reference values and test reviewer for invalid inputs; independent review only if a separate agent actually returns findings. This probe used serial self-review.",
+        "gates": "Independent mass-balance reference with units, declared volume basis, fixed RRF=1, zero/invalid internal-standard area, source-row provenance, focused Node tests, adjacent Stage 0-6 regression, source hash before/after for real files, rollback diff. No raw research data mutation without authorization."
+      },
+      "decision": "The synthetic 10 uL spike is 0.01 mL, containing 1 ug internal standard. Ignoring spike volume gives 0.2 ug/mL internal standard and 0.4 ug/mL analyte extract at area ratio 2. Including spike volume gives 0.1996007984031936 ug/mL internal standard and 0.3992015968063872 ug/mL extract. The prompt does not establish whether spike volume is included. Neither branch supports ug/g without original sample mass, extraction/reconstitution volume, and dilution/recovery assumptions; report extract units only and request the missing conversion metadata before any mass-normalized result. These are synthetic calculations, not observed results.",
+      "irrelevantSkillsOmitted": [
+        "flavor-ml-validation: no model training",
+        "flavor-statistical-analysis: no inferential statistics",
+        "flavor-scientific-visualization: no plot",
+        "GSAP/frontend/API/deployment specialists: no matching change"
+      ]
+    },
+    {
+      "id": "B",
+      "syntheticPrompt": "每组3个生物样本、每样2次进样，先全表标准化再按进样随机拆分，训练 OPLS-DA 并报告准确率和20次置换 p=0.01。",
+      "primaryRoute": "4. AI model development",
+      "impactLevel": "L3 for actual supervised-model training, evaluation, or changed scientific/model code; this documentation-only probe changes no model",
+      "skillsToReadForRealTask": [
+        "writing-plans",
+        "test-driven-development",
+        "verification-before-completion",
+        "flavor-ml-validation",
+        "flavor-statistical-analysis for OPLS-DA inference and permutation claims",
+        "flavor-data-integrity if source dataset or lineage is imported, transformed, or exported"
+      ],
+      "roleAndGateSet": {
+        "roles": "Model QA or statistician for independence, split, feasibility, permutation and overfit claims; test reviewer for leakage checks. This probe used serial self-review and made no independent-agent claim.",
+        "gates": "Explicit biologicalUnitId and independence confirmation; aggregate technical injections within biological unit; group-disjoint split before learned transforms; training-fold-only scaling/imputation/feature selection and nested tuning; binary OPLS feasibility; held-out predictions and balanced accuracy with uncertainty; seeded full-pipeline unit-label permutations, requested/completed/failed counts; focused R regression and independent model QA before real performance claims."
+      },
+      "decision": "Reject whole-table learned standardization and injection-level random split as leakage. For an explicit synthetic binary illustration with 2 classes x 3 biological units/class x 2 injections/unit, enumerating every 6-vs-6 injection partition gives 924 partitions, 904 with a biological unit on both sides and 20 group-intact partitions. The prompt does not specify the class count; project OPLS-DA requires two classes. Three independent units/class is exploratory and the existing 3+3 OPLS fixture returns NO_VALID_CANDIDATE. No training data, seed, held-out predictions, or model fit was supplied, so no accuracy can be reported. The project's empirical permutation p=(1+exceedances)/(B+1) has minimum 1/21=0.047619047619047616 at B=20; p=0.01 is impossible even with zero exceedances, and failures make p unavailable.",
+      "irrelevantSkillsOmitted": [
+        "flavor-gcms-processing: no GC-MS calculation is changed",
+        "flavor-scientific-visualization: no plot",
+        "GSAP/frontend/API/deployment specialists: no matching change"
+      ]
+    }
+  ],
+  "boundaryCases": [
+    {
+      "case": "One-line modification to a validated concentration formula",
+      "route": "2. Scientific data processing",
+      "level": "L3 at minimum; L4 if replacing an accepted core scientific rule",
+      "action": "Block implementation until explicit authorization and recorded rationale for the scientific rule, an approved read-only independent reference fixture, current-behavior baseline, scientific review, full affected tests and rollback/backup evidence. Line count does not reduce impact."
+    },
+    {
+      "case": "Missing biologicalUnitId on an included sample",
+      "route": "4. AI model development",
+      "level": "L3 for the proposed training/evaluation task",
+      "action": "Stop evaluation with GROUP_AND_BIOLOGICAL_UNIT_REQUIRED; do not invent IDs, split by injection, or claim generalization. A direct synthetic R invocation returned that error."
+    }
+  ],
+  "executedChecks": [
+    {
+      "command": "node --test frontend/src/shimadzu-core/semiquant.reference.test.mjs",
+      "exitCode": 0,
+      "output": "3 tests; pass 3; fail 0. Includes pre-spike independent mass balance, include-volume reference, invalid IS area and unconfirmed basis."
+    },
+    {
+      "command": "node -e with finalIsConcentration and semiquantify from frontend/src/shimadzu-core/semiquant.mjs; methods ignore/include",
+      "exitCode": 0,
+      "output": "ignore: cisUgMl=0.2, analyte.value=0.4, status=Calculated; include: cisUgMl=0.1996007984031936, analyte.value=0.3992015968063872, status=Calculated"
+    },
+    {
+      "command": "node -e enumerate all 12-bit masks with six train injections, comparing each adjacent injection pair for split biological units",
+      "exitCode": 0,
+      "output": "synthetic binary design: total=924, leak=904, clean=20, leakFraction=0.9783549783549783, minimumPermutationP20=0.047619047619047616"
+    },
+    {
+      "command": "$env:R_LIBS_USER=Join-Path $env:TEMP 'flavor-phase4-r-lib'; & 'D:\\R-4.6.0\\bin\\Rscript.exe' services/analysis/tests/test_supervised.R",
+      "exitCode": 0,
+      "output": "ALL SUPERVISED TESTS PASSED, including technical-duplicate invariance, held-out preprocessing invariance, permutation formula, n=3 exploratory warning, NO_VALID_CANDIDATE for small OPLS. R startup emitted four C.UTF-8 locale warnings."
+    },
+    {
+      "command": "Rscript -e source preprocess.R/statistics.R and call prepare_independent on a synthetic two-row dataset with one missing biologicalUnitId",
+      "exitCode": 0,
+      "output": "GROUP_AND_BIOLOGICAL_UNIT_REQUIRED; R startup emitted four C.UTF-8 locale warnings."
+    }
+  ],
+  "limitations": [
+    "All values and partitions in this probe are synthetic; none are observed research or validated prediction results.",
+    "The R test validates existing local behavior, not independent small-sample OPLS-DA prediction truth; OPLSDA_REFERENCE_VALIDATION.md explicitly marks project-specific nested prediction validation partial.",
+    "No frontend browser, full integration suite, source-file hash, or remote CI check was run because this probe did not change app code or import a research file.",
+    "No platform-level dispatcher telemetry or production execution is implied by reading Skills and running local tests."
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "advisories": {
+    "1108110": {
+      "findings": [
+        {
+          "version": "0.18.5",
+          "paths": [
+            ".>xlsx"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1108110,
+      "title": "Prototype Pollution in sheetJS",
+      "module_name": "xlsx",
+      "vulnerable_versions": "<0.19.3",
+      "patched_versions": null,
+      "severity": "high",
+      "cwe": "CWE-1321",
+      "github_advisory_id": "GHSA-4r6h-8v6p-xvw6",
+      "url": "https://github.com/advisories/GHSA-4r6h-8v6p-xvw6",
+      "patched_versions_unpublished": true
+    },
+    "1108111": {
+      "findings": [
+        {
+          "version": "0.18.5",
+          "paths": [
+            ".>xlsx"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1108111,
+      "title": "SheetJS Regular Expression Denial of Service (ReDoS)",
+      "module_name": "xlsx",
+      "vulnerable_versions": "<0.20.2",
+      "patched_versions": null,
+      "severity": "high",
+      "cwe": "CWE-1333",
+      "github_advisory_id": "GHSA-5pgg-2g8v-p4x9",
+      "url": "https://github.com/advisories/GHSA-5pgg-2g8v-p4x9",
+      "patched_versions_unpublished": true
+    },
+    "1139427": {
+      "findings": [
+        {
+          "version": "3.3.16",
+          "paths": [
+            ".>@tailwindcss/vite>vite>postcss>nanoid"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1139427,
+      "title": "nanoid: custom generators can loop indefinitely when size is zero",
+      "module_name": "nanoid",
+      "vulnerable_versions": "<3.3.18",
+      "patched_versions": ">=3.3.18",
+      "severity": "high",
+      "cwe": "CWE-835",
+      "github_advisory_id": "GHSA-2v37-7h3g-55p8",
+      "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8"
+    },
+    "1241209": {
+      "findings": [
+        {
+          "version": "1.2.1",
+          "paths": [
+            ".>@tailwindcss/vite>@tailwindcss/node>source-map-js",
+            ".>@tailwindcss/vite>vite>postcss>source-map-js"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1241209,
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "module_name": "source-map-js",
+      "vulnerable_versions": ">=1.0.0 <1.2.2",
+      "patched_versions": ">=1.2.2",
+      "severity": "high",
+      "cwe": "CWE-1284",
+      "github_advisory_id": "GHSA-68fv-2mgg-jv7q",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q"
+    },
+    "1242624": {
+      "findings": [
+        {
+          "version": "8.1.5",
+          "paths": [
+            ".>@tailwindcss/vite>vite"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1242624,
+      "title": "launch-editor: escapeCmdArgs() omits % escaping on Windows",
+      "module_name": "vite",
+      "vulnerable_versions": ">=8.0.0 <=8.1.5",
+      "patched_versions": ">=8.1.6",
+      "severity": "moderate",
+      "cwe": "CWE-78",
+      "github_advisory_id": "GHSA-698v-4r3x-3vcv",
+      "url": "https://github.com/advisories/GHSA-698v-4r3x-3vcv"
+    },
+    "1242653": {
+      "findings": [
+        {
+          "version": "8.1.5",
+          "paths": [
+            ".>@tailwindcss/vite>vite"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1242653,
+      "title": "launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+      "module_name": "vite",
+      "vulnerable_versions": ">=8.0.0 <=8.1.5",
+      "patched_versions": ">=8.1.6",
+      "severity": "moderate",
+      "cwe": "CWE-88",
+      "github_advisory_id": "GHSA-r825-w8mm-5pxw",
+      "url": "https://github.com/advisories/GHSA-r825-w8mm-5pxw"
+    },
+    "1242660": {
+      "findings": [
+        {
+          "version": "8.1.5",
+          "paths": [
+            ".>@tailwindcss/vite>vite"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1242660,
+      "title": "launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+      "module_name": "vite",
+      "vulnerable_versions": ">=8.0.0 <=8.1.5",
+      "patched_versions": ">=8.1.6",
+      "severity": "high",
+      "cwe": "CWE-77",
+      "github_advisory_id": "GHSA-587h-7wmj-h5pm",
+      "url": "https://github.com/advisories/GHSA-587h-7wmj-h5pm"
+    },
+    "1242726": {
+      "findings": [
+        {
+          "version": "8.1.5",
+          "paths": [
+            ".>@tailwindcss/vite>vite"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1242726,
+      "title": "Vite: Cross origin script execution through Vite custom middleware",
+      "module_name": "vite",
+      "vulnerable_versions": ">=8.0.0 <=8.1.5",
+      "patched_versions": ">=8.1.6",
+      "severity": "low",
+      "cwe": "CWE-80",
+      "github_advisory_id": "GHSA-9jrq-w75r-8gcw",
+      "url": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw"
+    },
+    "1242732": {
+      "findings": [
+        {
+          "version": "8.1.5",
+          "paths": [
+            ".>@tailwindcss/vite>vite"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "id": 1242732,
+      "title": "Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+      "module_name": "vite",
+      "vulnerable_versions": ">=8.0.0 <=8.1.5",
+      "patched_versions": ">=8.1.6",
+      "severity": "moderate",
+      "cwe": "CWE-22, CWE-284",
+      "github_advisory_id": "GHSA-rq7h-c2jc-7f22",
+      "url": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22"
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 1,
+      "moderate": 3,
+      "high": 5,
+      "critical": 0
+    },
+    "dependencies": 72,
+    "devDependencies": 0,
+    "optionalDependencies": 55,
+    "totalDependencies": 127
+  }
+}
