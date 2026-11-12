@@ -1,6 +1,6 @@
-# Local analysis workbench (unreleased)
+# Data analysis workbench — local computation
 
-This worktree implements local analysis at `http://127.0.0.1:5180/FlavorInsightAI/data-analysis/`. It is not a public-deployment, security-certification, or AI-model claim. The original 5174 frontend remains unchanged. The original handoff task is `019fb7d8-f158-7ec3-9e28-82571a114705`.
+The workbench interface is part of FlavorInsight AI 1.1.0 at `/FlavorInsightAI/data-analysis/`; actual statistical execution requires the local Python/R service on port 8890. GitHub Pages does not host that computation, and model inference is not a released capability. The 5180 examples below describe an optional isolated preview, not a second public product version. The original handoff task is `019fb7d8-f158-7ec3-9e28-82571a114705`.
 
 ## Start and runtime
 

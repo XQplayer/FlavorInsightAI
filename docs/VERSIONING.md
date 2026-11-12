@@ -2,6 +2,7 @@
 
 ## 两条软件记录
 
+- `FlavorInsight AI 1.1.0`：当前完整平台，标签 `flavorinsight-v1.1.0`，显式设为 Latest。
 - `FlavorInsight AI 1.0.0`：历史汇总与冻结快照，标签 `flavorinsight-v1.0.0`。
 - 原 FlavorThresholdDB `v1.*` 标签属于旧编号，原样保留；不要挪动旧 `v1.1.0` 来表示新平台。
 - 新平台后续版本使用 `flavorinsight-v*` 标签；重新编号不是对旧版本做 SemVer 降级比较，也不是退回旧功能。

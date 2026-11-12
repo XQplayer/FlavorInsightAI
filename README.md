@@ -10,7 +10,9 @@
 
 [平台首页](https://xqplayer.github.io/FlavorInsightAI/) · [FlavorThresholdDB 检索](https://xqplayer.github.io/FlavorInsightAI/aroma-threshold/) · [数据处理](https://xqplayer.github.io/FlavorInsightAI/data-processing/) · [数据分析](https://xqplayer.github.io/FlavorInsightAI/data-analysis/) · [项目历程](PROJECT_HISTORY.md) · [品牌标识](docs/brand/README.md)
 
-## 当前版本 1.0.0
+## 当前版本 1.1.0
+
+[当前发布与说明](https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.1.0) · [1.0.0 历史归档](https://github.com/XQplayer/FlavorInsightAI/releases/tag/flavorinsight-v1.0.0)
 
 FlavorInsight AI 将 FlavorThresholdDB 数据检索、岛津 GC–MS 数据处理和可追溯分析工作台整合为统一平台。界面默认英文，可切换中文；保留数据来源、质量门禁、警告和任务身份，不将缺失值当作真实观测。
 
@@ -28,8 +30,8 @@ This repository provides a bilingual flavor-research interface, source-aware com
 ## 版本与历史
 
 - **1.0.0 历史归档**：汇总旧版 FlavorThresholdDB 软件发布，并冻结本次版本体系整理前的平台能力。
-- 原有 v1.1.0、v1.2.0、v1.3.0、v1.3.1、v1.5.0 属于旧编号体系；保留原标签与提交，不改写历史。
-- 新体系使用 `flavorinsight-v*` 标签，避免与旧 `v1.1.0` 冲突。这是产品版本重新建系，不是功能降级。
+- 原 FlavorThresholdDB 软件版本统一见1.0.0归档；原标签与提交保留，不改写历史。
+- 新体系使用 `flavorinsight-v*` 标签，避免覆盖旧标签。这是产品版本重新建系，不是功能降级。
 - [历史归档与原版本映射](docs/history/releases/README.md) · [更新记录](CHANGELOG.md) · [版本规则](docs/VERSIONING.md)
 
 ## 科研与数据边界

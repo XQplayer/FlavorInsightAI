@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "product": "FlavorInsight AI",
-  "current_version": "1.0.0",
-  "current_tag": "flavorinsight-v1.0.0",
+  "current_version": "1.1.0",
+  "current_tag": "flavorinsight-v1.1.0",
   "archive_version": "1.0.0",
   "archive_tag": "flavorinsight-v1.0.0",
   "archive_source_base": "fc0f678d2907c80b603ef074f086952165b3d502",
-  "archive_snapshot_commit": null,
+  "archive_snapshot_commit": "bd01723910a8b8aa87f940a96b3df7228ae346d7",
   "legacy_versions": [
     {
       "legacy_tag": "v1.1.0",
