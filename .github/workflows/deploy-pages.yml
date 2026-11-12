@@ -42,6 +42,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_FEMA_API_URL: ${{ vars.FEMA_API_URL }}
+          VITE_AI_API_URL: ${{ vars.AI_API_URL }}
           VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: pnpm run build

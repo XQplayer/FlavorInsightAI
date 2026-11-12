@@ -1,7 +1,7 @@
 import { supabase } from './supabase.js'
 import { verifiedAiEvents } from './aiStream.js'
 
-export const AI_API_BASE = (import.meta.env.VITE_FEMA_API_URL || 'http://127.0.0.1:8787').replace(/\/$/, '')
+export const AI_API_BASE = (import.meta.env.VITE_AI_API_URL || import.meta.env.VITE_FEMA_API_URL || 'http://127.0.0.1:8787').replace(/\/$/, '')
 
 async function authHeaders() {
   const session = supabase ? (await supabase.auth.getSession()).data?.session : null
