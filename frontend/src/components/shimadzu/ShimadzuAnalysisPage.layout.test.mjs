@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const source = await readFile(new URL('./ShimadzuAnalysisPage.jsx', import.meta.url), 'utf8')
 const styles = await readFile(new URL('./ShimadzuAnalysisPage.css', import.meta.url), 'utf8')
+const failureSource = await readFile(new URL('./ShimadzuFailureDetails.jsx', import.meta.url), 'utf8')
 
 test('keeps duplicate workflow explanations out of the hero', () => {
   assert.doesNotMatch(source, /从岛津原始工作簿出发/)
@@ -253,7 +254,8 @@ test('defines explicit control deck treatments for every task terminal state', (
   assert.match(styles, /\.shimadzu-job-workspace\.state-failed/)
   assert.match(styles, /\.shimadzu-job-workspace\.state-complete/)
   assert.match(styles, /\.shimadzu-inline-error/)
-  assert.match(source, /下载已完成步骤与错误证据/)
+  assert.match(source, /<ShimadzuFailureDetails/)
+  assert.match(failureSource, /下载已完成步骤与错误证据/)
 })
 
 test('keeps the minimal deck shell and work zones usable at tablet and mobile widths', () => {

@@ -178,14 +178,14 @@ const archiveFileName = name => {
   return `${safeName}_部分结果.zip`
 }
 
-export async function createPartialFailureArchive({ zip, name, stage, issues = [], completedStages = [], parameters = {} }) {
+export async function createPartialFailureArchive({ zip, name, stage, issues = [], completedStages = [], parameters = {}, contextWarnings = [] }) {
   const normalizedIssues = clone(Array.isArray(issues) ? issues : [issues])
   const completed = clone(completedStages)
   const generatedAt = new Date().toISOString()
   const failure = {
     schemaVersion: 'shimadzu-browser-failure-1', status: 'FAILED', failedStage: stage,
     failedStageName: V2_STAGE_DIRECTORIES[stage] || `stage-${stage}`, issues: normalizedIssues,
-    completedStages: completed, generatedAt,
+    completedStages: completed, contextWarnings: clone(contextWarnings), generatedAt,
   }
   const state = {
     schemaVersion: 'shimadzu-browser-partial-run-1', status: 'PARTIAL_FAILED', name,
@@ -206,7 +206,7 @@ export async function createPartialFailureArchive({ zip, name, stage, issues = [
   zip.file('v2-run.sha256', `${await sha256(runBytes)}\n`)
   const archiveBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } })
   const archiveSha256 = await sha256(archiveBytes)
-  const details = { stage, issues: normalizedIssues, completedStages: completed, archiveStatus: 'PARTIAL_FAILED' }
+  const details = { stage, issues: normalizedIssues, completedStages: completed, contextWarnings: clone(contextWarnings), archiveStatus: 'PARTIAL_FAILED' }
   return Object.assign(new Error(`第${Number(stage) + 1}步未通过质量门禁`), {
     code: 'STAGE_GATE_FAILED', details, ...details,
     archiveBytes, archiveSha256, archiveSize: archiveBytes.byteLength,
@@ -254,9 +254,16 @@ function stage0(rawBytes, sampleBytes, rawName, sampleName) {
   const rawSheets = readWorkbookSheets(rawBytes)
   const parsed = readSampleConfiguration(sampleBytes)
   const samples = validateV2Samples(parsed.samples).filter(sample => sample.includeInAnalysis !== false)
+  const included = new Set(samples.map(sample => sample.sampleName))
+  const exampleRows = parsed.samples.filter(sample => included.has(sample.sampleName) && (/^示例/.test(sample.sampleType || '') || /虚构数据|仅用于验证模板结构/.test(sample.notes || '')))
+  const configurationNotices = exampleRows.length ? [{
+    code: 'CONFIGURATION_EXAMPLE_MARKERS', count: exampleRows.length,
+    sourceWorkbook: sampleName, sourceSheet: parsed.sheetName,
+    sourceRows: exampleRows.map(sample => sample.sourceRow).filter(Number.isInteger),
+  }] : []
   return {
     schemaVersion: 'shimadzu-v2-stage0-1', stage: V2_STAGE_DIRECTORIES[0], createdAt: new Date().toISOString(),
-    samples, rawSheetNames: rawSheets.map(sheet => sheet.name), issues: [],
+    samples, rawSheetNames: rawSheets.map(sheet => sheet.name), issues: [], configurationNotices,
     source: { rawName, sampleName },
     counts: { samples: samples.length, sheets: rawSheets.length, issues: 0 },
     rawSheets,
@@ -277,9 +284,9 @@ async function stage1(stage0Data, rawName, recoverCasRecord) {
   const configured = stage0Data.samples
   for (const sample of configured) {
     const sheet = sheetMap.get(matchingName(sample.sampleName))
-    if (!sheet) throw fail('CONFIGURED_SOURCE_SHEET_MISSING', { sampleName: sample.sampleName })
+    if (!sheet) throw fail('CONFIGURED_SOURCE_SHEET_MISSING', { sampleName: sample.sampleName, sourceWorkbook: rawName })
     const extracted = extractHit1(sheet.rows)
-    const localIssues = extracted.issues.map(issue => ({ ...clone(issue), sampleName: sample.sampleName, sampleGroup: sample.sampleGroup, sourceSheet: sheet.name }))
+    const localIssues = extracted.issues.map(issue => ({ ...clone(issue), sampleName: sample.sampleName, sampleGroup: sample.sampleGroup, sourceSheet: sheet.name, sourceWorkbook: rawName }))
     const lineage = extracted.lineage.map(entry => ({ sourceWorkbook: rawName, sourceSheet: sheet.name, ...clone(entry) }))
     const auditBySourceRow = new Map((sheet.casRecoveryEvents || []).map(event => [event.sourceRow, event]))
     const records = []
@@ -530,6 +537,7 @@ export async function runShimadzuBrowserPipeline({
         throw await createPartialFailureArchive({
           zip, name, stage: index, issues: data.issues,
           completedStages: [...manifests, { stage: manifest.stage, status: manifest.severity, counts: manifest.counts }], parameters,
+          contextWarnings: stages[0]?.configurationNotices || [],
         })
       }
       stages.push(data)
@@ -550,6 +558,7 @@ export async function runShimadzuBrowserPipeline({
         zip, name, stage: index,
         issues: [{ severity: 'FAIL', code: error?.code || 'BROWSER_ANALYSIS_FAILED', message: error?.message || String(error), ...error?.details }],
         completedStages: manifests, parameters,
+        contextWarnings: stages[0]?.configurationNotices || [],
       })
     }
   }

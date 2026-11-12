@@ -34,7 +34,7 @@ import { assertWorkbookFile, browserEnginePresentation } from '../../lib/shimadz
 import { createShimadzuWorkerClient } from '../../lib/shimadzuWorkerClient'
 import { authCallbackMessage, createShimadzuCloud, shimadzuAuthRedirect } from '../../lib/shimadzuCloud'
 import { createShimadzuTaskStore } from '../../lib/shimadzuTaskStore'
-import { prioritizeShimadzuIssues } from '../../lib/shimadzuIssues'
+import ShimadzuFailureDetails from './ShimadzuFailureDetails.jsx'
 import { analyticsEnabled, supabase } from '../../lib/supabase'
 import { handoffCompletedArchive } from '../../analysis/handoff.mjs'
 import { createDatasetStore } from '../../analysis/storage.mjs'
@@ -1170,7 +1170,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
                   {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
                 </div>
               </section>
-              {job.error && <div className="shimadzu-inline-error" role="alert"><AlertCircle /><div><p><strong>{job.error.code}</strong>{job.error.message}</p>{job.error.details?.stage !== undefined && <small>{job.status === 'cancelled' ? textFor(language, '取消于步骤', 'Cancelled before stage') : textFor(language, '失败步骤', 'Failed stage')}: {Number(job.error.details.stage) + 1} / 7</small>}{job.error.details?.issues?.length > 0 && <ul>{prioritizeShimadzuIssues(job.error.details.issues, 4).map((issue, index) => <li key={`${issue.code || 'issue'}-${index}`}>{issue.code || textFor(language, '质量门禁问题', 'Quality-gate issue')}{issue.sampleName ? ` · ${issue.sampleName}` : ''}{issue.cas ? ` · CAS ${issue.cas}` : ''}</li>)}</ul>}{job.partialDownloadUrl && <a href={job.partialDownloadUrl} download={job.partialArchiveFileName}><Download />{job.status === 'cancelled' ? textFor(language, '下载取消审计与部分结果', 'Download cancellation audit and partial results') : textFor(language, '下载已完成步骤与错误证据', 'Download completed stages and error evidence')}</a>}</div></div>}
+              {job.error && <ShimadzuFailureDetails error={job.error} language={language} cancelled={job.status === 'cancelled'} downloadUrl={job.partialDownloadUrl} downloadName={job.partialArchiveFileName} />}
               <WorkspaceTabs language={language} />
               <LiveMonitor job={job} capabilities={null} engine={engine} language={language} />
               <AnalysisSummary job={job} language={language} />
