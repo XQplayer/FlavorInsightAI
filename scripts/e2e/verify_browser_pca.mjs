@@ -24,8 +24,15 @@ try {
     let localApiCalls = 0;
     const posts = [];
     const workerPaths = [];
+    const forbiddenPreviewHosts = [];
     page.on('worker', worker => workerPaths.push(new URL(worker.url()).pathname));
-    page.on('request', request => { if (request.method() === 'POST') posts.push(request.url()); });
+    page.on('request', request => {
+      if (request.method() === 'POST') posts.push(request.url());
+      if (process.env.BROWSER_PCA_ISOLATED_PREVIEW === 'true') {
+        const hostname = new URL(request.url()).hostname;
+        if (hostname.endsWith('.supabase.co') || hostname === 'flavorthresholddb-api.onrender.com') forbiddenPreviewHosts.push(hostname);
+      }
+    });
     await page.route('http://127.0.0.1:8890/**', route => { localApiCalls++; route.abort(); });
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /SYNTHETIC R|合成的 R 参考数据/ }).click();
@@ -48,6 +55,7 @@ try {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     const overflowElements = overflow > 2 ? await page.evaluate(() => [...document.querySelectorAll('*')].filter(element => element.getBoundingClientRect().right > window.innerWidth + 2 && getComputedStyle(element).position !== 'fixed').slice(0, 8).map(element => `${element.tagName}.${element.className?.baseVal ?? element.className}`)) : [];
     assert.ok(overflow <= 2, `${name}: horizontal overflow ${overflow}px; ${overflowElements.join(', ')}`);
+    assert.deepEqual(forbiddenPreviewHosts, [], `${name}: isolated preview requested a production data host`);
     await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
     await page.screenshot({ path: path.join(out, `${name}-synthetic-pca.png`), fullPage: true });
     if (name === 'desktop') {

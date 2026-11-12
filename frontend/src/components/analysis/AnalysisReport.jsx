@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { composeReport, createReportBundle, REPORT_LIMITS } from '../../analysis/report.mjs';
 import { downloadFile } from '../../analysis/download.mjs';
 import { DataTable } from './Controls.jsx';
+import { analysisArchiveFileName } from '../../analysis/taskTraceability.mjs';
 export default function AnalysisReport({run,t}) {
   const [open,setOpen]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const report=useMemo(()=>open ? composeReport(run) : null,[open,run]);
   async function exportReport(){
     setBusy(true);setError('');
-    try { const zip=await createReportBundle(run);downloadFile(`analysis-report-${run.id}.zip`,await zip.generateAsync({type:'blob'}),'application/zip'); }
+    try { const zip=await createReportBundle(run);downloadFile(analysisArchiveFileName(run,'report'),await zip.generateAsync({type:'blob'}),'application/zip'); }
     catch {setError(t('Report export failed; use raw result & audit JSON.','报告导出失败，请导出原始结果及审计 JSON。'));}
     finally {setBusy(false);}
   }

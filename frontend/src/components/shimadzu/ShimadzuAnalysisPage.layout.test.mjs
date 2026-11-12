@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const source = await readFile(new URL('./ShimadzuAnalysisPage.jsx', import.meta.url), 'utf8')
 const styles = await readFile(new URL('./ShimadzuAnalysisPage.css', import.meta.url), 'utf8')
+const failureSource = await readFile(new URL('./ShimadzuFailureDetails.jsx', import.meta.url), 'utf8')
 
 test('keeps one mounted browser worker and task recovery lifecycle', () => {
   assert.match(source, /workerClientRef\.current = createShimadzuWorkerClient\(\)/)
@@ -23,6 +24,7 @@ test('new analysis retains local workbook controls and scientific defaults', () 
   assert.match(source, /assertWorkbookFile\(file\)/)
   assert.match(source, /onDrop=\{handleDrop\}/)
   assert.match(source, /清除文件|Clear file/)
+
   assert.match(source, /templateHref=\{api\.templateUrl\('raw-example'\)\}/)
   assert.match(source, /templateHref=\{api\.templateUrl\('sample-info'\)\}/)
   assert.match(source, /const \[enableCvScreening, setEnableCvScreening\] = useState\(false\)/)
@@ -64,7 +66,7 @@ test('monitor uses real stage status, observed timestamps and error evidence', (
   assert.match(source, /stageView\.completed\}\/\{stageView\.total/)
   assert.match(source, /role="progressbar"/)
   assert.match(source, /job\?\.started_at && job\?\.updated_at/)
-  assert.match(source, /job\?\.error\?\.details\?\.issues/)
+  assert.match(source, /job\?\.error && <ShimadzuFailureDetails/)
   assert.match(source, /logRef\.current\.open = true/)
 })
 

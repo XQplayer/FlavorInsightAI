@@ -35,6 +35,7 @@ self.onmessage = async ({ data }) => {
     const archiveBytes = result.archiveBytes.buffer
     self.postMessage({
       type: 'complete',
+      taskIdentity: result.taskIdentity,
       progress: 100,
       fileName: result.fileName,
       archiveBytes,

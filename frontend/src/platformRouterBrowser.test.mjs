@@ -151,7 +151,7 @@ test('Edge smoke covers click, popstate cleanup, and a rejected lazy route', {
   const platformNavigation = page.getByRole('navigation', { name: '平台主导航' });
   await platformNavigation.getByRole('link', { name: '数据处理', exact: true }).click();
   await page.waitForURL('**/FlavorInsightAI/data-processing/');
-  await page.getByRole('heading', { name: '仪器数据处理平台', exact: true }).waitFor();
+  await page.locator('.processing-preflight').waitFor();
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal(await page.title(), '数据处理 | FlavorInsight AI');
   await platformNavigation.getByRole('link', { name: '首页', exact: true }).click();

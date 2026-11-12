@@ -124,8 +124,8 @@ function emptyMissingSearchResult() {
   }]);
 }
 
-function missingStructureResult(code, message, missingHeaders = undefined) {
-  const issue = { severity: "FAIL", code, message };
+function missingStructureResult(code, message, missingHeaders = undefined, evidence = {}) {
+  const issue = { severity: "FAIL", code, message, ...evidence };
   if (missingHeaders) issue.missingHeaders = missingHeaders;
   return frozenResult([], [], [issue]);
 }
@@ -159,6 +159,12 @@ export function extractHit1(rows) {
       "FAIL_Missing_Peak_Headers",
       `MC peak table is missing required headers: ${PEAK_REQUIRED_HEADERS.join(", ")}`,
       [...PEAK_REQUIRED_HEADERS],
+      {
+        sourceRow: sourceRowOf(rows[peakSectionIndex], peakSectionIndex),
+        nextSectionRow: rows[peakEnd] ? sourceRowOf(rows[peakEnd], peakEnd) : undefined,
+        nextSectionTitle: (rowCells(rows[peakEnd]) || []).find(value => /^\[[^\]]+\]$/.test(String(value ?? '').trim())),
+        sectionEmpty: rows.slice(peakSectionIndex + 1, peakEnd).every(row => (rowCells(row) || []).every(value => String(value ?? '').trim() === '')),
+      },
     );
   }
   const searchHeader = findHeader(rows, searchSectionIndex + 1, searchEnd, SEARCH_REQUIRED_HEADERS);
@@ -167,6 +173,7 @@ export function extractHit1(rows) {
       "FAIL_Missing_Search_Headers",
       `MS similarity search results are missing required headers: ${SEARCH_REQUIRED_HEADERS.join(", ")}`,
       [...SEARCH_REQUIRED_HEADERS],
+      { sourceRow: sourceRowOf(rows[searchSectionIndex], searchSectionIndex) },
     );
   }
 

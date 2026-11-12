@@ -32,6 +32,16 @@ test('transfers workbook buffers and resolves the completed archive', async () =
   assert.equal(FakeWorker.latest.terminated, true)
 })
 
+test('forwards stable task identity into the actual worker start payload', async () => {
+  const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
+  const taskIdentity = { taskNumber: 'FI-20261112-153045-A7C92E', taskName: '溯源测试' }
+  const pending = client.run({ rawBytes: new ArrayBuffer(1), sampleBytes: new ArrayBuffer(1), taskIdentity })
+  assert.deepEqual(FakeWorker.latest.messages[0].message.taskIdentity, taskIdentity)
+  FakeWorker.latest.emit({ type: 'complete', fileName: 'result.zip', archiveBytes: new ArrayBuffer(0) })
+  await pending
+  client.dispose()
+})
+
 test('sends CV screening settings with the browser start request', async () => {
   const client = createShimadzuWorkerClient({ WorkerCtor: FakeWorker, workerUrl: 'worker.js' })
   const pending = client.run({

@@ -61,10 +61,21 @@ jobs:
           done
           curl --fail --silent --output /dev/null "$BROWSER_PCA_BASE_URL"
           node scripts/e2e/verify_browser_pca.mjs
+      - name: Synthetic PCA on isolated Render preview
+        if: ${{ github.event_name == 'pull_request' && github.head_ref == 'codex/browser-pca-release1' }}
+        env:
+          BROWSER_PCA_BROWSER: ${{ matrix.browser }}
+          BROWSER_PCA_PLAYWRIGHT: ${{ github.workspace }}/frontend/node_modules/playwright/index.mjs
+          BROWSER_PCA_BASE_URL: https://flavorinsight-browser-pca-preview.onrender.com/data-analysis/
+          BROWSER_PCA_ISOLATED_PREVIEW: 'true'
+          BROWSER_PCA_QA_OUTPUT: _local/browser-pca-deployed-${{ matrix.browser }}
+        run: node scripts/e2e/verify_browser_pca.mjs
       - name: Preserve screenshots and evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: browser-pca-${{ matrix.browser }}
-          path: _local/browser-pca-${{ matrix.browser }}/
+          path: |
+            _local/browser-pca-${{ matrix.browser }}/
+            _local/browser-pca-deployed-${{ matrix.browser }}/
           if-no-files-found: ignore

@@ -283,7 +283,12 @@ export function restoreSettings(settings = {}) {
     analysis = validateAnalysis(settings.analysis || defaultAnalysis());
   if (settings.runs !== undefined && !Array.isArray(settings.runs)) throw new Error('RUN');
   const runs = (settings.runs || []).map(run => {
-    knownObject(run, ['id', 'status', 'request', 'requestHash', 'createdAt', 'startedAt', 'finishedAt', 'result', 'error', 'logs'], 'RUN');
+    knownObject(run, ['id', 'status', 'request', 'requestHash', 'createdAt', 'startedAt', 'finishedAt', 'result', 'error', 'logs', 'taskIdentity'], 'RUN');
+    if (run.taskIdentity !== undefined) {
+      knownObject(run.taskIdentity, ['taskId', 'taskNumber', 'taskName', 'taskCreatedAt', 'parentTaskId', 'parentTaskNumber'], 'RUN');
+      if (!taskIdentity(run) || typeof run.taskIdentity.taskName !== 'string' || !Number.isFinite(Date.parse(run.taskIdentity.taskCreatedAt))) throw new Error('RUN');
+      for (const key of ['taskId', 'parentTaskId', 'parentTaskNumber']) if (run.taskIdentity[key] !== undefined && run.taskIdentity[key] !== null && typeof run.taskIdentity[key] !== 'string') throw new Error('RUN');
+    }
     if (typeof run.id !== 'string' || !['queued', 'running', 'completed', 'failed', 'cancelled', 'interrupted'].includes(run.status) || !run.request) throw new Error('RUN');
     for (const key of ['requestHash', 'createdAt', 'startedAt', 'finishedAt']) if (run[key] !== undefined && run[key] !== null && typeof run[key] !== 'string') throw new Error('RUN');
     if (run.error !== undefined && run.error !== null) {
@@ -319,3 +324,4 @@ export function restoreSettings(settings = {}) {
 export function isRunStale(run, d, recipe, analysis) {
   return run.request.dataset.id !== d.id || JSON.stringify(run.request.recipe) !== JSON.stringify(recipe) || (run.request.analysis.method !== 'preprocess' && JSON.stringify(run.request.analysis) !== JSON.stringify(analysis));
 }
+import { taskIdentity } from '../lib/taskIdentity.mjs';

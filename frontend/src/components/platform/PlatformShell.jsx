@@ -214,7 +214,7 @@ export default function PlatformShell({ route, onNavigate, processingView = 'new
         <div className="platform-shell__sidebar-head">
           <a className="platform-shell__brand" href={routeHref('home', PLATFORM_BASE_PATH)}
             aria-label="FlavorInsight AI" onClick={event => handleRouteClick(event, 'home')}>
-            <span className="platform-shell__brand-mark" aria-hidden="true">FI</span>
+            <img className="platform-shell__brand-mark" src={`${import.meta.env.BASE_URL}brand/flavorinsight-ai-mark.png`} width="38" height="38" alt="" aria-hidden="true" />
             <span className="platform-shell__brand-name">FlavorInsight AI</span>
           </a>
           <button ref={drawerCloseRef} className="platform-shell__drawer-close" type="button"

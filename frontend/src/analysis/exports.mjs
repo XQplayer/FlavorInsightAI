@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx'
 import { createDataset, deepFreeze } from './dataset.mjs'
 import { IMPORT_LIMITS } from './imports.mjs'
+import { taskIdentity } from '../lib/taskIdentity.mjs'
 export function exportProject(dataset, settings = {}) {
   const text = JSON.stringify({ schemaVersion: 'flavor-analysis-project-1', dataset: createDataset(dataset), settings }, null, 2)
   if (new TextEncoder().encode(text).length > IMPORT_LIMITS.maxBytes) throw new Error('PROJECT_EXCEEDS_32_MIB_EXPORT_RUNS_SEPARATELY')
@@ -33,5 +34,10 @@ export function exportDatasetXlsx(dataset) {
   const sampleColumns = ['id','name','group','biologicalUnitId','subjectId','batch','include']
   const sampleRows = [sampleColumns, ...checked.samples.map(sample => sampleColumns.map(key => sample[key]))]
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(sampleRows), 'Samples')
+  const identity = taskIdentity(checked.provenance)
+  if (identity) {
+    const rows = [['Field', 'Value'], ...Object.entries({ ...identity, taskId: checked.provenance.taskIdentity?.taskId, datasetId: checked.id }).map(([key, value]) => [key, value == null ? '' : String(value)])]
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Task provenance')
+  }
   return new Uint8Array(XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }))
 }

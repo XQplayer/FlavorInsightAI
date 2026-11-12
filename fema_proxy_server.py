@@ -89,7 +89,8 @@ def build_health_payload() -> dict:
     return {
         "ok": True,
         "service": "flavor_data_proxy",
-        "api_version": os.environ.get("API_VERSION", "1.5.0"),
+        # Report the shipped build, not a stale environment label from a prior release.
+        "api_version": Path(__file__).with_name("VERSION").read_text(encoding="utf-8").strip(),
         "deploy_commit": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or "",
     }
 
