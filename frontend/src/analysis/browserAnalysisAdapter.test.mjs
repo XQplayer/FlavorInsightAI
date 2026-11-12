@@ -62,7 +62,7 @@ test('model plan cannot run a Worker before an explicit UI confirmation', async 
   assert.throws(() => adapter.explain_pca_result('test-id', { share_with_gateway: true }), /PCA_SHARE_CONFIRMATION_REQUIRED/);
   adapter.confirm_explanation('test-id');
   const facts = adapter.explain_pca_result('test-id');
-  assert.equal(facts.source, 'verified-browser-pca-result');
+  assert.equal(facts.source, 'client-validated-browser-pca-result');
   assert.equal(facts.explained_variance.length, 2);
   assert.equal('scores' in facts, false);
   assert.throws(() => adapter.explain_pca_result('test-id'), /PCA_SHARE_CONFIRMATION_REQUIRED/);

@@ -189,6 +189,39 @@ class GatewayUnitTests(unittest.TestCase):
         self.assertEqual(self.gateway.list_conversations(self.owner)[0]["title"], "My research")
         self.assertTrue(self.gateway.list_conversations(self.owner)[0]["last_activity_at"])
 
+    def test_session_writes_are_rate_limited_per_owner(self):
+        self.gateway.session_writes_per_minute = 2
+        first = self.gateway.new_conversation(self.owner)
+        self.gateway.rename_conversation(self.owner, first["id"], "Research")
+        with self.assertRaises(GatewayError) as limited:
+            self.gateway.new_conversation(self.owner)
+        self.assertEqual(limited.exception.code, "RATE_LIMITED")
+        other, _ = self.gateway.create_guest_cookie("127.0.0.1", ORIGIN)
+        self.assertIn("id", self.gateway.new_conversation(other))
+
+    def test_session_total_cap_frees_capacity_after_delete(self):
+        self.gateway.max_conversations = 2
+        first = self.gateway.new_conversation(self.owner)
+        self.gateway.new_conversation(self.owner)
+        with self.assertRaises(GatewayError) as limited:
+            self.gateway.new_conversation(self.owner)
+        self.assertEqual(limited.exception.code, "CONVERSATION_LIMIT")
+        self.gateway.delete_conversation(self.owner, first["id"])
+        self.assertIn("id", self.gateway.new_conversation(self.owner))
+
+    def test_persistent_store_cap_checks_owner_before_insert(self):
+        class FullStore:
+            def list(self, owner):
+                return [{"user_id": owner}, {"user_id": owner}]
+            def create(self, owner):
+                raise AssertionError("over-limit owner must not insert")
+        gateway = AIGateway(mode="mock", conversation_store=FullStore())
+        gateway.max_conversations = 2
+        owner = Principal("11111111-1111-4111-8111-111111111111", token="synthetic-jwt")
+        with self.assertRaises(GatewayError) as limited:
+            gateway.new_conversation(owner)
+        self.assertEqual(limited.exception.code, "CONVERSATION_LIMIT")
+
     def test_persistent_store_survives_gateway_restart_and_blocks_other_owner(self):
         class FakeStore:
             def __init__(self):

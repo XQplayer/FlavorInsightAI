@@ -49,7 +49,7 @@ class BrowserPcaGatewayTests(unittest.TestCase):
 
     def test_explanation_rejects_forged_extra_values(self):
         gateway = AIGateway(mode='mock')
-        facts = {'source': 'verified-browser-pca-result', 'schema_version': 'flavor-pca-result/1',
+        facts = {'source': 'client-validated-browser-pca-result', 'schema_version': 'flavor-pca-result/1',
                  'run_id': 'run-1', 'dataset_id': 'dataset-1', 'samples': 6, 'features': 3,
                  'parameters': {'missing': 'error', 'constant': 'error', 'center': True, 'scale': 'none',
                                 'components': 2, 'include_internal_standards': False},
@@ -57,6 +57,8 @@ class BrowserPcaGatewayTests(unittest.TestCase):
                  'note': 'No significance test, OAV or causal inference was computed.'}
         with self.assertRaises(GatewayError):
             gateway.analysis_explain(OWNER, {'facts': {**facts, 'matrix': [[1]]}, 'language': 'zh'})
+        with self.assertRaises(GatewayError):
+            gateway.analysis_explain(OWNER, {'facts': {**facts, 'source': 'verified-browser-pca-result'}, 'language': 'zh'})
         result = gateway.analysis_explain(OWNER, {'facts': facts, 'language': 'zh'})
         self.assertEqual(result['mode'], 'mock')
         self.assertIn('非 GPT', result['explanation'])
@@ -64,7 +66,7 @@ class BrowserPcaGatewayTests(unittest.TestCase):
         self.assertIn('not GPT', english['explanation'])
 
     def test_analysis_link_requires_store_and_verified_owner(self):
-        facts = {'source': 'verified-browser-pca-result', 'schema_version': 'flavor-pca-result/1',
+        facts = {'source': 'client-validated-browser-pca-result', 'schema_version': 'flavor-pca-result/1',
                  'run_id': 'run-1', 'dataset_id': 'dataset-1', 'samples': 6, 'features': 3,
                  'parameters': {'missing': 'error', 'constant': 'error', 'center': True, 'scale': 'none',
                                 'components': 2, 'include_internal_standards': False},
@@ -93,7 +95,7 @@ class BrowserPcaGatewayTests(unittest.TestCase):
         self.assertEqual(called[-1][0], OWNER.user_id)
 
     def test_followup_model_receives_only_bounded_linked_result_summary(self):
-        facts = {'source': 'verified-browser-pca-result', 'schema_version': 'flavor-pca-result/1',
+        facts = {'source': 'client-validated-browser-pca-result', 'schema_version': 'flavor-pca-result/1',
                  'run_id': 'run-1', 'dataset_id': 'dataset-1', 'samples': 6, 'features': 3,
                  'parameters': {'missing': 'error', 'constant': 'error', 'center': True, 'scale': 'none',
                                 'components': 2, 'include_internal_standards': False},

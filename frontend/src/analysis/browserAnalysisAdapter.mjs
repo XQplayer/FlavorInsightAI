@@ -128,7 +128,7 @@ export function createBrowserAnalysisAdapter({ engine = createBrowserPcaEngine()
       shareAuthorized.delete(runId);
       const result = results.get(runId);
       const count = result.scores.components.length;
-      return { source: 'verified-browser-pca-result', schema_version: result.schema_version,
+      return { source: 'client-validated-browser-pca-result', schema_version: result.schema_version,
         run_id: runId, dataset_id: result.dataset_metadata.id, samples: result.dataset_metadata.sample_ids.length,
         features: result.dataset_metadata.feature_ids.length, parameters: structuredClone(result.parameters),
         explained_variance: result.explained_variance.slice(0, count), warning_codes: [...result.diagnostics.warning_codes],

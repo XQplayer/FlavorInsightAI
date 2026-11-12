@@ -81,6 +81,10 @@ class AIGateway:
         self.requests = defaultdict(deque)
         self.daily = defaultdict(lambda: {"requests": 0, "input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
         self.active = defaultdict(int)
+        self.session_writes = defaultdict(deque)
+        self.session_owner_locks = defaultdict(threading.Lock)
+        self.session_writes_per_minute = min(100, max(1, int(os.environ.get("FLAVOR_AI_SESSION_WRITES_PER_MINUTE", "20"))))
+        self.max_conversations = min(1000, max(1, int(os.environ.get("FLAVOR_AI_MAX_CONVERSATIONS", "100"))))
         self.active_conversations: set[tuple[str, str]] = set()
         self.audit = deque(maxlen=500)
         self.max_chars = min(8000, max(100, int(os.environ.get("FLAVOR_AI_MAX_INPUT_CHARS", "4000"))))
@@ -138,7 +142,7 @@ class AIGateway:
         raise GatewayError("AUTH_REQUIRED", "Start a local Mock session or sign in", 401)
 
     def configuration(self) -> dict:
-        return {"mode": self.mode, "model_configured": bool(self.model), "key_configured": bool(self.api_key), "private_task_tools_enabled": self.private_task_tools, "history_persistence": "supabase" if self.conversation_store else "memory", "limits": {"input_characters": self.max_chars, "max_output_tokens": self.max_output_tokens, "requests_per_minute": self.per_minute, "requests_per_day": self.per_day}, "knowledge_search": "unavailable"}
+        return {"mode": self.mode, "model_configured": bool(self.model), "key_configured": bool(self.api_key), "private_task_tools_enabled": self.private_task_tools, "history_persistence": "supabase" if self.conversation_store else "memory", "limits": {"input_characters": self.max_chars, "max_output_tokens": self.max_output_tokens, "requests_per_minute": self.per_minute, "requests_per_day": self.per_day, "session_writes_per_minute": self.session_writes_per_minute, "max_conversations": self.max_conversations}, "knowledge_search": "unavailable"}
 
     def _store(self, principal: Principal):
         if principal.guest:
@@ -186,19 +190,41 @@ class AIGateway:
 
     def new_conversation(self, principal: Principal) -> dict:
         store = self._store(principal)
+        with self.lock:
+            owner_lock = self.session_owner_locks[principal.user_id]
+        with owner_lock:
+            return self._create_conversation(principal, store)
+
+    def _session_write(self, principal: Principal) -> None:
+        with self.lock:
+            stamps = self.session_writes[principal.user_id]
+            while stamps and self.now() - stamps[0] >= 60:
+                stamps.popleft()
+            if len(stamps) >= self.session_writes_per_minute:
+                raise GatewayError("RATE_LIMITED", "Session write limit reached; try later", 429)
+            stamps.append(self.now())
+
+    def _create_conversation(self, principal: Principal, store) -> dict:
         if store:
             try:
+                if len(store.list(principal.user_id)) >= self.max_conversations:
+                    raise GatewayError("CONVERSATION_LIMIT", "Delete an older conversation before creating another", 429)
+                self._session_write(principal)
                 return store.create(principal.user_id)
             except ConversationStoreError as exc:
                 raise self._storage_error(exc) from exc
         item = Conversation(secrets.token_urlsafe(18), principal.user_id, datetime.now(timezone.utc).isoformat())
         with self.lock:
+            if sum(conversation.owner == principal.user_id for conversation in self.conversations.values()) >= self.max_conversations:
+                raise GatewayError("CONVERSATION_LIMIT", "Delete an older conversation before creating another", 429)
+            self._session_write(principal)
             self.conversations[item.id] = item
         return {"id": item.id, "title": item.title, "created_at": item.created_at,
                 "last_activity_at": item.created_at, "messages": []}
 
     def delete_conversation(self, principal: Principal, conversation_id: str) -> None:
         store = self._store(principal)
+        self._session_write(principal)
         if store:
             try:
                 store.delete(principal.user_id, conversation_id)
@@ -214,6 +240,7 @@ class AIGateway:
             raise GatewayError("INVALID_TITLE", "Conversation title is invalid", 400)
         title = title.strip()
         store = self._store(principal)
+        self._session_write(principal)
         if store:
             try:
                 return store.rename(principal.user_id, conversation_id, title)
@@ -580,7 +607,7 @@ class AIGateway:
         expected = {"source", "schema_version", "run_id", "dataset_id", "samples", "features", "parameters", "explained_variance", "warning_codes", "exploratory_only", "note"}
         values = facts.get("explained_variance")
         params = facts.get("parameters")
-        if (set(facts) != expected or facts.get("source") != "verified-browser-pca-result"
+        if (set(facts) != expected or facts.get("source") != "client-validated-browser-pca-result"
             or facts.get("schema_version") != "flavor-pca-result/1" or facts.get("exploratory_only") is not True
             or not all(isinstance(facts.get(key), str) and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", facts[key]) for key in ("run_id", "dataset_id"))
             or type(facts.get("samples")) is not int or facts["samples"] < 2
