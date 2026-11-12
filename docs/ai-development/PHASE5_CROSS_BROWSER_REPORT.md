@@ -8,4 +8,8 @@ The test exercises synthetic CSV/XLSX import, Worker PCA, four views, SVG/PNG/CS
 
 At the later Release 2 code head `3e1c7d661b17cde848f9cd589ec3925053ccd468`, PR #26 again passed Firefox and WebKit in [run 42877121773](https://github.com/XQplayer/FlavorInsightAI/actions/runs/42877121773), plus Python and frontend jobs in [run 42877121762](https://github.com/XQplayer/FlavorInsightAI/actions/runs/42877121762). The subsequent report-only commit does not change browser code.
 
-Current acceptance: **CI production-build cross-browser checks PASS; deployed-host acceptance BLOCKED**. The runner's local HTTP build is not a separately hosted preview.
+Current acceptance as of 2026-11-11: **CI production-build cross-browser checks PASS; deployed-host acceptance BLOCKED**. The runner's local HTTP build is not a separately hosted preview.
+
+## 2026-11-12 update
+
+PR #27 head `a748cb98111a5b9f6cefa5b4f0c3f6236bedbc6b` passed all four remote jobs: Firefox and WebKit in [Actions run 43208084289](https://github.com/XQplayer/FlavorInsightAI/actions/runs/43208084289), Python and frontend tests/lint/build in [Actions run 43208084322](https://github.com/XQplayer/FlavorInsightAI/actions/runs/43208084322). These browser jobs still serve a local production build in the Runner. The separately hosted Render preview at the same commit passed Chrome desktop/tablet/mobile synthetic E2E using `BROWSER_PCA_BASE_URL=https://flavorinsight-browser-pca-preview.onrender.com/data-analysis/ BROWSER_PCA_ISOLATED_PREVIEW=true node scripts/e2e/verify_browser_pca.mjs`. Online Firefox and WebKit checks remain open until they run against that actual hostname; the local Runner result is not relabelled as online browser evidence.
