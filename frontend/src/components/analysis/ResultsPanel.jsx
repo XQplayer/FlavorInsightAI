@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { taskIdentity, taskLabel } from '../../lib/taskIdentity.mjs';
 import { DataTable, Select } from './Controls.jsx';
 import { isRunStale } from '../../analysis/workbench.mjs';
 import { downloadFile } from '../../analysis/download.mjs';
@@ -54,11 +55,12 @@ export default function ResultsPanel({
   </p><EvidenceAssistant key={dataset.id} dataset={dataset} t={t}/></> : <>
     <Select label={t('Run history', '运行历史')} value={run.id} onChange={setSelected} options={runs.map(r => ({
         value: r.id,
-        label: `${r.request.analysis.method} · ${r.status} · ${r.id}`
+        label: `${taskLabel(r) || r.request.analysis.method} · ${r.status} · ${r.id}`
       }))} />
     <p>
       {t('Snapshot', '快照')}: {run.request.dataset.id}
     </p>
+    {taskIdentity(run) && <p className="analysis-task-identity">{taskLabel(run)}<br />{t('Source task', '来源任务')}: {taskIdentity(run).parentTaskNumber || taskIdentity(run).parentTaskId || t('None', '无')}</p>}
     <p>
       {t('Request SHA-256', '请求 SHA-256')}: {run.requestHash || t('Not returned by service', '服务未返回')}
     </p>

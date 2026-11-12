@@ -36,6 +36,7 @@ test('names all archive states safely, preserving metadata and bounding long nam
   assert.equal(taskArchiveFileName({ ...identity, taskName: 'A:/B*? . ' }, 'complete'), 'FI-20261112-153045-A7C92E_A__B___分析结果.zip')
   const long = taskArchiveFileName({ ...identity, taskName: '样'.repeat(500) }, 'complete')
   assert.ok(long.length < 145)
+  assert.ok(new TextEncoder().encode(long).length <= 255, 'download names must fit common filesystem byte limits')
   assert.equal(identity.taskName, '发酵试验')
 })
 

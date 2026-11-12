@@ -53,6 +53,9 @@ export async function createReportBundle(run) {
   const manifest=zip.file('table-manifest.json')?JSON.parse(await zip.file('table-manifest.json').async('string')):[];
   const report=composeReport(run,manifest);
   zip.file('request.json',json(run?.request));zip.file('result.json',json(run));
+  const trace = analysisTaskMetadata(run || {});
+  if (trace.taskIdentity || trace.sourceTaskIdentity) zip.file('task-traceability.json',json(trace));
   zip.file('report.html',report.html);zip.file('report.md',report.markdown);
   return zip;
 }
+import { analysisTaskMetadata } from './taskTraceability.mjs';

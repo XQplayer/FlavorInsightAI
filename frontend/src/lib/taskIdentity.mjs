@@ -25,7 +25,16 @@ export function taskLabel(record) {
 export function taskArchiveFileName(record, status = 'complete') {
   const identity = taskIdentity(record)
   // Only filename text is sanitized; the original name remains in the evidence.
-  const safe = value => [...String(value)].map(c => '<>:"/\\|?*'.includes(c) || c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 ? '_' : c).slice(0, 80).join('').replace(/[. ]+$/g, '') || 'Shimadzu'
+  const safe = value => {
+    const chars = [...String(value)].map(c => '<>:"/\\|?*'.includes(c) || c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 ? '_' : c).slice(0, 80)
+    let result = '', bytes = 0
+    for (const char of chars) {
+      bytes += new TextEncoder().encode(char).length
+      if (bytes > 160) break
+      result += char
+    }
+    return result.replace(/[. ]+$/g, '') || 'Shimadzu'
+  }
   const name = safe(identity?.taskName || record?.name || '岛津气质分析')
   const prefix = identity?.taskNumber || record?.id || record?.taskId
   const suffix = identity ? ({ complete: '分析结果', failed: '失败证据与部分结果', cancelled: '取消审计与部分结果' }[status] || '分析结果') : status === 'complete' ? '步骤0-6结果' : '部分结果'

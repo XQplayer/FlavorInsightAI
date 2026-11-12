@@ -6,6 +6,7 @@ import { downloadFile } from '../../analysis/download.mjs';
 import { Check, DataTable, NumberField, Select } from './Controls.jsx';
 import { PlotBoundary, ScatterPlot } from './PlotPrimitives.jsx';
 import MatrixPlot from './MatrixPlot.jsx';
+import { analysisArchiveFileName } from '../../analysis/taskTraceability.mjs';
 import DistributionPlot from './DistributionPlot.jsx';
 import '../../styles/analysis-plots.css';
 function FullTables({
@@ -131,7 +132,7 @@ function Visualizations({
           }
         };
         const zip = format === 'csv' ? await createCsvZip(run) : await createReproductionBundle(run, metadata);
-        downloadFile(`analysis-${run.id}-${format}.zip`, await zip.generateAsync({
+        downloadFile(analysisArchiveFileName(run,format), await zip.generateAsync({
           type: 'blob'
         }), 'application/zip');
       }

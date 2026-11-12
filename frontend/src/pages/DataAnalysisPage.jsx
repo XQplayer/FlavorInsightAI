@@ -5,6 +5,8 @@ import useWorkbench from '../analysis/useWorkbench.js';
 import { serviceError } from '../analysis/client.mjs';
 import { createDataset } from '../analysis/dataset.mjs';
 import { exportProject, exportDatasetCsv, exportDatasetXlsx } from '../analysis/exports.mjs';
+import { datasetExportFileName } from '../analysis/taskTraceability.mjs';
+import { taskLabel, taskIdentity } from '../lib/taskIdentity.mjs';
 import ImportPanel from '../components/analysis/ImportPanel.jsx';
 import GroupEditor from '../components/analysis/GroupEditor.jsx';
 import RecipePanel from '../components/analysis/RecipePanel.jsx';
@@ -42,14 +44,14 @@ export default function DataAnalysisPage({
     });
   };
   const exportData = type => attempt(() => {
-    if (type === 'project') downloadFile('analysis-project.json', exportProject(w.dataset, {
+    if (type === 'project') downloadFile(datasetExportFileName(w.dataset,'project'), exportProject(w.dataset, {
       schemaVersion: 1,
       recipe: w.recipe,
       analysis: w.analysis,
       runs: w.runs
     }));
-    if (type === 'csv') downloadFile('source-matrix.csv', exportDatasetCsv(w.dataset), 'text/csv;charset=utf-8');
-    if (type === 'xlsx') downloadFile('source-matrix.xlsx', exportDatasetXlsx(w.dataset), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    if (type === 'csv') downloadFile(datasetExportFileName(w.dataset,'csv'), exportDatasetCsv(w.dataset), 'text/csv;charset=utf-8');
+    if (type === 'xlsx') downloadFile(datasetExportFileName(w.dataset,'xlsx'), exportDatasetXlsx(w.dataset), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   });
   const start = bound => {
     w.run(bound);
@@ -67,6 +69,7 @@ export default function DataAnalysisPage({
       <p>
         {w.dataset?.name || t('No project loaded', '尚未加载项目')}
       </p>
+      {taskIdentity(w.dataset?.provenance) && <p className="analysis-task-identity">{t('Source task', '来源任务')}: {taskLabel(w.dataset.provenance)}</p>}
       {w.dataset && <code>
         {t('Snapshot', '快照')}: {w.dataset.id}
       </code>}
