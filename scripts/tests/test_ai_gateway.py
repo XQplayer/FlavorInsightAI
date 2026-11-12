@@ -395,6 +395,25 @@ class GatewayUnitTests(unittest.TestCase):
         with self.assertRaises(GatewayError):
             gateway.principal("Bearer forged-jwt", "", "127.0.0.1", ORIGIN)
 
+    def test_paid_gateway_can_require_approved_platform_profile(self):
+        owner = "11111111-1111-4111-8111-111111111111"
+        status = ["pending"]
+        def auth_open(request, timeout):
+            if request.full_url.endswith("/auth/v1/user"):
+                return io.BytesIO(json.dumps({"id": owner}).encode())
+            if "/rest/v1/profiles?" in request.full_url:
+                return io.BytesIO(json.dumps([{"id": owner, "approval_status": status[0]}]).encode())
+            raise AssertionError("unexpected network request")
+        with patch.dict(os.environ, {"FLAVOR_AI_REQUIRE_APPROVED_PROFILE": "true"}):
+            gateway = AIGateway(mode="openai", supabase_url="https://test.invalid",
+                                supabase_anon_key="synthetic-anon", open_url=auth_open,
+                                allowed_origins={ORIGIN})
+        with self.assertRaises(GatewayError) as denied:
+            gateway.principal("Bearer synthetic-jwt", "", "127.0.0.1", ORIGIN)
+        self.assertEqual((denied.exception.code, denied.exception.status), ("ACCOUNT_NOT_APPROVED", 403))
+        status[0] = "approved"
+        self.assertEqual(gateway.principal("Bearer synthetic-jwt", "", "127.0.0.1", ORIGIN).user_id, owner)
+
     def test_foreign_task_model_call_stops_after_server_denial(self):
         task = "22222222-2222-4222-8222-222222222222"
         model_requests = []

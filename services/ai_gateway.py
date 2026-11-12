@@ -70,6 +70,7 @@ class AIGateway:
         service_key = os.environ.get("FLAVOR_AI_SUPABASE_SERVICE_ROLE_KEY", "")
         self.conversation_store = conversation_store or (SupabaseConversationStore(self.supabase_url, service_key) if self.supabase_url and service_key else None)
         self.require_persistence = os.environ.get("FLAVOR_AI_REQUIRE_PERSISTENCE", "false").strip().lower() == "true"
+        self.require_approved_profile = os.environ.get("FLAVOR_AI_REQUIRE_APPROVED_PROFILE", "false").strip().lower() == "true"
         self.allowed_origins = set(allowed_origins if allowed_origins is not None else os.environ.get("FLAVOR_AI_ALLOWED_ORIGINS", "http://127.0.0.1:5174,http://localhost:5174").split(","))
         self.private_task_tools = private_task_tools if private_task_tools is not None else os.environ.get("FLAVOR_AI_PRIVATE_TASK_TOOLS_ENABLED", "false").strip().lower() == "true"
         self.tools = tools or ResearchTools(supabase_url=self.supabase_url, supabase_anon_key=self.supabase_anon_key)
@@ -128,6 +129,20 @@ class AIGateway:
             user_id = user.get("id") if isinstance(user, dict) else None
             if not isinstance(user_id, str) or not re.fullmatch(r"[0-9a-fA-F-]{36}", user_id):
                 raise GatewayError("AUTH_FAILED", "Account verification failed", 401)
+            if self.require_approved_profile:
+                profile_request = Request(
+                    f"{self.supabase_url}/rest/v1/profiles?id=eq.{user_id}&select=id,approval_status",
+                    headers={"Authorization": f"Bearer {token}", "apikey": self.supabase_anon_key},
+                )
+                try:
+                    with self.open_url(profile_request, timeout=8) as response:
+                        profiles = json.load(response)
+                except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+                    raise GatewayError("ACCOUNT_APPROVAL_UNAVAILABLE", "Account approval could not be verified", 503) from exc
+                if (not isinstance(profiles, list) or len(profiles) != 1
+                    or not isinstance(profiles[0], dict) or profiles[0].get("id") != user_id
+                    or profiles[0].get("approval_status") != "approved"):
+                    raise GatewayError("ACCOUNT_NOT_APPROVED", "Account approval is required", 403)
             return Principal(user_id, token=token)
         if (self.mode == "mock" or self.mode == "openai" and self.allow_local_real) and client_ip in {"127.0.0.1", "::1"} and origin.startswith(("http://127.0.0.1:", "http://localhost:")):
             parsed = SimpleCookie()
