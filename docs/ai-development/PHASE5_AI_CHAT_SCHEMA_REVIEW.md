@@ -27,3 +27,9 @@ If migration preflight or RLS probes fail, stop before enabling the online assis
 ## Limits
 
 The SQL has been applied only to the verified Staging project. Real Staging JWT tests prove the listed PostgREST grants and RLS behavior but do not prove production configuration or real online model behavior. The stored PCA summary is structurally checked at the Gateway but remains client-provided; the server does not rerun the browser algorithm. Per-user request/day accounting is currently process-memory and needs durable/distributed enforcement before a multi-instance paid release.
+
+## Production read-only preflight — 2026-11-12
+
+Using the existing Git-ignored production **read-only** PAT, Management API `GET /v1/projects/nwcoyhavzbygyqeadcnw` identified `XQplayer's Project`, ref `nwcoyhavzbygyqeadcnw`, expected organization slug and `ACTIVE_HEALTHY`. A `POST /database/query` with `read_only:true` returned HTTP 201 and **zero** existing `ai_conversations`, `ai_messages` or `ai_analysis_links` tables. A separate `GET /database/backups` returned HTTP **403**, so backup existence and recovery point remain **unverified**. No SQL write, user creation or production data read was performed. Current migration file SHA-256 is still `295bc256569a3373b512c6dcfbe3960725527e7c38a4d0978c7281f9ae318f01`.
+
+Production execution remains blocked until backup visibility and a separate explicit approval of this exact migration. The existing read-only PAT should receive only the additional backup-read scope needed for verification; do not substitute a production service-role key in the browser or commit credentials. The Staging approval does not apply to production.
