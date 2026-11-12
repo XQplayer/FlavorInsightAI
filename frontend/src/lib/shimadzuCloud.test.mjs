@@ -21,6 +21,15 @@ test('builds a canonical Shimadzu auth callback without query or hash state', ()
   )
 })
 
+test('signed result downloads specify the unified filename without changing storage paths', async () => {
+  const calls = []
+  const cloud = createShimadzuCloud({ storage: { from(bucket) { return { async createSignedUrl(path, seconds, options) {
+    calls.push({ bucket, path, seconds, options }); return { data: { signedUrl: 'https://signed.test/result' }, error: null }
+  } } } } })
+  assert.equal(await cloud.downloadUrl('owner/job/result.zip', 'shimadzu-results', 'FI-20261112-153045-A7C92E_发酵试验_分析结果.zip'), 'https://signed.test/result')
+  assert.deepEqual(calls[0], { bucket: 'shimadzu-results', path: 'owner/job/result.zip', seconds: 300, options: { download: 'FI-20261112-153045-A7C92E_发酵试验_分析结果.zip' } })
+})
+
 test('resends signup confirmation to the canonical analysis page', async () => {
   const calls = []
   const cloud = createShimadzuCloud({
