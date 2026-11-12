@@ -78,15 +78,9 @@ body, #root { min-width: 0; }
 .platform-shell__brand-mark {
   width: 38px;
   height: 38px;
-  display: inline-grid;
+  display: block;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: 11px;
-  color: #fff;
-  background: var(--platform-brand);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: -.015em;
+  object-fit: contain;
 }
 .platform-shell__brand-name { overflow: hidden; text-overflow: ellipsis; }
 .platform-shell__drawer-close { display: none; }

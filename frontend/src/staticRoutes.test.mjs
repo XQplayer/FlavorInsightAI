@@ -68,7 +68,7 @@ test('homepage metadata and package scripts identify the shipped FlavorInsight A
   assert.match(html, /<meta property="og:title" content="FlavorInsight AI \| 食品风味信息学智能分析平台"/)
   assert.match(html, /<meta property="og:description" content="FlavorInsight AI /)
   assert.doesNotMatch(html, /%BASE_URL%favicon/)
-  assert.match(html, /href="\/favicon\.svg"/)
+  assert.match(html, /rel="icon" type="image\/png" href="\/brand\/flavorinsight-ai-mark\.png"/)
   assert.equal(packageJson.version, (await readFile(path.resolve('../VERSION'), 'utf8')).trim())
   assert.equal(
     packageJson.scripts['test:platform'],
