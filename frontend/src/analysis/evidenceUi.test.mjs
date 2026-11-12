@@ -24,7 +24,7 @@ test('real evidence UI renders bilingual non-AI boundary, frozen run metadata, c
   assert.doesNotMatch(html,/dangerouslySetInnerHTML|<iframe/);
 });
 test('project switching explicitly resets results and local query component context',()=>{
-  const source=readFileSync(new URL('../pages/DataAnalysisPage.jsx',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../pages/LocalAnalysisWorkbench.jsx',import.meta.url),'utf8');
   assert.match(source,/<ResultsPanel key=\{w.contextId\}/);
 });
 test('closed report preview does not eagerly compose full result tables',()=>{
