@@ -50,8 +50,12 @@ if (process.env.FLAVOR_RLS_TEST_ANON_KEY === process.env.FLAVOR_RLS_TEST_SERVICE
 
 const gatewayUrl = process.env.FLAVOR_RLS_TEST_GATEWAY_URL || 'http://127.0.0.1:18887'
 const gatewayOrigin = process.env.FLAVOR_RLS_TEST_GATEWAY_ORIGIN || 'http://127.0.0.1:5195'
-if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(gatewayUrl)) {
-  console.error('REFUSED: the AI Gateway must be a local loopback service for this test')
+const isLoopback = /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(gatewayUrl)
+const isApprovedPreview = process.env.FLAVOR_RLS_TEST_ONLINE_PREVIEW === 'true' &&
+  gatewayUrl === 'https://flavorinsight-ai-gateway-preview.onrender.com' &&
+  gatewayOrigin === 'https://flavorinsight-browser-pca-preview.onrender.com'
+if (!isLoopback && !isApprovedPreview) {
+  console.error('REFUSED: the AI Gateway must be loopback or the explicitly enabled isolated Render preview')
   process.exit(2)
 }
 
@@ -201,7 +205,8 @@ async function main() {
   const ownConversation = await gatewayJson(`/ai/conversations/${conversation.body.id}`, alice.token)
   mark('alice_can_read_own_conversation', ownConversation.status === 200)
 
-  if (process.env.FLAVOR_RLS_TEST_RUN_MODEL === 'true') {
+  const runPrivateModel = process.env.FLAVOR_RLS_TEST_RUN_MODEL === 'true' && sessionA.body.private_task_tools_enabled === true
+  if (runPrivateModel) {
     if (sessionA.body.mode !== 'openai' || !sessionA.body.key_configured) throw new Error('Gateway must be configured for a real OpenAI model call')
     const taskPrompt = async (taskId, message) => {
       const response = await fetch(`${gatewayUrl}/ai/chat`, { method: 'POST', headers: { ...gatewayHeaders(alice.token), 'Content-Type': 'application/json' }, body: JSON.stringify({ conversation_id: conversation.body.id, message: `${message} ${taskId}` }) })
@@ -210,17 +215,26 @@ async function main() {
     }
     const denied = probe => probe.status === 200 && probe.events.some(event => event.type === 'tool' && event.name === 'get_analysis_summary' && event.status === 'failed') && probe.events.some(event => event.type === 'done' && (!event.sources || event.sources.length === 0))
     const foreign = await taskPrompt(bobTask.id, '解释我无权访问的任务的结果摘要')
-    const absent = await taskPrompt(nonexistent, '解释不存在的任务的结果摘要')
+    checks.gateway_foreign_tool_diagnostic = {
+      http: foreign.status,
+      event_types: foreign.events.map(event => event.type),
+      tools: foreign.events.filter(event => event.type === 'tool').map(event => ({ name: event.name, status: event.status })),
+      error_codes: foreign.events.filter(event => event.type === 'error').map(event => event.code),
+      done_source_count: foreign.events.find(event => event.type === 'done')?.sources?.length ?? null,
+    }
     mark('model_tool_denied_foreign_task', denied(foreign))
+    const absent = await taskPrompt(nonexistent, '解释不存在的任务的结果摘要')
     mark('model_tool_denied_absent_task', denied(absent))
     mark('model_response_does_not_expose_foreign_or_absent_task', denied(foreign) && denied(absent) && !foreign.answer.includes('SYNTHETIC_RLS_bob') && !foreign.answer.includes('2.5') && !absent.answer.includes('SYNTHETIC_RLS_bob'))
     const own = await taskPrompt(aliceTask.id, '解读我自己的合成任务结果摘要、半定量单位与 QC')
     mark('model_tool_reads_only_authorized_task', own.status === 200 && own.events.some(event => event.type === 'tool' && event.name === 'get_analysis_summary' && event.status === 'complete') && own.events.some(event => event.type === 'done' && event.sources?.some(source => source.type === 'private_task_record')))
     mark('model_own_answer_does_not_leak_foreign_task', !own.answer.includes('SYNTHETIC_RLS_bob'))
   } else {
-    checks.model_tool_denied_foreign_task = 'NOT_RUN: set FLAVOR_RLS_TEST_RUN_MODEL=true for one bounded paid model call'
+    checks.model_tool_denied_foreign_task = sessionA.body.private_task_tools_enabled === true
+      ? 'NOT_RUN: set FLAVOR_RLS_TEST_RUN_MODEL=true for bounded paid private-task calls'
+      : 'NOT_RUN: private task tools are disabled on this Gateway'
   }
-  return { started, completed: new Date().toISOString(), project_ref: projectRef, status: process.env.FLAVOR_RLS_TEST_RUN_MODEL === 'true' ? 'PASS' : 'PARTIAL', synthetic_task_ids: [aliceTask.id, bobTask.id], checks }
+  return { started, completed: new Date().toISOString(), project_ref: projectRef, status: runPrivateModel ? 'PASS' : 'PARTIAL', synthetic_task_ids: [aliceTask.id, bobTask.id], checks }
 }
 
 let result
