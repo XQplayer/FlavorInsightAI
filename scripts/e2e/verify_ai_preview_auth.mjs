@@ -50,7 +50,11 @@ try {
   await page.getByRole('textbox', { name: /Email|邮箱/ }).waitFor({ timeout: 20000 })
   await page.getByRole('textbox', { name: /Email|邮箱/ }).fill(email)
   await page.getByLabel(/Password|密码/).fill(password)
+  const authenticatedSession = page.waitForResponse(response => response.url() ===
+    'https://flavorinsight-ai-gateway-preview.onrender.com/ai/session' && response.status() === 200,
+  { timeout: 20000 })
   await page.getByRole('button', { name: /Sign in|登录/ }).click()
+  await authenticatedSession
   await page.getByText(email, { exact: true }).waitFor({ timeout: 20000 })
   await page.getByRole('button', { name: /Sign out|退出登录/ }).click()
   await page.getByRole('textbox', { name: /Email|邮箱/ }).waitFor({ timeout: 20000 })

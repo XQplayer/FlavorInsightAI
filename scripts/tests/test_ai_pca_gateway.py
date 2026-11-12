@@ -122,6 +122,10 @@ class BrowserPcaGatewayTests(unittest.TestCase):
         self.assertIn('run-1', content)
         self.assertIn('client validated, not server recomputed', content)
         self.assertNotIn('matrix', content)
+        instructions = captured[0]['instructions']
+        self.assertIn('GC-MS task results', instructions)
+        self.assertIn('client-validated-browser-pca-summary', instructions)
+        self.assertIn('not server-recomputed', instructions)
 
 
 if __name__ == '__main__':
