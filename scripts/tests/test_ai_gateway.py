@@ -293,6 +293,17 @@ class GatewayUnitTests(unittest.TestCase):
             self.assertEqual(request.headers["Authorization"], "Bearer synthetic-service-key")
         self.assertNotIn("synthetic-service-key", str([request.full_url for request in requests]))
 
+    def test_new_supabase_secret_key_is_only_sent_as_apikey(self):
+        requests = []
+        def fake_open(request, timeout):
+            requests.append(request)
+            return io.BytesIO(b'[]')
+        secret = "sb_secret_" + "synthetic0123456789abcdef"
+        store = SupabaseConversationStore("https://example.supabase.co", secret, open_url=fake_open)
+        self.assertEqual(store.list("11111111-1111-4111-8111-111111111111"), [])
+        self.assertEqual(requests[0].headers["Apikey"], secret)
+        self.assertNotIn("Authorization", requests[0].headers)
+
     def test_persistent_session_list_paginates_without_cross_owner_query(self):
         owner = "11111111-1111-4111-8111-111111111111"
         requests = []

@@ -29,10 +29,13 @@ class SupabaseConversationStore:
         path = table + ("?" + urlencode(query) if query else "")
         headers = {
             "apikey": self.service_key,
-            "Authorization": "Bearer " + self.service_key,
             "Accept": "application/json",
             "Prefer": "return=representation",
         }
+        # New sb_secret_* keys are API keys, not JWTs. Legacy service_role
+        # keys still need the Bearer header until they are rotated out.
+        if not self.service_key.startswith("sb_secret_"):
+            headers["Authorization"] = "Bearer " + self.service_key
         if body is not None:
             headers["Content-Type"] = "application/json"
         request = Request(self.url + path, data=json.dumps(body).encode() if body is not None else None,
