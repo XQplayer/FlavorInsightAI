@@ -83,7 +83,7 @@ test('homepage metadata and package scripts identify the shipped FlavorInsight A
   assert.equal(packageJson.version, (await readFile(path.resolve('../VERSION'), 'utf8')).trim())
   assert.equal(
     packageJson.scripts['test:platform'],
-    'node --test src/platformRoutes.test.mjs src/platformUiContract.test.mjs src/platformHomeV2.test.mjs',
+    'node --test src/platformRoutes.test.mjs src/platformUiContract.test.mjs src/platformHomeV2.test.mjs src/app/authIntent.test.mjs',
   )
   assert.equal(
     packageJson.scripts['test:e2e:platform'],

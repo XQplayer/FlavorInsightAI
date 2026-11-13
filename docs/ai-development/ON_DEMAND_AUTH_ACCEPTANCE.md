@@ -38,4 +38,6 @@ Local preview was started from this isolated worktree at `http://127.0.0.1:5186/
 
 This change has **not** been deployed or tested against the production Supabase project. The browser login return test uses mocked authentication; current production email-redirect allowlisting for `/FlavorInsightAI/login/` still needs checking before release. Existing server RLS/JWT authorization code was not changed. Cross-user production data isolation was not retested in this task. A deployment without Supabase configuration can still run supported browser-local functions, while private operations report that the account service is unavailable.
 
+Release follow-up: the first PR #34 quality run `43452666025` failed because `staticRoutes.test.mjs` asserted the previous exact `test:platform` command. The test contract was updated to include `authIntent.test.mjs`; local `pnpm run test:static-routes` (5/5) and `pnpm run test:platform` (37/37) then passed. A new remote run is required for the corrected head before merging.
+
 Rollback after the local commit: `git revert <this commit>` on the development branch; no data or schema rollback is required.
