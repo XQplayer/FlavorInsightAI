@@ -3,13 +3,13 @@ import { ArrowRight, Fingerprint, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { usePlatformPreferences } from '../app/PlatformPreferences.jsx';
 import { routeHref } from '../app/platformRoutes.js';
 import { supabase } from '../lib/supabase.js';
-import { authCallbackMessage } from '../lib/shimadzuCloud.js';
+import { authCallbackMessage, shimadzuAuthRedirect } from '../lib/shimadzuCloud.js';
 import './PlatformPages.css';
 
 const BASE = import.meta.env.BASE_URL;
 const COPY = {
-  zh: { eyebrow: '以证据为基础的科研环境', statement: '从仪器信号走向可追溯的风味解析。', detail: '使用同一个账号访问数据处理和 AI 科研助手；公开页面与本地分析无需登录。', provenance: '来源清晰可见，方法可供复核。', label: '统一账号', heading: '登录后返回原功能', email: '邮箱', password: '密码', name: '姓名或小组内称呼', login: '登录', register: '提交注册申请', switchRegister: '申请账号', switchLogin: '已有账号？登录', resend: '重新发送验证邮件', signOut: '退出登录', continue: '返回原功能', home: '返回首页', local: '当前部署未连接账号服务；浏览器本地功能仍可使用。', pending: '待管理员审批', approved: '已获准使用', rejected: '申请未通过', suspended: '账号已停用', submitted: '如果该邮箱可以注册，请完成邮件验证；随后登录查看审批状态。', resent: '如可发送，新验证邮件已发出，请查看邮箱。', invalid: '登录失败，请检查邮箱、密码或邮箱验证状态。', signedIn: '当前已登录', unknown: '正在核对审批状态' },
-  en: { eyebrow: 'A research environment, built for evidence', statement: 'From instrument signals to traceable flavor insight.', detail: 'One account for data processing and Agents SAI; public pages and local analysis remain open.', provenance: 'Sources stay visible. Methods stay reviewable.', label: 'UNIFIED ACCOUNT', heading: 'Sign in and return to your work', email: 'Email', password: 'Password', name: 'Name or team display name', login: 'Sign in', register: 'Request an account', switchRegister: 'Request access', switchLogin: 'Have an account? Sign in', resend: 'Resend verification email', signOut: 'Sign out', continue: 'Return to previous task', home: 'Back to home', local: 'Account service is not configured here; browser-local features remain available.', pending: 'Awaiting administrator approval', approved: 'Approved', rejected: 'Request rejected', suspended: 'Account suspended', submitted: 'If this email can be registered, complete email verification, then sign in to see the approval status.', resent: 'If eligible, a new verification email has been sent.', invalid: 'Sign-in failed. Check your email, password or verification status.', signedIn: 'Signed in', unknown: 'Checking approval status' },
+  zh: { eyebrow: '以证据为基础的科研环境', statement: '从仪器信号走向可追溯的风味解析。', detail: '使用同一个账号访问数据处理和 AI 科研助手；公开页面与本地分析无需登录。', provenance: '来源清晰可见，方法可供复核。', label: '统一账号', heading: '登录后返回原功能', email: '邮箱', password: '密码', name: '姓名或小组内称呼', login: '登录', register: '提交注册申请', switchRegister: '申请账号', switchLogin: '已有账号？登录', resend: '重新发送验证邮件', signOut: '退出登录', continue: '返回原功能', home: '返回首页', local: '当前部署未连接账号服务；浏览器本地功能仍可使用。', pending: '待管理员审批', approved: '已获准使用', rejected: '申请未通过', suspended: '账号已停用', submitted: '如果该邮箱可以注册，请完成邮件验证；返回原标签页登录或继续操作。', resent: '如可发送，新验证邮件已发出，请查看邮箱并返回原标签页。', invalid: '登录失败，请检查邮箱、密码或邮箱验证状态。', signedIn: '当前已登录', unknown: '正在核对审批状态' },
+  en: { eyebrow: 'A research environment, built for evidence', statement: 'From instrument signals to traceable flavor insight.', detail: 'One account for data processing and Agents SAI; public pages and local analysis remain open.', provenance: 'Sources stay visible. Methods stay reviewable.', label: 'UNIFIED ACCOUNT', heading: 'Sign in and return to your work', email: 'Email', password: 'Password', name: 'Name or team display name', login: 'Sign in', register: 'Request an account', switchRegister: 'Request access', switchLogin: 'Have an account? Sign in', resend: 'Resend verification email', signOut: 'Sign out', continue: 'Return to previous task', home: 'Back to home', local: 'Account service is not configured here; browser-local features remain available.', pending: 'Awaiting administrator approval', approved: 'Approved', rejected: 'Request rejected', suspended: 'Account suspended', submitted: 'If this email can be registered, verify it, then return to the original tab to sign in or continue.', resent: 'If eligible, a new verification email has been sent. Return to the original tab afterward.', invalid: 'Sign-in failed. Check your email, password or verification status.', signedIn: 'Signed in', unknown: 'Checking approval status' },
 };
 
 export default function PlatformLoginPage({ onNavigate, onLoginSuccess, authSession, loginPrompt }) {
@@ -32,7 +32,7 @@ export default function PlatformLoginPage({ onNavigate, onLoginSuccess, authSess
     return () => { live = false; };
   }, [authSession?.user?.id]);
 
-  const redirectTo = () => new URL(routeHref('login', BASE), window.location.origin).toString();
+  const redirectTo = () => shimadzuAuthRedirect(window.location.origin, BASE);
   const submit = async event => {
     event.preventDefault();
     if (!supabase || working) return;

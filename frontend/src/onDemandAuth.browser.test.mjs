@@ -27,9 +27,13 @@ test('anonymous routes stay public and protected actions return to their page wi
   const base = `http://127.0.0.1:${port}/FlavorInsightAI/`
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   t.after(() => context.close())
-  let privateReads = 0, privateChatReads = 0, taskWrites = 0, chatWrites = 0
+  let privateReads = 0, privateChatReads = 0, taskWrites = 0, chatWrites = 0, signupRedirect = ''
   await context.route('https://auth-test.invalid/**', route => {
     const url = route.request().url()
+    if (url.includes('/auth/v1/signup')) {
+      signupRedirect = new URL(url).searchParams.get('redirect_to') || ''
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ user, session: null }) })
+    }
     if (url.includes('/auth/v1/token')) {
       if (route.request().postDataJSON()?.password === 'wrong-password') return route.fulfill({ status: 400, contentType: 'application/json', body: '{"error":"invalid_grant","error_description":"Invalid login credentials"}' })
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(session) })
@@ -63,6 +67,15 @@ test('anonymous routes stay public and protected actions return to their page wi
   }
   assert.equal(privateReads, 0, 'guest must not query private tasks')
   assert.equal(privateChatReads, 0, 'guest must not query private conversations')
+  await page.goto(base + 'login/')
+  await page.getByRole('button', { name: '申请账号' }).click()
+  await page.getByLabel('姓名或小组内称呼').fill('Synthetic User')
+  await page.locator('input[type=email]').fill(user.email)
+  await page.locator('input[type=password]').fill('synthetic-password')
+  await page.getByRole('button', { name: '提交注册申请' }).click()
+  await page.getByText('如果该邮箱可以注册，请完成邮件验证；返回原标签页登录或继续操作。').waitFor()
+  assert.equal(signupRedirect, 'http://127.0.0.1:' + port + '/FlavorInsightAI/shimadzu-analysis/')
+  await page.goto(base + 'ai-assistant/')
   await page.locator('#ai-research-input').fill('查询合成样品的 PCA 方案')
   await page.getByRole('button', { name: '发送' }).click()
   await page.waitForURL('**/FlavorInsightAI/login/')
