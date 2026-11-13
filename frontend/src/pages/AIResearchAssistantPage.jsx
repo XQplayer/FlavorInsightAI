@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, CircleStop, Clipboard, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
+import { BookOpen, CircleStop, Clipboard, LockKeyhole, MessageCircle, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { aiChatClient } from '../lib/aiChatClient.js'
 import { supabase } from '../lib/supabase.js'
+import { routeHref } from '../app/platformRoutes.js'
 import './AIResearchAssistantPage.css'
 
 const COPY = {
@@ -28,7 +29,7 @@ function MarkdownAnswer({ text }) {
   return <div className="ai-research-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ href, children }) => href?.startsWith('https://') ? <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> : <span>{children}</span>, img: () => null }}>{text}</ReactMarkdown></div>
 }
 
-export default function AIResearchAssistantPage({ language = 'zh' }) {
+export default function AIResearchAssistantPage({ language = 'zh', onRequireAuth, resumeIntent }) {
   const t = COPY[language] || COPY.zh
   const taskContext = new URLSearchParams(window.location.search).get('task_id')
   const [configuration, setConfiguration] = useState(null)
@@ -43,14 +44,17 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
   const [usage, setUsage] = useState(null)
   const [authSession, setAuthSession] = useState(null)
   const [authReady, setAuthReady] = useState(!supabase)
-  const [authEmail, setAuthEmail] = useState('')
-  const [authPassword, setAuthPassword] = useState('')
-  const [authBusy, setAuthBusy] = useState(false)
-  const [authError, setAuthError] = useState('')
   const abortRef = useRef(null)
   const requestEpoch = useRef(0)
   const authIdentity = useRef(undefined)
   const endRef = useRef(null)
+  const handledResume = useRef(null)
+
+  useEffect(() => {
+    if (resumeIntent?.action !== 'assistant.send' || handledResume.current === resumeIntent) return
+    handledResume.current = resumeIntent
+    setDraft(resumeIntent.draft?.text || '')
+  }, [resumeIntent])
 
   useEffect(() => {
     let live = true
@@ -69,7 +73,7 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
         }
       } catch (value) { if (live && requestEpoch.current === epoch && (authIdentity.current !== 'guest' || !supabase)) setError(value.message) }
     }
-    load(requestEpoch.current)
+    if (!supabase) load(requestEpoch.current)
     const listener = supabase?.auth.onAuthStateChange((_event, session) => {
       setAuthSession(session || null)
       setAuthReady(true)
@@ -78,6 +82,7 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
       authIdentity.current = next
       if (previous === undefined && _event === 'INITIAL_SESSION') {
         if (!session) setError('')
+        else window.setTimeout(() => { if (live) load(requestEpoch.current) }, 0)
         return
       }
       if (previous === next) return
@@ -88,7 +93,7 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
       const url = new URL(window.location.href)
       url.searchParams.delete('conversation_id')
       window.history.replaceState(window.history.state, '', url)
-      window.setTimeout(() => { if (live) load(epoch) }, 0)
+      if (session) window.setTimeout(() => { if (live) load(epoch) }, 0)
     })
     return () => { live = false; abortRef.current?.abort(); listener?.data.subscription.unsubscribe() }
   }, [])
@@ -109,6 +114,11 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
   }
   const clearConversation = () => { requestEpoch.current++; abortRef.current?.abort(); setBusy(false); setConversationId(null); setMessages([]); setAnalysisLinks([]); setError(''); setUsage(null); selectUrl(null) }
   const newConversation = async () => {
+    try {
+      if (!supabase && configuration?.mode !== 'mock') throw new Error(language === 'zh' ? '当前部署未连接账号服务，无法创建私人会话。' : 'Account service is unavailable; private conversations cannot be created.')
+      if (supabase && !(await onRequireAuth?.('assistant.conversation'))) return
+    }
+    catch (value) { setError(value.message); return }
     clearConversation()
     const epoch = requestEpoch.current
     try { const created = await aiChatClient.create(); if (epoch === requestEpoch.current) { setConversationId(created.id); selectUrl(created.id); await refreshList() } }
@@ -139,6 +149,10 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
   const send = async (question = draft) => {
     const text = question.trim()
     if (!text || busy) return
+    try {
+      if (!supabase && configuration?.mode !== 'mock') throw new Error(language === 'zh' ? '当前部署未连接账号服务，无法发送真实 GPT 消息。' : 'Account service is unavailable; live GPT messages cannot be sent.')
+      if (supabase && !(await onRequireAuth?.('assistant.send', { text }))) { setDraft(text); return }
+    } catch (value) { setDraft(text); setError(value.message); return }
     setError(''); setUsage(null); setBusy(true); setDraft('')
     const controller = new AbortController()
     const epoch = ++requestEpoch.current
@@ -169,26 +183,10 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
   }
   const copyAnswer = async text => { await navigator.clipboard.writeText(text); setCopied(true); window.setTimeout(() => setCopied(false), 1600) }
 
-  const signIn = async event => {
-    event.preventDefault()
-    if (!supabase || authBusy) return
-    setAuthBusy(true); setAuthError('')
-    try {
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword })
-      if (loginError) setAuthError(t.authFailed)
-    } catch { setAuthError(t.authFailed) }
-    finally { setAuthPassword(''); setAuthBusy(false) }
-  }
-  const signOut = async () => {
-    if (!supabase) return
-    const { error: logoutError } = await supabase.auth.signOut()
-    if (logoutError) setAuthError(logoutError.message)
-  }
-
   return <section className="ai-research-page" aria-labelledby="ai-research-title">
     <header className="ai-research-header"><div><p className="ai-research-eyebrow">FLAVORINSIGHT AI / RESEARCH</p><h1 id="ai-research-title">{t.title}</h1><p>{t.subtitle}</p>{configuration?.mode === 'openai' && configuration?.history_persistence !== 'supabase' && <p role="alert">{language === 'en' ? 'Conversation history is temporary on this server.' : '当前服务的会话记录仅为临时保存。'}</p>}{conversationId && <a href={`../data-analysis/?conversation_id=${encodeURIComponent(conversationId)}`}>{language === 'en' ? 'Open Browser PCA in this conversation' : '在当前会话中打开浏览器 PCA'}</a>}</div><span className={`ai-research-mode ${configuration?.mode === 'mock' ? 'is-mock' : ''}`}>{authReady && supabase && !authSession && configuration?.mode !== 'mock' ? t.signInRequired : configuration?.mode === 'mock' ? t.modeMock : configuration?.mode === 'openai' ? t.modeReal : t.unavailable}</span></header>
-    {authReady && supabase && !authSession && configuration?.mode !== 'mock' && <form className="ai-research-auth" onSubmit={signIn}><LockKeyhole size={18} aria-hidden="true" /><strong>{t.signInRequired}</strong><label>{t.email}<input type="email" autoComplete="email" value={authEmail} onChange={event => setAuthEmail(event.target.value)} required /></label><label>{t.password}<input type="password" autoComplete="current-password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} required /></label><button type="submit" disabled={authBusy}>{t.signIn}</button>{authError && <span role="alert">{authError}</span>}</form>}
-    {authSession && <div className="ai-research-account"><span>{authSession.user.email}</span><button type="button" onClick={signOut}><LogOut size={14} aria-hidden="true" />{t.signOut}</button></div>}
+    {authReady && supabase && !authSession && <div className="ai-research-auth"><LockKeyhole size={18} aria-hidden="true" /><strong>{t.signInRequired}</strong><p>{language === 'en' ? 'You can browse this page. Sign in only when creating a private conversation or sending a message.' : '可以先浏览页面；创建私人会话或发送消息时再登录。'}</p><button type="button" onClick={() => onRequireAuth?.('assistant.conversation')?.catch(value => setError(value.message))}>{t.signIn}</button></div>}
+    {authSession && <div className="ai-research-account"><span>{authSession.user.email}</span><a href={routeHref('login', import.meta.env.BASE_URL)}>{language === 'en' ? 'Account' : '账号'}</a></div>}
     {taskContext && /^[0-9a-f-]{36}$/i.test(taskContext) && <div className="ai-research-task-context" role="note"><strong>{language === 'en' ? 'Task interpretation' : '任务 AI 解读'} · {taskContext.slice(0, 8)}</strong><span>{configuration?.private_task_tools_enabled
       ? language === 'en' ? 'The server checks task access and sends only a bounded retained-result excerpt. Missing or expired results remain explicitly unavailable; no raw workbook is sent.' : '服务端核验任务权限，只发送限量的已留存结果摘录。结果缺失或过期会明确标示；不发送原始工作簿。'
       : language === 'en' ? 'Private task interpretation is not enabled. You can still ask about public compound evidence.' : '私有任务解读尚未开放；仍可查询公开化合物证据。'}</span></div>}
@@ -196,10 +194,10 @@ export default function AIResearchAssistantPage({ language = 'zh' }) {
     <div className="ai-research-layout">
       <aside className="ai-research-history" aria-label={t.conversations}><div className="ai-research-history-head"><h2>{t.conversations}</h2><button type="button" onClick={newConversation}><Plus size={16} />{t.new}</button></div><ul>{conversations.length ? conversations.map(item => <li key={item.id}><button type="button" className={conversationId === item.id ? 'active' : ''} onClick={() => openConversation(item.id)} aria-current={conversationId === item.id ? 'page' : undefined} title={item.last_activity_at || item.created_at}><MessageCircle size={15} /><span>{item.title}</span></button><button className="ai-research-action" type="button" aria-label={`${t.rename}: ${item.title}`} onClick={() => renameConversation(item)}><Pencil size={14} /></button><button className="ai-research-delete" type="button" aria-label={`${t.delete}: ${item.title}`} onClick={() => deleteConversation(item.id)}><Trash2 size={15} /></button></li>) : <li className="ai-research-empty-history">{t.empty}</li>}</ul><div className="ai-research-knowledge"><BookOpen size={16} /><span>{t.knowledge}</span></div></aside>
       <div className="ai-research-thread"><div className="ai-research-messages" role="log" aria-live="polite" aria-relevant="additions text">
-        {!messages.length && <div className="ai-research-welcome"><span className="ai-research-symbol">FI</span><h2>{t.welcome}</h2><p>{t.prompt}</p><div className="ai-research-suggestions">{t.questions.map(question => <button key={question} type="button" onClick={() => { setDraft(question); send(question) }} disabled={!configuration || configuration.mode === 'disabled'}>{question}</button>)}</div></div>}
+        {!messages.length && <div className="ai-research-welcome"><span className="ai-research-symbol">FI</span><h2>{t.welcome}</h2><p>{t.prompt}</p><div className="ai-research-suggestions">{t.questions.map(question => <button key={question} type="button" onClick={() => { setDraft(question); send(question) }} disabled={Boolean(authSession) && (!configuration || configuration.mode === 'disabled')}>{question}</button>)}</div></div>}
         {messages.map((item, index) => <article className={`ai-research-message ${item.role}`} key={item.message_id || `${index}-${item.role}`}><div className="ai-research-avatar">{item.role === 'user' ? (language === 'en' ? 'You' : '你') : 'AI'}</div><div className="ai-research-message-body">{item.role === 'assistant' && (item.toolEvents || item.tool_events)?.length > 0 && <div className="ai-research-tool-events">{(item.toolEvents || item.tool_events).map((event, eventIndex) => <span key={`${event.name}-${eventIndex}`}>{t.tool}: {event.name} · {event.status}</span>)}</div>}{item.role === 'assistant' ? <MarkdownAnswer text={item.content || (busy ? '…' : '')} /> : <p>{item.content}</p>}{item.status && item.status !== 'completed' && <small role="status">{t.interrupted}: {item.status}</small>}{item.sources?.length > 0 && <div className="ai-research-sources"><strong>{t.sources}</strong>{item.sources.map((source, sourceIndex) => source.url?.startsWith('https://') ? <a href={source.url} target="_blank" rel="noopener noreferrer" key={`${source.url}-${sourceIndex}`}>{source.dataset || source.type || 'Source'}</a> : <span key={`${source.type}-${sourceIndex}`}>{source.dataset || source.type || 'Source'}</span>)}</div>}{item.role === 'assistant' && item.content && <button className="ai-research-copy" type="button" onClick={() => copyAnswer(item.content)}><Clipboard size={14} />{copied ? t.copied : t.copy}</button>}</div></article>)}<div ref={endRef} />
       </div>
-      <div className="ai-research-composer"><div className="ai-research-status">{error && <p role="alert">{t.failed}: {error} <button type="button" onClick={retry} disabled={busy}><RotateCcw size={14} />{t.retry}</button></p>}{usage && configuration?.mode === 'openai' && <small>{t.usage}: {usage.input_tokens} / {usage.output_tokens} tokens{usage.estimated_cost_usd == null ? '' : ` · $${usage.estimated_cost_usd}`}</small>}</div><form onSubmit={event => { event.preventDefault(); send() }}><label htmlFor="ai-research-input" className="sr-only">{t.placeholder}</label><textarea id="ai-research-input" value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} placeholder={t.placeholder} maxLength={configuration?.limits?.input_characters || 4000} rows="3" disabled={!configuration || configuration.mode === 'disabled'} />{busy ? <button className="ai-research-submit stop" type="button" onClick={() => abortRef.current?.abort()}><CircleStop size={17} />{t.stop}</button> : <button className="ai-research-submit" type="submit" disabled={!draft.trim() || !configuration || configuration.mode === 'disabled'}><Send size={17} />{t.send}</button>}</form></div></div>
+      <div className="ai-research-composer"><div className="ai-research-status">{error && <p role="alert">{t.failed}: {error} <button type="button" onClick={retry} disabled={busy}><RotateCcw size={14} />{t.retry}</button></p>}{usage && configuration?.mode === 'openai' && <small>{t.usage}: {usage.input_tokens} / {usage.output_tokens} tokens{usage.estimated_cost_usd == null ? '' : ` · $${usage.estimated_cost_usd}`}</small>}</div><form onSubmit={event => { event.preventDefault(); send() }}><label htmlFor="ai-research-input" className="sr-only">{t.placeholder}</label><textarea id="ai-research-input" value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} placeholder={t.placeholder} maxLength={configuration?.limits?.input_characters || 4000} rows="3" disabled={Boolean(authSession) && (!configuration || configuration.mode === 'disabled')} />{busy ? <button className="ai-research-submit stop" type="button" onClick={() => abortRef.current?.abort()}><CircleStop size={17} />{t.stop}</button> : <button className="ai-research-submit" type="submit" disabled={!draft.trim() || Boolean(authSession) && (!configuration || configuration.mode === 'disabled')}><Send size={17} />{t.send}</button>}</form></div></div>
     </div>
   </section>
 }

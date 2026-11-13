@@ -16,6 +16,8 @@ import {
   subscribeToPlatformPopstate,
 } from './platformRoutes.js';
 import { parseProcessingLocation, processingViewHref } from './processingRoutes.js';
+import { saveAuthIntent, takeAuthIntent } from './authIntent.js';
+import { supabase } from '../lib/supabase.js';
 
 const DatabaseOverviewPage = lazy(() => import('../pages/DatabaseOverviewPage.jsx'));
 const DataProcessingPage = lazy(() => import('../pages/DataProcessingPage.jsx'));
@@ -124,7 +126,7 @@ function RouteLoading() {
   );
 }
 
-function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavigate }) {
+function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavigate, onRequireAuth, onLoginSuccess, resumeIntent, authSession, loginPrompt }) {
   const { language, resolvedTheme, setLanguage } = usePlatformPreferences();
 
   useEffect(() => {
@@ -164,6 +166,8 @@ function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavi
             processingView={processingLocation.view}
             selectedTaskId={processingLocation.taskId}
             onProcessingNavigate={onProcessingNavigate}
+            onRequireAuth={onRequireAuth}
+            resumeIntent={resumeIntent}
           />
         </Suspense>
       </RouteErrorBoundary>
@@ -171,7 +175,7 @@ function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavi
   }
 
   if (route === 'analysis') {
-    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><DataAnalysisPage onNavigate={onNavigate} /></Suspense></RouteErrorBoundary>;
+    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><DataAnalysisPage onNavigate={onNavigate} onRequireAuth={onRequireAuth} resumeIntent={resumeIntent} /></Suspense></RouteErrorBoundary>;
   }
 
   if (route === 'models') {
@@ -179,7 +183,7 @@ function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavi
   }
 
   if (route === 'assistant') {
-    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIResearchAssistantPage language={language} /></Suspense></RouteErrorBoundary>;
+    return <RouteErrorBoundary routeKey={route} language={language} onNavigate={onNavigate}><Suspense fallback={<RouteLoading />}><AIResearchAssistantPage language={language} onRequireAuth={onRequireAuth} resumeIntent={resumeIntent} /></Suspense></RouteErrorBoundary>;
   }
 
   if (route === 'resources') {
@@ -187,7 +191,7 @@ function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavi
   }
 
   if (route === 'login') {
-    return <PlatformLoginPage onNavigate={onNavigate} />;
+    return <PlatformLoginPage onNavigate={onNavigate} onLoginSuccess={onLoginSuccess} authSession={authSession} loginPrompt={loginPrompt} />;
   }
 
   return <PlatformHomePage onNavigate={onNavigate} />;
@@ -196,6 +200,17 @@ function PlatformRoute({ route, onNavigate, processingLocation, onProcessingNavi
 export default function PlatformApp() {
   const [route, setRoute] = useState(() => parsePlatformRoute(window.location.pathname));
   const [processingLocation, setProcessingLocation] = useState(() => parseProcessingLocation(window.location.pathname, window.location.search));
+  const [authSession, setAuthSession] = useState(null);
+  const [resumeIntent, setResumeIntent] = useState(null);
+  const [loginPrompt, setLoginPrompt] = useState('');
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) setAuthSession(data.session || null); }).catch(() => {});
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setAuthSession(session || null));
+    return () => { active = false; data.subscription.unsubscribe(); };
+  }, []);
 
   useEffect(() => subscribeToPlatformPopstate(nextRoute => {
     setRoute(nextRoute);
@@ -203,6 +218,7 @@ export default function PlatformApp() {
   }), []);
 
   const navigate = useCallback((nextRoute, context = null) => {
+    setResumeIntent(null);
     navigatePlatformRoute(nextRoute, { basePath: PLATFORM_BASE_PATH, context });
     setRoute(nextRoute);
     if (nextRoute === 'processing') setProcessingLocation({ view: 'new', taskId: '' });
@@ -210,6 +226,7 @@ export default function PlatformApp() {
   }, []);
 
   const navigateProcessing = useCallback((view, taskId = processingLocation.taskId) => {
+    setResumeIntent(null);
     const href = processingViewHref(view, PLATFORM_BASE_PATH, taskId);
     window.history.pushState({ route: 'processing', view, taskId }, '', href);
     setRoute('processing');
@@ -217,10 +234,36 @@ export default function PlatformApp() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [processingLocation.taskId]);
 
+  const requireAuth = useCallback(async (action, draft = {}) => {
+    if (!supabase) throw new Error('当前部署未连接账号服务；服务端功能暂不可用。');
+    const { data, error } = await supabase.auth.getUser();
+    if (data?.user) return true;
+    if (error && error.status !== 401 && error.status !== 403 && error.name !== 'AuthSessionMissingError') throw new Error('无法核验登录状态，请检查网络后重试。');
+    const saved = saveAuthIntent({ returnPath: window.location.pathname + window.location.search, action, draft }, PLATFORM_BASE_PATH);
+    if (!saved) throw new Error('无法安全保存返回位置；请检查浏览器会话存储后重试。');
+    setLoginPrompt(authSession ? 'expired' : 'required');
+    if (authSession) await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    navigatePlatformRoute('login', { basePath: PLATFORM_BASE_PATH });
+    setRoute('login');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    return false;
+  }, [authSession]);
+
+  const loginSuccess = useCallback(() => {
+    const intent = takeAuthIntent(PLATFORM_BASE_PATH);
+    setLoginPrompt('');
+    if (!intent) { navigate('home'); return; }
+    window.history.pushState({ route: parsePlatformRoute(intent.returnPath) }, '', intent.returnPath);
+    setRoute(parsePlatformRoute(intent.returnPath));
+    setProcessingLocation(parseProcessingLocation(window.location.pathname, window.location.search));
+    setResumeIntent(intent);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [navigate]);
+
   return (
     <PlatformPreferencesProvider>
-      <PlatformShell route={route} onNavigate={navigate} processingView={processingLocation.view} selectedTaskId={processingLocation.taskId} onProcessingNavigate={navigateProcessing}>
-        <PlatformRoute route={route} onNavigate={navigate} processingLocation={processingLocation} onProcessingNavigate={navigateProcessing} />
+      <PlatformShell route={route} onNavigate={navigate} processingView={processingLocation.view} selectedTaskId={processingLocation.taskId} onProcessingNavigate={navigateProcessing} authSession={authSession}>
+        <PlatformRoute route={route} onNavigate={navigate} processingLocation={processingLocation} onProcessingNavigate={navigateProcessing} onRequireAuth={requireAuth} onLoginSuccess={loginSuccess} resumeIntent={resumeIntent} authSession={authSession} loginPrompt={loginPrompt} />
       </PlatformShell>
     </PlatformPreferencesProvider>
   );

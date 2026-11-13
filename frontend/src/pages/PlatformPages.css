@@ -58,6 +58,15 @@
 .platform-login__continue:focus-visible { outline: 3px solid var(--platform-focus); outline-offset: 4px; }
 .platform-login__continue svg { width: 20px; }
 .platform-login__note { margin: 20px 0 0; color: #586064; font-size: 14px !important; }
+.platform-login__form { display: grid; gap: 16px; margin-top: 22px; }
+.platform-login__form label { display: grid; gap: 7px; font-size: 14px; font-weight: 700; }
+.platform-login__form input { width: 100%; min-height: 48px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text-primary); background: var(--surface-panel); font: inherit; }
+.platform-login__form button, .platform-login__actions button { min-height: 44px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 8px 14px; color: var(--text-primary); background: var(--surface-panel); font: inherit; font-weight: 700; cursor: pointer; }
+.platform-login__form button { display: flex; justify-content: space-between; align-items: center; color: #fff; background: var(--platform-action); }
+.platform-login__form button:disabled, .platform-login__actions button:disabled { opacity: .6; cursor: not-allowed; }
+.platform-login__form input:focus-visible, .platform-login__form button:focus-visible, .platform-login__actions button:focus-visible { outline: 3px solid var(--platform-focus); outline-offset: 2px; }
+.platform-login__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.platform-login__account { overflow-wrap: anywhere; }
 @media (max-width: 800px) {
   .platform-login__layout { grid-template-columns: 1fr; gap: 32px; }
   .platform-login__story h1 { font-size: clamp(50px, 10vw, 78px); }

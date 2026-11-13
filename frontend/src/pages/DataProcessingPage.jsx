@@ -1,6 +1,6 @@
 import ShimadzuAnalysisPage from '../components/shimadzu/ShimadzuAnalysisPage.jsx';
 
-export default function DataProcessingPage({ language, theme, onNavigate, processingView = 'new', selectedTaskId = '', onProcessingNavigate }) {
+export default function DataProcessingPage({ language, theme, onNavigate, processingView = 'new', selectedTaskId = '', onProcessingNavigate, onRequireAuth, resumeIntent }) {
   return (
     <ShimadzuAnalysisPage
       embedded
@@ -10,6 +10,8 @@ export default function DataProcessingPage({ language, theme, onNavigate, proces
       processingView={processingView}
       selectedTaskId={selectedTaskId}
       onProcessingNavigate={onProcessingNavigate}
+      onRequireAuth={onRequireAuth}
+      resumeIntent={resumeIntent}
     />
   );
 }

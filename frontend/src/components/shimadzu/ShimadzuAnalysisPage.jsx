@@ -24,7 +24,6 @@ import {
   Sun,
   TerminalSquare,
   Upload,
-  UserCheck,
   UserRound,
   LogOut,
   History,
@@ -33,7 +32,7 @@ import {
 import { createShimadzuApi } from '../../lib/shimadzuApi'
 import { assertWorkbookFile, browserEnginePresentation } from '../../lib/shimadzuBrowserContract'
 import { createShimadzuWorkerClient } from '../../lib/shimadzuWorkerClient'
-import { authCallbackMessage, createShimadzuCloud, shimadzuAuthRedirect } from '../../lib/shimadzuCloud'
+import { createShimadzuCloud } from '../../lib/shimadzuCloud'
 import { createShimadzuTaskStore } from '../../lib/shimadzuTaskStore'
 import ShimadzuFailureDetails from './ShimadzuFailureDetails.jsx'
 import { analyticsEnabled, supabase } from '../../lib/supabase'
@@ -97,49 +96,16 @@ const PACKAGE_IO = { input: '六个分析阶段及输入配置的真实产物', 
 const APPROVAL_LABELS = { pending: '等待管理员审批', approved: '已获准使用', rejected: '申请未通过', suspended: '账号已停用' }
 const APPROVAL_LABELS_EN = { pending: 'Awaiting administrator approval', approved: 'Approved', rejected: 'Request rejected', suspended: 'Account suspended' }
 
-function AccountPanel({ cloud, session, profile, loading, error, onRefresh, language }) {
-  const [registering, setRegistering] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [displayName, setDisplayName] = useState('')
+function AccountPanel({ cloud, session, profile, loading, error, onRefresh, onRequireAuth, language }) {
   const [pendingUsers, setPendingUsers] = useState([])
   const [working, setWorking] = useState(false)
-  const [message, setMessage] = useState(() => authCallbackMessage(window.location.hash))
+  const [message, setMessage] = useState('')
   const [bootstrapCode, setBootstrapCode] = useState('')
 
   useEffect(() => {
     if (!profile?.is_admin) return
     cloud.pendingUsers().then(setPendingUsers).catch(value => setMessage(value.message))
   }, [cloud, profile?.is_admin])
-
-  const authenticate = async event => {
-    event.preventDefault()
-    setWorking(true); setMessage('')
-    try {
-      if (registering) {
-        const redirectTo = shimadzuAuthRedirect(window.location.origin, import.meta.env.BASE_URL)
-        await cloud.signUp(email.trim(), password, displayName.trim(), redirectTo)
-        setMessage(textFor(language, '注册申请已提交。请打开最新的验证邮件；验证完成后还需等待管理员审批。', 'Registration submitted. Open the latest verification email, then wait for administrator approval.'))
-      } else {
-        await cloud.signIn(email.trim(), password)
-        setMessage(textFor(language, '登录成功，正在读取账号权限。', 'Signed in. Loading account permissions.'))
-      }
-      await onRefresh()
-    } catch (value) { setMessage(value.message) } finally { setWorking(false) }
-  }
-
-  const resendConfirmation = async () => {
-    if (!email.trim()) {
-      setMessage(textFor(language, '请先填写注册邮箱，再重新发送验证邮件。', 'Enter the registration email before requesting a new verification message.'))
-      return
-    }
-    setWorking(true); setMessage('')
-    try {
-      const redirectTo = shimadzuAuthRedirect(window.location.origin, import.meta.env.BASE_URL)
-      await cloud.resendSignup(email.trim(), redirectTo)
-      setMessage(textFor(language, '新的验证邮件已发送。请只使用最新邮件中的链接，之前的链接可能已经失效。', 'A new verification email was sent. Use only the newest link; earlier links may have expired.'))
-    } catch (value) { setMessage(value.message) } finally { setWorking(false) }
-  }
 
   const review = async (userId, status) => {
     setWorking(true); setMessage('')
@@ -170,14 +136,7 @@ function AccountPanel({ cloud, session, profile, loading, error, onRefresh, lang
   if (!session) return (
     <section id="account-panel" className="shimadzu-account shimadzu-reveal" aria-labelledby="account-title">
       <div className="shimadzu-account-copy"><UserRound /><div><h2 id="account-title">{textFor(language, '小组账号', 'Team account')}</h2><p>{textFor(language, '原始工作簿不会上传。登录并通过管理员审批后，可计算并保留结果 ZIP 7 天、任务记录 90 天。', 'Raw workbooks are not uploaded. After sign-in and approval, result ZIP files are retained for 7 days and task records for 90 days.')}</p></div></div>
-      <form onSubmit={authenticate} className="shimadzu-auth-form">
-        {registering && <input aria-label={textFor(language, '姓名', 'Name')} placeholder={textFor(language, '姓名或小组内称呼', 'Name or team display name')} value={displayName} onChange={event => setDisplayName(event.target.value)} required />}
-        <input aria-label={textFor(language, '邮箱', 'Email')} type="email" placeholder={textFor(language, '邮箱', 'Email')} value={email} onChange={event => setEmail(event.target.value)} required />
-        <input aria-label={textFor(language, '密码', 'Password')} type="password" minLength="6" placeholder={textFor(language, '密码（至少 6 位）', 'Password (at least 6 characters)')} value={password} onChange={event => setPassword(event.target.value)} required />
-        <button type="submit" disabled={working}>{working ? <Loader2 className="spin" /> : <UserCheck />}{registering ? textFor(language, '提交注册申请', 'Submit registration') : textFor(language, '登录', 'Sign in')}</button>
-        <button type="button" className="text" onClick={() => { setRegistering(value => !value); setMessage('') }}>{registering ? textFor(language, '已有账号，返回登录', 'Already registered? Sign in') : textFor(language, '没有账号，申请使用', 'Request an account')}</button>
-        <button type="button" className="text" disabled={working} onClick={resendConfirmation}>{textFor(language, '验证链接失效？重新发送验证邮件', 'Verification link expired? Send a new email')}</button>
-      </form>
+      <button type="button" className="shimadzu-signout" onClick={() => onRequireAuth?.('processing.private')?.catch(value => setMessage(value.message))}>{textFor(language, '使用统一账号登录或申请', 'Sign in or request access')}</button>
       {(message || error) && <p className="shimadzu-account-message">{message || error}</p>}
     </section>
   )
@@ -189,7 +148,7 @@ function AccountPanel({ cloud, session, profile, loading, error, onRefresh, lang
       <button className="shimadzu-signout" type="button" onClick={() => cloud.signOut()}><LogOut />{textFor(language, '退出', 'Sign out')}</button>
       {(message || error) && <p className="shimadzu-account-message">{message || error}</p>}
       {profile?.approval_status === 'pending' && <form className="shimadzu-bootstrap" onSubmit={claimAdmin}><div><strong>{textFor(language, '首次部署管理员初始化', 'First-deployment administrator setup')}</strong><p>{textFor(language, '仅首位管理员使用；初始化成功后该入口不能再次认领管理员。', 'For the first administrator only; this setup cannot be claimed again after completion.')}</p></div><input aria-label={textFor(language, '管理员初始化码', 'Administrator setup code')} value={bootstrapCode} onChange={event => setBootstrapCode(event.target.value)} placeholder={textFor(language, '管理员初始化码', 'Administrator setup code')} required /><button type="submit" disabled={working}>{textFor(language, '认领管理员', 'Claim administrator')}</button></form>}
-      {profile?.is_admin && pendingUsers.length > 0 && <div className="shimadzu-approval-queue"><h3>{textFor(language, '待审批账号', 'Accounts awaiting approval')}</h3>{pendingUsers.map(user => <div key={user.id}><span>{user.display_name || user.id}</span><button type="button" disabled={working} onClick={() => review(user.id, 'approved')}>{textFor(language, '批准', 'Approve')}</button><button type="button" disabled={working} onClick={() => review(user.id, 'rejected')}>{textFor(language, '拒绝', 'Reject')}</button></div>)}</div>}
+      {profile?.is_admin && <div className="shimadzu-approval-queue"><h3>{textFor(language, '待审批账号', 'Accounts awaiting approval')}</h3>{pendingUsers.length ? pendingUsers.map(user => <div key={user.id}><span>{user.display_name || user.id}</span><button type="button" disabled={working} onClick={() => review(user.id, 'approved')}>{textFor(language, '批准', 'Approve')}</button><button type="button" disabled={working} onClick={() => review(user.id, 'rejected')}>{textFor(language, '拒绝', 'Reject')}</button></div>) : <p>{textFor(language, '当前没有待审批申请。', 'No pending requests.')}</p>}</div>}
     </section>
   )
 }
@@ -436,7 +395,7 @@ function AnalysisConsole({ job, engine, fileReadiness, cvReadiness, hasInputFile
   </section>
 }
 
-function PreflightPanel({ rawFile, samplesFile, fileReadiness, cvReadiness, engine, proxyState, onRecheck, canAnalyze, canStart, submitting, startFeedback, language, job }) {
+function PreflightPanel({ rawFile, samplesFile, fileReadiness, cvReadiness, engine, proxyState, onRecheck, canAnalyze, authNeeded, canStart, submitting, startFeedback, language, job }) {
   const stageZero = job?.stages?.[0]
   const fileState = fileReadiness.ready ? 'PASS' : rawFile || samplesFile ? 'FAIL' : 'pending'
   const structureState = stageZero?.status === 'PASS' ? 'PASS' : stageZero?.status === 'FAIL' || job?.error?.details?.stage === 0 ? 'FAIL' : 'pending'
@@ -451,7 +410,7 @@ function PreflightPanel({ rawFile, samplesFile, fileReadiness, cvReadiness, engi
     ] },
     { title: textFor(language, '参数检查', 'Parameters'), checks: [
       { label: textFor(language, 'CV 数值与功能依赖', 'CV value and feature dependencies'), status: cvReadiness.valid ? 'PASS' : 'FAIL', detail: cvReadiness.message },
-      { label: textFor(language, '账号与执行权限', 'Account and execution permission'), status: canAnalyze ? 'PASS' : 'FAIL', detail: canAnalyze ? textFor(language, '当前模式允许建立任务。', 'Current mode permits task creation.') : textFor(language, '需要登录并通过管理员审批。', 'Sign in and obtain administrator approval.') },
+      { label: textFor(language, '账号与执行权限', 'Account and execution permission'), status: authNeeded ? 'pending' : canAnalyze ? 'PASS' : 'FAIL', detail: authNeeded ? textFor(language, '文件和参数可先检查；点击开始分析时再登录。', 'Check files and parameters now; sign in when starting.') : canAnalyze ? textFor(language, '当前模式允许建立任务。', 'Current mode permits task creation.') : textFor(language, '需要通过管理员审批。', 'Administrator approval is required.') },
     ] },
   ]
   return <section className="processing-preflight" aria-labelledby="preflight-title">
@@ -486,6 +445,10 @@ function ResultsWorkspace({ job, record, selectedTaskId, language, onDownload, h
     {current?.status === 'complete' && handoff}
     {source.status === 'complete' && onExplain && record && <button type="button" onClick={() => onExplain(source)}>{textFor(language, 'AI 解读已保存的任务摘要', 'AI interpretation of saved task summary')}</button>}
   </section>
+}
+
+function PrivateWorkspacePrompt({ language, section, onSignIn }) {
+  return <section className="processing-empty" role="status"><h2>{section}</h2><p>{textFor(language, '此页面可公开浏览。个人任务、日志和结果仅在登录后按账号权限读取。', 'This page is public. Personal tasks, logs and results are loaded only after sign-in and ownership checks.')}</p><button type="button" onClick={onSignIn}>{textFor(language, '登录后查看我的内容', 'Sign in to view my content')}</button></section>
 }
 
 function HistoricalRunView({ record, language, onResults }) {
@@ -525,7 +488,7 @@ function TaskManager({ history, job, session, isAdmin, interruptedJobIds, langua
   </section>
 }
 
-export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh', theme: controlledTheme, onNavigate, onHome, processingView = 'new', selectedTaskId = '', onProcessingNavigate }) {
+export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh', theme: controlledTheme, onNavigate, onHome, processingView = 'new', selectedTaskId = '', onProcessingNavigate, onRequireAuth, resumeIntent }) {
   const api = useMemo(() => createShimadzuApi(API_BASE), [])
   const cloud = useMemo(() => createShimadzuCloud(supabase), [])
   const taskStore = useMemo(() => typeof document === 'undefined' ? null : createShimadzuTaskStore(), [])
@@ -545,6 +508,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const taskScopeRef = useRef('local')
   const resumeFromStageRef = useRef(0)
   const restoreScopeRef = useRef('')
+  const authIdentityRef = useRef(undefined)
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [standaloneTheme, setTheme] = useState(() => {
     try {
@@ -554,16 +518,17 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     }
   })
   const theme = controlledTheme ?? standaloneTheme
+  const restoredDraft = resumeIntent?.action === 'processing.start' ? resumeIntent.draft || {} : null
   const [rawFile, setRawFile] = useState(null)
   const [samplesFile, setSamplesFile] = useState(null)
-  const [name, setName] = useState(() => textFor(language, '岛津气质分析', 'Shimadzu GC-MS analysis'))
+  const [name, setName] = useState(() => restoredDraft?.name ?? textFor(language, '岛津气质分析', 'Shimadzu GC-MS analysis'))
   const localizedName = localizedTaskName(name, language)
-  const [mode, setMode] = useState('continuous')
-  const [enableCvScreening, setEnableCvScreening] = useState(false)
-  const [cvThreshold, setCvThreshold] = useState('30')
-  const [enableClassification, setEnableClassification] = useState(true)
-  const [enableWaterDetectionThreshold, setEnableWaterDetectionThreshold] = useState(true)
-  const [enableEstimatedReferenceOav, setEnableEstimatedReferenceOav] = useState(false)
+  const [mode, setMode] = useState(restoredDraft?.mode ?? 'continuous')
+  const [enableCvScreening, setEnableCvScreening] = useState(restoredDraft?.enableCvScreening ?? false)
+  const [cvThreshold, setCvThreshold] = useState(restoredDraft?.cvThreshold ?? '30')
+  const [enableClassification, setEnableClassification] = useState(restoredDraft?.enableClassification ?? true)
+  const [enableWaterDetectionThreshold, setEnableWaterDetectionThreshold] = useState(restoredDraft?.enableWaterDetectionThreshold ?? true)
+  const [enableEstimatedReferenceOav, setEnableEstimatedReferenceOav] = useState(restoredDraft?.enableEstimatedReferenceOav ?? false)
   const [job, setJob] = useState(null)
   async function enterDataAnalysis() {
     if (analysisHandoffBusy || !onNavigate) return
@@ -593,6 +558,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const [activeTaskId, setActiveTaskId] = useState('')
   const [recoveryChecked, setRecoveryChecked] = useState(false)
   const [recoveryNotice, setRecoveryNotice] = useState('')
+  const authResumeNotice = restoredDraft ? textFor(language, '已恢复可保存的参数。文件不会跨登录保存；请重新选择两份工作簿，检查后再次点击“开始分析”。', 'Safe parameters were restored. Files are not retained across sign-in; select both workbooks again, check them, then click Start analysis.') : ''
   const goHome = () => {
     if (onNavigate) onNavigate?.('home')
     else onHome?.()
@@ -629,6 +595,15 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     setCloudLoading(true); setCloudError('')
     try {
       const activeSession = knownSession === undefined ? await cloud.session() : knownSession
+      const identity = activeSession?.user?.id || 'guest'
+      if (authIdentityRef.current !== identity) {
+        authIdentityRef.current = identity
+        workerClientRef.current?.cancel()
+        setJob(null); setLocalHistory([]); setActiveTaskId('')
+        if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current)
+        if (partialResultUrlRef.current) URL.revokeObjectURL(partialResultUrlRef.current)
+        resultUrlRef.current = ''; partialResultUrlRef.current = ''
+      }
       setSession(activeSession)
       if (!activeSession) { setProfile(null); setHistory([]); return }
       const nextProfile = await cloud.profile(activeSession.user.id)
@@ -701,6 +676,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
     ? { ...engineBase, title: 'Browser analysis engine ready', detail: 'Processing runs on this device; raw workbooks are not uploaded.', chip: 'ENGINE BROWSER' }
     : engineBase
   const canAnalyze = !cloud.configured || profile?.approval_status === 'approved'
+  const authNeeded = cloud.configured && !cloudLoading && !session
   const fileReadiness = useMemo(() => {
     const missing = []
     if (!rawFile) missing.push(textFor(language, '岛津原始工作簿', 'Shimadzu raw workbook'))
@@ -766,11 +742,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const startFeedback = useMemo(() => {
     if (submitting) return { buttonLabel: textFor(language, '正在建立任务', 'Creating task'), message: textFor(language, '正在读取文件并建立分析任务。', 'Reading files and creating the analysis task.') }
     if (!fileReadiness.ready) return fileReadiness
-    if (!canAnalyze) return { buttonLabel: textFor(language, '等待账号审批后开始', 'Await account approval'), message: textFor(language, '文件已准备，可以开始分析。当前账号还需通过管理员审批。', 'Files are ready. The account still requires administrator approval before analysis can start.') }
+    if (!canAnalyze && !authNeeded) return { buttonLabel: textFor(language, '等待账号审批后开始', 'Await account approval'), message: textFor(language, '文件已准备，可以开始分析。当前账号还需通过管理员审批。', 'Files are ready. The account still requires administrator approval before analysis can start.') }
+    if (authNeeded) return { buttonLabel: textFor(language, '登录后开始', 'Sign in to start'), message: textFor(language, '文件和参数已准备；点击开始分析后登录，返回时需要重新选择文件。', 'Files and parameters are ready; sign in after clicking Start. Select files again on return.') }
     if (!cvReadiness.valid) return cvReadiness
     return { ...fileReadiness, message: `${fileReadiness.message} ${cvReadiness.message}` }
-  }, [canAnalyze, cvReadiness, fileReadiness, language, submitting])
-  const canStart = fileReadiness.ready && cvReadiness.valid && canAnalyze && !submitting
+  }, [authNeeded, canAnalyze, cvReadiness, fileReadiness, language, submitting])
+  const canStart = fileReadiness.ready && cvReadiness.valid && (authNeeded || canAnalyze) && !submitting
   const interruptedJobIds = useMemo(() => {
     if (!recoveryChecked) return new Set()
     return new Set(history
@@ -943,6 +920,13 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   const submit = async event => {
     event.preventDefault()
     if (!canStart) return
+    if (authNeeded) {
+      try {
+        if (!onRequireAuth) throw new Error(textFor(language, '请从平台统一登录页进入后再启动分析。', 'Sign in through the platform account page before starting analysis.'))
+        await onRequireAuth('processing.start', { name, mode, enableCvScreening, cvThreshold, enableClassification, enableWaterDetectionThreshold, enableEstimatedReferenceOav })
+      } catch (value) { setError(value.message) }
+      return
+    }
     setSubmitting(true)
     setError('')
     const scope = cloud.configured ? session?.user?.id : 'local'
@@ -972,6 +956,8 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
       setSubmitting(false)
     }
   }
+
+  const promptPrivateSignIn = () => onRequireAuth?.('processing.private')?.catch(value => setError(value.message))
 
   const restoreActiveTask = async scope => {
     setRecoveryChecked(false)
@@ -1064,10 +1050,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   }
 
   const cancelJob = () => {
+    if (authNeeded) { promptPrivateSignIn(); return }
     workerClientRef.current?.cancel()
   }
 
   const retryJob = async () => {
+    if (authNeeded) { promptPrivateSignIn(); return }
     if (submitting) return
     setSubmitting(true)
     setError('')
@@ -1083,6 +1071,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   }
 
   const downloadCloudResult = async item => {
+    if (authNeeded) { promptPrivateSignIn(); return }
     setCloudError('')
     try {
       if (item.hasLocalArchive) {
@@ -1101,6 +1090,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   }
 
   const deleteCloudResult = async item => {
+    if (authNeeded) { promptPrivateSignIn(); return }
     if (!window.confirm('仅删除这个结果 ZIP，任务记录和质量日志会保留。继续吗？')) return
     setCloudError('')
     try {
@@ -1110,6 +1100,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
   }
 
   const markInterrupted = async item => {
+    if (authNeeded) { promptPrivateSignIn(); return }
     setCloudError('')
     try {
       const stageSummary = Array.isArray(item.stage_summary) ? item.stage_summary : []
@@ -1197,6 +1188,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
         {error && <div className="shimadzu-alert" role="alert"><AlertCircle /><span><strong>{textFor(language, '当前操作未完成', 'The current operation did not complete')}</strong>{error}</span></div>}
         {cloudError && <div className="shimadzu-alert cloud" role="alert"><AlertCircle /><span><strong>{textFor(language, '云端服务提示', 'Cloud service notice')}</strong>{cloudError}</span></div>}
         {recoveryNotice && <div className="shimadzu-recovery-notice" role="status" aria-live="polite"><RotateCcw /><span><strong>{textFor(language, '浏览器任务恢复', 'Browser task recovery')}</strong>{recoveryNotice}</span></div>}
+        {authResumeNotice && <div className="shimadzu-recovery-notice" role="status"><UserRound /><span>{authResumeNotice}</span></div>}
         {processingView === 'new' && (
         <section id="processing-import" className="shimadzu-workbench-region shimadzu-import-region" aria-labelledby="data-import-preflight-title">
           <div className="shimadzu-region-heading shimadzu-workbench-heading"><div><span className="shimadzu-region-index">01</span><h2 id="data-import-preflight-title">{textFor(language, '文件导入', 'File import')}</h2></div><span>{textFor(language, '2 个 Excel 文件', '2 Excel files')}</span></div>
@@ -1273,7 +1265,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
           </details>
         </section>
 
-              <PreflightPanel rawFile={rawFile} samplesFile={samplesFile} fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} proxyState={proxyState} onRecheck={recheckPreflight} canAnalyze={canAnalyze} canStart={canStart} submitting={submitting} startFeedback={startFeedback} language={language} job={job} />
+              <PreflightPanel rawFile={rawFile} samplesFile={samplesFile} fileReadiness={fileReadiness} cvReadiness={cvReadiness} engine={engine} proxyState={proxyState} onRecheck={recheckPreflight} canAnalyze={canAnalyze} authNeeded={authNeeded} canStart={canStart} submitting={submitting} startFeedback={startFeedback} language={language} job={job} />
             </form>
           ) : (
             <div className="shimadzu-import-summary"><FileCheck2 aria-hidden="true" /><div><strong>{textFor(language, '输入已锁定并进入处理流程', 'Inputs locked and processing started')}</strong><p>{rawFile?.name || textFor(language, '岛津原始工作簿', 'Shimadzu raw workbook')} · {samplesFile?.name || textFor(language, '样品与内标信息表', 'Sample and internal-standard sheet')}. {textFor(language, '任务恢复时会重新验证已完成步骤。', 'Completed stages are revalidated when a task is restored.')}</p></div></div>
@@ -1281,7 +1273,7 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
         </section>
 
         )}
-        {processingView === 'monitor' && <section id="processing-monitor" className="shimadzu-workbench-region shimadzu-monitor-results-region" aria-labelledby="process-monitor-results-title">
+        {processingView === 'monitor' && (authNeeded ? <PrivateWorkspacePrompt language={language} section={textFor(language, '运行监控', 'Run monitor')} onSignIn={promptPrivateSignIn} /> : <section id="processing-monitor" className="shimadzu-workbench-region shimadzu-monitor-results-region" aria-labelledby="process-monitor-results-title">
           <div className="analysis-console-heading"><h2 id="process-monitor-results-title">{textFor(language, '分析任务控制台', 'Analysis Console')}</h2></div>
           {selectedTaskId && job?.id !== selectedTaskId && history.some(item => item.id === selectedTaskId) ? <HistoricalRunView record={history.find(item => item.id === selectedTaskId)} language={language} onResults={() => onProcessingNavigate?.('results', selectedTaskId)} /> : selectedTaskId && job?.id !== selectedTaskId && !cloudLoading ? <div className="processing-empty" role="status"><h3>{textFor(language, '任务不可用', 'Task unavailable')}</h3><p>{textFor(language, '所选任务不存在、无访问权限，或本地任务已经结束且未保存到云端。', 'The task is unavailable, inaccessible, or the local task ended without cloud retention.')}</p></div> : <AnalysisConsole job={selectedTaskId && job?.id !== selectedTaskId ? null : job} engine={engine} fileReadiness={fileReadiness} cvReadiness={cvReadiness} hasInputFiles={Boolean(rawFile && samplesFile)} submitting={submitting} language={language} taskName={localizedName} actions={job && (!selectedTaskId || job.id === selectedTaskId) && <div className="analysis-console-actions">
             {job.status === 'waiting_review' && <button type="button" className="primary" onClick={continueJob}><ChevronRight />{textFor(language, '复核完成，继续', 'Review complete; continue')}</button>}
@@ -1292,12 +1284,12 @@ export default function ShimadzuAnalysisPage({ embedded = false, language = 'zh'
             {job.status === 'complete' && <button type="button" className="primary" onClick={() => onProcessingNavigate?.('results', job.id)}>{textFor(language, '查看结果与报告', 'View results and reports')}</button>}
             {['failed', 'cancelled', 'complete', 'interrupted'].includes(job.status) && <button type="button" onClick={reset}><RotateCcw />{textFor(language, '新任务', 'New task')}</button>}
           </div>} />}
-        </section>}
-        {processingView === 'results' && <ResultsWorkspace job={job} record={history.find(item => item.id === selectedTaskId)} selectedTaskId={selectedTaskId} language={language} onDownload={downloadCloudResult} onOpenTasks={() => onProcessingNavigate?.('tasks', selectedTaskId)} onExplain={onNavigate && cloud.configured && session ? item => onNavigate('assistant', { task_id: item.id }) : null} handoff={job?.status === 'complete' && job.downloadUrl?.startsWith('blob:') && onNavigate && <div className="analysis-handoff">
+        </section>)}
+        {processingView === 'results' && (authNeeded ? <PrivateWorkspacePrompt language={language} section={textFor(language, '结果与报告', 'Results & reports')} onSignIn={promptPrivateSignIn} /> : <ResultsWorkspace job={job} record={history.find(item => item.id === selectedTaskId)} selectedTaskId={selectedTaskId} language={language} onDownload={downloadCloudResult} onOpenTasks={() => onProcessingNavigate?.('tasks', selectedTaskId)} onExplain={onNavigate && cloud.configured && session ? item => onNavigate('assistant', { task_id: item.id }) : null} handoff={job?.status === 'complete' && job.downloadUrl?.startsWith('blob:') && onNavigate && <div className="analysis-handoff">
           <label>{textFor(language, '进入分析的矩阵', 'Matrix for analysis')}<select aria-label={textFor(language, '进入分析的矩阵', 'Matrix for analysis')} value={analysisSelection} onChange={event => setAnalysisSelection(event.target.value)} disabled={analysisHandoffBusy}><option value="">{textFor(language, '请明确选择', 'Choose explicitly')}</option><option value="before-cv">before-cv</option><option value="after-cv">after-cv</option></select></label>
           <button type="button" className="primary" onClick={enterDataAnalysis} disabled={!analysisSelection || analysisHandoffBusy}>{textFor(language, '进入数据分析', 'Enter data analysis')}</button><p>{textFor(language, '验证七阶段与哈希并保存后进入。也可下载 ZIP，在数据分析中上传。', 'Enter after seven-stage/hash verification and local save. ZIP upload in data analysis remains available.')}</p>
-        </div>} />}
-        {processingView === 'tasks' && <><TaskManager history={history} job={job} session={session} isAdmin={profile?.is_admin === true} interruptedJobIds={interruptedJobIds} language={language} onOpen={onProcessingNavigate} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} onExplain={onNavigate && cloud.configured && session ? item => onNavigate('assistant', { task_id: item.id }) : null} /><AccountPanel language={language} cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} /></>}
+        </div>} />)}
+        {processingView === 'tasks' && <>{authNeeded ? <PrivateWorkspacePrompt language={language} section={textFor(language, '任务管理', 'Task management')} onSignIn={promptPrivateSignIn} /> : <TaskManager history={history} job={job} session={session} isAdmin={profile?.is_admin === true} interruptedJobIds={interruptedJobIds} language={language} onOpen={onProcessingNavigate} onDownload={downloadCloudResult} onMarkInterrupted={markInterrupted} onDeleteResult={deleteCloudResult} onExplain={onNavigate && cloud.configured && session ? item => onNavigate('assistant', { task_id: item.id }) : null} />}<AccountPanel language={language} cloud={cloud} session={session} profile={profile} loading={cloudLoading} error={cloudError} onRefresh={refreshCloud} onRequireAuth={onRequireAuth} /></>}
       </ContentElement>
     </div>
   )
