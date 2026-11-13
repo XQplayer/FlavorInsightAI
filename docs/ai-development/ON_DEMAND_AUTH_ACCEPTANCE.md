@@ -17,7 +17,7 @@ All commands ran from `frontend/` unless specified. Browser test used programmat
 | --- | --- |
 | `node --test src/app/authIntent.test.mjs src/platformUiContract.test.mjs src/components/shimadzu/ShimadzuAnalysisPage.layout.test.mjs` | 34 passed |
 | `node --test src/onDemandAuth.browser.test.mjs` | 1 passed: seven anonymous routes and refresh, no private reads, failed/successful login return, no replay, processing form restoration and empty file inputs, mobile layout |
-| `pnpm run test:platform` | 34 passed |
+| `pnpm run test:platform` | 37 passed after including the auth-intent checks in the PR quality workflow |
 | `pnpm run test:shimadzu` | 24 passed |
 | `pnpm run test:shimadzu-browser` | 106 passed |
 | `pnpm run test:analysis` | 130 passed |
