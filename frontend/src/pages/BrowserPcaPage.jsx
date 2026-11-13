@@ -39,7 +39,7 @@ const errorText = (code, t) => ({
   'Failed to fetch': t('AI Gateway could not be reached. Browser PCA remains available.', '无法连接 AI Gateway；浏览器 PCA 仍可使用。')
 })[code] || `${code}: ${t('No result was produced. Check the input and settings.', '未生成结果，请检查输入和设置。')}`;
 
-export default function BrowserPcaPage() {
+export default function BrowserPcaPage({ onRequireAuth, resumeIntent }) {
   const { language } = usePlatformPreferences();
   const t = (en, zh) => language === 'zh' ? zh : en;
   const [book, setBook] = useState(null), [sheet, setSheet] = useState(0), [headerRow, setHeaderRow] = useState(0);
@@ -55,6 +55,14 @@ export default function BrowserPcaPage() {
   const [aiEnabled, setAiEnabled] = useState(AI_GATEWAY_AVAILABLE);
   const controller = useRef(null), sequence = useRef(0), ownerIdentity = useRef('');
   const aiController = useRef(null), aiSequence = useRef(0);
+  const handledResume = useRef(null);
+  const [authResumeNotice, setAuthResumeNotice] = useState('');
+  useEffect(() => {
+    if (resumeIntent?.action !== 'analysis.ai' || handledResume.current === resumeIntent) return;
+    handledResume.current = resumeIntent;
+    setGoal(resumeIntent.draft?.goal || '');
+    setAuthResumeNotice(language === 'zh' ? '登录已完成。请重新导入本地文件并确认数据；AI 请求不会自动提交。' : 'Signed in. Reimport and confirm the local dataset; the AI request will not be submitted automatically.');
+  }, [language, resumeIntent]);
   const cancelAi = () => { aiSequence.current++; aiController.current?.abort(); aiController.current = null; setAiBusy(false); };
   const toggleAi = enabled => {
     if (!enabled) { cancelAi(); setAiPlan(null); setAiExplanation(''); }
@@ -132,6 +140,8 @@ export default function BrowserPcaPage() {
   const cancel = () => { controller.current?.abort(); };
   const requestPlan = async () => {
     if (!aiEnabled || !dataset || !goal.trim() || aiBusy) return;
+    try { if (supabase && !(await onRequireAuth?.('analysis.ai', { goal }))) return; }
+    catch (cause) { setError(cause.message); return; }
     const requestId = ++aiSequence.current;
     const abort = new AbortController();
     aiController.current = abort;
@@ -150,6 +160,8 @@ export default function BrowserPcaPage() {
   };
   const explain = async () => {
     if (!aiEnabled || !currentRunId || aiBusy) return;
+    try { if (supabase && !(await onRequireAuth?.('analysis.ai', { goal }))) return; }
+    catch (cause) { setError(cause.message); return; }
     const requestId = ++aiSequence.current;
     const abort = new AbortController();
     aiController.current = abort;
@@ -207,6 +219,7 @@ export default function BrowserPcaPage() {
     <header><div><p className="analysis-eyebrow">BROWSER SCIENTIFIC ENGINE · PCA 1.0</p><h1>{t('Browser PCA', '浏览器 PCA')}</h1><p>{t('Import, calculate and export entirely in this browser. No file upload or local Python/R service is used.', '导入、计算与导出全部在浏览器内完成；不上传文件，也不使用本地 Python/R 服务。')}</p></div><span className="browser-pca-badge">{t('Local computation', '本地计算')}</span></header>
     {IS_PREVIEW && <p role="note" className="analysis-notice">{t('Public preview: use synthetic data only. This GitHub Pages repository has a separate release path, but shares the xqplayer.github.io browser origin and IndexedDB access with the formal site.', '公开预览：仅使用合成数据。此 GitHub Pages 仓库具有独立发布路径，但与正式站点共用 xqplayer.github.io 浏览器来源和 IndexedDB 访问范围。')}</p>}
     {error && <p role="alert" className="analysis-error">{error}</p>}
+    {authResumeNotice && <p role="status" className="analysis-notice">{authResumeNotice}</p>}
     <section className="browser-pca-card"><h2>01 · {t('Import and check', '导入与检查')}</h2>
       <div className="analysis-toolbar"><Field label={t('CSV or XLSX file, up to 32 MiB', 'CSV 或 XLSX 文件，最大 32 MiB')}><input type="file" accept=".csv,.xlsx" onChange={event => { read(event.target.files?.[0]); event.target.value = ''; }} /></Field><button type="button" onClick={loadSynthetic}>{t('Load labelled SYNTHETIC R reference', '加载标记为合成的 R 参考数据')}</button></div>
       {book && <><p>{book.name} · {book.sheets.length} {t('sheets', '个工作表')} · SHA-256 <code>{sourceHash}</code></p>

@@ -38,14 +38,15 @@ const loginSource = await readFile(
 ).catch(error => error.code === 'ENOENT' ? '' : Promise.reject(error));
 const preferenceSource = await readFile(new URL('./app/platformPreferences.js', import.meta.url), 'utf8');
 
-test('defaults to English and provides an honest account-status route', () => {
+test('defaults to English and routes account actions to one Supabase login page', () => {
   assert.match(preferenceSource, /DEFAULT_LANGUAGE = 'en'/);
   assert.match(platformAppSource, /login: 'Account access \| FlavorInsight AI'/);
   assert.match(platformAppSource, /route === 'login'/);
   assert.match(source, /routeHref\('login', PLATFORM_BASE_PATH\)/);
-  assert.match(loginSource, /Continue locally/);
-  assert.match(loginSource, /继续本地使用/);
-  assert.doesNotMatch(loginSource, /<input|type="submit"|type="password"/);
+  assert.match(loginSource, /supabase\.auth\.signInWithPassword/);
+  assert.match(loginSource, /supabase\.auth\.signUp/);
+  assert.match(loginSource, /type="password"/);
+  assert.match(loginSource, /onLoginSuccess/);
 });
 
 test('provides a skip link and a labelled main landmark', () => {

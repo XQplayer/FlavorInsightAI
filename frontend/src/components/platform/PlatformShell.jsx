@@ -20,6 +20,7 @@ import {
 import { usePlatformPreferences } from '../../app/PlatformPreferences.jsx';
 import { routeHref } from '../../app/platformRoutes.js';
 import { processingViewHref } from '../../app/processingRoutes.js';
+import { analyticsEnabled } from '../../lib/supabase.js';
 import { isNormalLeftClick, nextThemePreference } from './platformShellBehavior.js';
 import './PlatformShell.css';
 
@@ -45,7 +46,7 @@ const COPY = Object.freeze({
     closeMenu: '关闭导航菜单', expandSidebar: '展开侧边栏', collapseSidebar: '折叠侧边栏',
     languageControl: '语言选择', switchToChinese: '切换至中文', switchToEnglish: 'Switch to English',
     themeControl: '主题切换', useLightTheme: '切换至浅色主题', useDarkTheme: '切换至深色主题',
-    accountControl: '账号状态', localStatus: '本地模式', workspace: '科研工作台',
+    accountControl: '账号状态', localStatus: '本地模式', signedOut: '未登录', signedIn: '已登录', workspace: '科研工作台',
     search: '香气阈值检索', login: '账号访问',
   },
   en: {
@@ -53,7 +54,7 @@ const COPY = Object.freeze({
     closeMenu: 'Close navigation menu', expandSidebar: 'Expand sidebar', collapseSidebar: 'Collapse sidebar',
     languageControl: 'Language selection', switchToChinese: '切换至中文', switchToEnglish: 'Switch to English',
     themeControl: 'Theme toggle', useLightTheme: 'Switch to light theme', useDarkTheme: 'Switch to dark theme',
-    accountControl: 'Account status', localStatus: 'Local mode', workspace: 'Research workspace',
+    accountControl: 'Account status', localStatus: 'Local mode', signedOut: 'Signed out', signedIn: 'Signed in', workspace: 'Research workspace',
     search: 'Aroma threshold search', login: 'Account access',
   },
 });
@@ -72,7 +73,7 @@ function loadSidebarPreference() {
   return null;
 }
 
-export default function PlatformShell({ route, onNavigate, processingView = 'new', selectedTaskId = '', onProcessingNavigate, children }) {
+export default function PlatformShell({ route, onNavigate, processingView = 'new', selectedTaskId = '', onProcessingNavigate, authSession, children }) {
   const { language, setLanguage, resolvedTheme, setTheme } = usePlatformPreferences();
   const [manualCollapsed, setManualCollapsed] = useState(loadSidebarPreference);
   const [processingExpanded, setProcessingExpanded] = useState(route === 'processing');
@@ -266,7 +267,7 @@ export default function PlatformShell({ route, onNavigate, processingView = 'new
             aria-current={route === 'login' ? 'page' : undefined}
             onClick={event => handleRouteClick(event, 'login')}>
             <UserRound aria-hidden="true" size={20} />
-            <span className="platform-shell__control-label">{copy.localStatus}</span>
+            <span className="platform-shell__control-label">{authSession ? copy.signedIn : analyticsEnabled ? copy.signedOut : copy.localStatus}</span>
           </a>
           <button className="platform-shell__utility-link platform-shell__collapse-button" type="button"
             aria-label={collapsed ? copy.expandSidebar : copy.collapseSidebar}
@@ -290,7 +291,7 @@ export default function PlatformShell({ route, onNavigate, processingView = 'new
             <strong>{pageTitle}</strong>
             {route === 'processing' && <><span aria-hidden="true">/</span><strong aria-current="page">{processingTitle}</strong></>}
           </div>
-          <span className="platform-shell__utility-status">{copy.localStatus}</span>
+          <span className="platform-shell__utility-status">{authSession ? copy.signedIn : analyticsEnabled ? copy.signedOut : copy.localStatus}</span>
         </header>
         <main className="platform-shell__main" id="main-content" tabIndex="-1">{children}</main>
       </div>
